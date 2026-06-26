@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import NewFlowPage from './pages/NewFlowPage'
 import HistoryPage from './pages/HistoryPage'
 import TopologyPage from './pages/TopologyPage'
@@ -7,23 +7,49 @@ import ImportPage from './pages/ImportPage'
 import TeamsPage from './pages/TeamsPage'
 import AuditPage from './pages/AuditPage'
 import HelpModal from './components/HelpModal'
+import RoadmapModal from './components/RoadmapModal'
 
 type Page = 'new' | 'history' | 'topology' | 'admin' | 'import' | 'teams' | 'audit'
 
 const NAV = [
-  { id: 'new',      label: 'Nouveau flux',  icon: '＋', section: 'Flux IP' },
-  { id: 'history',  label: 'Historique',    icon: '⏱', section: 'Flux IP' },
-  { id: 'topology', label: 'Graphe réseau', icon: '⬡', section: 'Topologie' },
-  { id: 'admin',    label: 'Administration',icon: '⚙', section: 'Topologie' },
+  { id: 'new',      label: 'Nouveau flux',    icon: '＋', section: 'Flux IP' },
+  { id: 'history',  label: 'Historique',      icon: '⏱', section: 'Flux IP' },
+  { id: 'topology', label: 'Graphe réseau',   icon: '⬡', section: 'Topologie' },
+  { id: 'admin',    label: 'Administration',  icon: '⚙', section: 'Topologie' },
   { id: 'import',   label: 'Import / Export', icon: '⬆', section: 'Topologie' },
   { id: 'teams',    label: 'Équipes & Sites', icon: '👥', section: 'Organisation' },
-  { id: 'audit',    label: 'Audit',         icon: '◎', section: 'Référentiel' },
+  { id: 'audit',    label: 'Audit',           icon: '◎', section: 'Référentiel' },
 ] as const
+
+function getInitialTheme(): 'dark' | 'light' {
+  const stored = localStorage.getItem('theme') as 'dark' | 'light' | null
+  if (stored) return stored
+  return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'
+}
+
+const ICON_BTN: React.CSSProperties = {
+  background: 'var(--bg-input)', border: '1px solid var(--border)',
+  borderRadius: '50%', width: 26, height: 26,
+  color: 'var(--text-2)', cursor: 'pointer',
+  fontSize: 13, fontWeight: 700, lineHeight: 1,
+  display: 'flex', alignItems: 'center', justifyContent: 'center',
+  flexShrink: 0, fontFamily: 'inherit',
+  transition: 'border-color 0.15s, color 0.15s',
+}
 
 export default function App() {
   const [page, setPage] = useState<Page>('new')
   const [highlightedPath, setHighlightedPath] = useState<string[]>([])
   const [helpOpen, setHelpOpen] = useState(false)
+  const [roadmapOpen, setRoadmapOpen] = useState(false)
+  const [theme, setTheme] = useState<'dark' | 'light'>(getInitialTheme)
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme)
+    localStorage.setItem('theme', theme)
+  }, [theme])
+
+  const toggleTheme = () => setTheme(t => t === 'dark' ? 'light' : 'dark')
 
   const goToGraph = (path: string[]) => {
     setHighlightedPath(path)
@@ -31,6 +57,15 @@ export default function App() {
   }
 
   const sections = [...new Set(NAV.map(n => n.section))]
+
+  const hoverBlue = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.currentTarget.style.borderColor = 'var(--blue)'
+    e.currentTarget.style.color = 'var(--blue)'
+  }
+  const hoverOut = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.currentTarget.style.borderColor = 'var(--border)'
+    e.currentTarget.style.color = 'var(--text-2)'
+  }
 
   return (
     <div className="layout">
@@ -56,27 +91,48 @@ export default function App() {
             </div>
           ))}
         </nav>
-        <div style={{ padding: '10px 16px', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div className="text-xs text-dimmed">demo-user · v2.1.0</div>
+
+        {/* Footer — version + actions */}
+        <div style={{ padding: '10px 14px', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div className="text-xs text-dimmed" style={{ flex: 1 }}>demo · v2.1.0</div>
+
+          {/* Dark/Light toggle */}
+          <button
+            onClick={toggleTheme}
+            title={theme === 'dark' ? 'Passer en mode clair' : 'Passer en mode sombre'}
+            style={ICON_BTN}
+            onMouseEnter={hoverBlue}
+            onMouseLeave={hoverOut}
+          >
+            {theme === 'dark' ? '☀' : '🌙'}
+          </button>
+
+          {/* Roadmap */}
+          <button
+            onClick={() => setRoadmapOpen(true)}
+            title="Roadmap"
+            style={ICON_BTN}
+            onMouseEnter={hoverBlue}
+            onMouseLeave={hoverOut}
+          >
+            ⬡
+          </button>
+
+          {/* Help */}
           <button
             onClick={() => setHelpOpen(true)}
             title="Guide d'utilisation"
-            style={{
-              background: 'var(--bg-input)', border: '1px solid var(--border)',
-              borderRadius: '50%', width: 26, height: 26,
-              color: 'var(--text-2)', cursor: 'pointer',
-              fontSize: 13, fontWeight: 700, lineHeight: 1,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              flexShrink: 0, fontFamily: 'inherit',
-              transition: 'border-color 0.15s, color 0.15s',
-            }}
-            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--blue)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--blue)' }}
-            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-2)' }}
-          >?</button>
+            style={ICON_BTN}
+            onMouseEnter={hoverBlue}
+            onMouseLeave={hoverOut}
+          >
+            ?
+          </button>
         </div>
       </aside>
 
-      {helpOpen && <HelpModal onClose={() => setHelpOpen(false)} />}
+      {helpOpen    && <HelpModal    onClose={() => setHelpOpen(false)} />}
+      {roadmapOpen && <RoadmapModal onClose={() => setRoadmapOpen(false)} />}
 
       <main className="main">
         {page === 'new'      && <NewFlowPage onShowGraph={goToGraph} />}
