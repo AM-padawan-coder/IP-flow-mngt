@@ -53,6 +53,12 @@ export const api = {
   importCsvNetworks:  (csv: string)   => req('/topology/import/csv/networks',  { method: 'POST', body: JSON.stringify({ csv }) }),
   importCsvLinks:     (csv: string)   => req('/topology/import/csv/links',     { method: 'POST', body: JSON.stringify({ csv }) }),
 
+  // Simulation
+  whatif:          (data: object) => req('/simulation/whatif',           { method: 'POST', body: JSON.stringify(data) }),
+  detectLoops:     ()             => req('/simulation/loops'),
+  equipmentImpact: (name: string) => req(`/simulation/impact/${encodeURIComponent(name)}`),
+  listEquipment:   ()             => req('/simulation/equipment-list'),
+
   // Teams & Organisation
   getTeams:    () => req('/org/teams'),
   createTeam:  (data: object)             => req('/org/teams',       { method: 'POST',   body: JSON.stringify(data) }),

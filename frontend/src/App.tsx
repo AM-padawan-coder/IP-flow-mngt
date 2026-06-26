@@ -6,19 +6,21 @@ import AdminPage from './pages/AdminPage'
 import ImportPage from './pages/ImportPage'
 import TeamsPage from './pages/TeamsPage'
 import AuditPage from './pages/AuditPage'
+import SimulationPage from './pages/SimulationPage'
 import HelpModal from './components/HelpModal'
 import RoadmapModal from './components/RoadmapModal'
 
-type Page = 'new' | 'history' | 'topology' | 'admin' | 'import' | 'teams' | 'audit'
+type Page = 'new' | 'history' | 'topology' | 'admin' | 'import' | 'teams' | 'audit' | 'simulation'
 
 const NAV = [
-  { id: 'new',      label: 'Nouveau flux',    icon: '＋', section: 'Flux IP' },
-  { id: 'history',  label: 'Historique',      icon: '⏱', section: 'Flux IP' },
-  { id: 'topology', label: 'Graphe réseau',   icon: '⬡', section: 'Topologie' },
-  { id: 'admin',    label: 'Administration',  icon: '⚙', section: 'Topologie' },
-  { id: 'import',   label: 'Import / Export', icon: '⬆', section: 'Topologie' },
-  { id: 'teams',    label: 'Équipes & Sites', icon: '👥', section: 'Organisation' },
-  { id: 'audit',    label: 'Audit',           icon: '◎', section: 'Référentiel' },
+  { id: 'new',        label: 'Nouveau flux',       icon: '＋', section: 'Flux IP' },
+  { id: 'history',    label: 'Historique',          icon: '⏱', section: 'Flux IP' },
+  { id: 'simulation', label: 'Simulation',          icon: '🔬', section: 'Flux IP' },
+  { id: 'topology',   label: 'Graphe réseau',       icon: '⬡', section: 'Topologie' },
+  { id: 'admin',      label: 'Administration',      icon: '⚙', section: 'Topologie' },
+  { id: 'import',     label: 'Import / Export',     icon: '⬆', section: 'Topologie' },
+  { id: 'teams',      label: 'Équipes & Sites',     icon: '👥', section: 'Organisation' },
+  { id: 'audit',      label: 'Audit',               icon: '◎', section: 'Référentiel' },
 ] as const
 
 function getInitialTheme(): 'dark' | 'light' {
@@ -135,13 +137,14 @@ export default function App() {
       {roadmapOpen && <RoadmapModal onClose={() => setRoadmapOpen(false)} />}
 
       <main className="main">
-        {page === 'new'      && <NewFlowPage onShowGraph={goToGraph} />}
-        {page === 'history'  && <HistoryPage onSelect={() => {}} />}
-        {page === 'topology' && <TopologyPage highlightedPath={highlightedPath} />}
-        {page === 'admin'    && <AdminPage />}
-        {page === 'import'   && <ImportPage />}
-        {page === 'teams'    && <TeamsPage />}
-        {page === 'audit'    && <AuditPage />}
+        {page === 'new'        && <NewFlowPage onShowGraph={goToGraph} />}
+        {page === 'history'    && <HistoryPage onSelect={() => {}} />}
+        {page === 'simulation' && <SimulationPage />}
+        {page === 'topology'   && <TopologyPage highlightedPath={highlightedPath} />}
+        {page === 'admin'      && <AdminPage />}
+        {page === 'import'     && <ImportPage />}
+        {page === 'teams'      && <TeamsPage />}
+        {page === 'audit'      && <AuditPage />}
       </main>
     </div>
   )
