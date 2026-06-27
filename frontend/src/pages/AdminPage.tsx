@@ -322,34 +322,39 @@ function VrfAdmin({ vrfs, equipment, onDone }: any) {
   const blank = { name: '', color: '#a855f7', rd: '', rt_import: '', rt_export: '', description: '' }
   const [form, setForm] = useState(blank)
   const [editing, setEditing] = useState<number | null>(null)
-  const [expanded, setExpanded] = useState<number | null>(null)
-  const [addingEq, setAddingEq] = useState<Record<number, string>>({})
+  const [addEqSel, setAddEqSel] = useState('')
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
+
+  const currentVrf = editing ? vrfs.find((v: any) => v.id === editing) : null
+  const currentEqNames: string[] = currentVrf?.equipment_names || []
+  const available = (equipment as any[]).filter((e: any) => !currentEqNames.includes(e.name))
 
   const save = async () => {
     const payload = { name: form.name, color: form.color, rd: form.rd || null, rt_import: form.rt_import || null, rt_export: form.rt_export || null, description: form.description || null }
     if (editing) { await api.updateVRF(editing, payload) } else { await api.createVRF(payload) }
-    setForm(blank); setEditing(null)
+    setForm(blank); setEditing(null); setAddEqSel('')
     onDone(editing ? `VRF ${form.name} mise à jour` : `VRF ${form.name} créée`)
   }
+
+  const cancel = () => { setForm(blank); setEditing(null); setAddEqSel('') }
 
   const del = async (id: number, name: string) => {
     if (!confirm(`Supprimer la VRF ${name} ?`)) return
     await api.deleteVRF(id); onDone(`VRF ${name} supprimée`)
   }
 
-  const addEq = async (vrfId: number) => {
-    const eqId = addingEq[vrfId]
-    if (!eqId) return
-    await api.addVRFEquipment(vrfId, Number(eqId))
-    setAddingEq(prev => ({ ...prev, [vrfId]: '' }))
+  const addEq = async () => {
+    if (!editing || !addEqSel) return
+    await api.addVRFEquipment(editing, Number(addEqSel))
+    setAddEqSel('')
     onDone('Équipement ajouté à la VRF')
   }
 
-  const removeEq = async (vrfId: number, eqName: string) => {
+  const removeEq = async (eqName: string) => {
+    if (!editing) return
     const eq = (equipment as any[]).find((e: any) => e.name === eqName)
     if (!eq) return
-    await api.removeVRFEquipment(vrfId, eq.id)
+    await api.removeVRFEquipment(editing, eq.id)
     onDone('Équipement retiré de la VRF')
   }
 
@@ -374,51 +379,52 @@ function VrfAdmin({ vrfs, equipment, onDone }: any) {
           <div className="form-group"><label className="form-label">Description</label><input className="form-input" value={form.description} onChange={e => set('description', e.target.value)} /></div>
           <div className="flex gap-2 mt-2">
             <button className="btn btn-primary" onClick={save} disabled={!form.name}>{editing ? 'Mettre à jour' : 'Créer'}</button>
-            {editing && <button className="btn btn-ghost" onClick={() => { setForm(blank); setEditing(null) }}>Annuler</button>}
+            {editing && <button className="btn btn-ghost" onClick={cancel}>Annuler</button>}
           </div>
+
+          {editing && (
+            <div style={{ marginTop: 8, borderTop: '1px solid var(--border)', paddingTop: 12 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-3)', letterSpacing: '0.6px', textTransform: 'uppercase', marginBottom: 8 }}>
+                Équipements membres
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 8 }}>
+                {currentEqNames.length === 0 && <div className="text-xs text-dimmed">Aucun équipement dans cette VRF</div>}
+                {currentEqNames.map((name: string) => (
+                  <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 8px', background: 'var(--bg-input)', borderRadius: 4 }}>
+                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: currentVrf?.color, flexShrink: 0 }} />
+                    <span style={{ fontSize: 12, flex: 1 }}>{name}</span>
+                    <button className="btn btn-ghost btn-sm" style={{ color: 'var(--red)' }} onClick={() => removeEq(name)}>✕</button>
+                  </div>
+                ))}
+              </div>
+              {available.length > 0 && (
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <select className="form-select" style={{ flex: 1 }} value={addEqSel} onChange={e => setAddEqSel(e.target.value)}>
+                    <option value="">+ Ajouter un équipement…</option>
+                    {available.map((e: any) => <option key={e.id} value={e.id}>{e.name}</option>)}
+                  </select>
+                  <button className="btn btn-primary btn-sm" onClick={addEq} disabled={!addEqSel}>Ajouter</button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
       <div className="card">
         <div className="card-title">VRF configurées ({vrfs.length})</div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 500, overflowY: 'auto' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 500, overflowY: 'auto' }}>
           {vrfs.map((v: any) => {
-            const isOpen = expanded === v.id
-            const currentEqNames: string[] = v.equipment_names || []
-            const available = (equipment as any[]).filter((e: any) => !currentEqNames.includes(e.name))
+            const eqCount = (v.equipment_names || []).length
+            const isActive = editing === v.id
             return (
-              <div key={v.id} style={{ background: 'var(--bg-input)', borderRadius: 6, border: `1px solid ${v.color}30`, overflow: 'hidden' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', cursor: 'pointer' }} onClick={() => setExpanded(isOpen ? null : v.id)}>
-                  <div style={{ width: 12, height: 12, borderRadius: '50%', background: v.color, flexShrink: 0 }} />
-                  <span style={{ flex: 1, fontWeight: 500 }}>{v.name}</span>
-                  {v.rd && <span className="text-xs text-dimmed mono">{v.rd}</span>}
-                  <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 8, background: `${v.color}22`, color: v.color, fontWeight: 600, whiteSpace: 'nowrap' }}>{currentEqNames.length} éq.</span>
-                  <button className="btn btn-ghost btn-sm" onClick={e => { e.stopPropagation(); setForm({ name: v.name, color: v.color, rd: v.rd || '', rt_import: v.rt_import || '', rt_export: v.rt_export || '', description: v.description || '' }); setEditing(v.id) }}>✏</button>
-                  <button className="btn btn-ghost btn-sm" style={{ color: 'var(--red)' }} onClick={e => { e.stopPropagation(); del(v.id, v.name) }}>✕</button>
-                  <span style={{ fontSize: 10, color: 'var(--text-3)' }}>{isOpen ? '▲' : '▼'}</span>
-                </div>
-                {isOpen && (
-                  <div style={{ borderTop: '1px solid var(--border)', padding: '8px 10px' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: available.length > 0 ? 8 : 0 }}>
-                      {currentEqNames.length === 0 && <div className="text-xs text-dimmed">Aucun équipement dans cette VRF</div>}
-                      {currentEqNames.map((name: string) => (
-                        <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 6px', background: 'var(--bg)', borderRadius: 4 }}>
-                          <span style={{ fontSize: 11, flex: 1 }}>{name}</span>
-                          <button className="btn btn-ghost btn-sm" style={{ color: 'var(--red)', fontSize: 10 }} onClick={() => removeEq(v.id, name)}>✕</button>
-                        </div>
-                      ))}
-                    </div>
-                    {available.length > 0 && (
-                      <div style={{ display: 'flex', gap: 6 }}>
-                        <select className="form-select" style={{ flex: 1, fontSize: 11, padding: '4px 6px' }} value={addingEq[v.id] || ''} onChange={e => setAddingEq(prev => ({ ...prev, [v.id]: e.target.value }))}>
-                          <option value="">+ Ajouter un équipement…</option>
-                          {available.map((e: any) => <option key={e.id} value={e.id}>{e.name}</option>)}
-                        </select>
-                        <button className="btn btn-primary btn-sm" onClick={() => addEq(v.id)} disabled={!addingEq[v.id]} style={{ fontSize: 11 }}>Ajouter</button>
-                      </div>
-                    )}
-                  </div>
-                )}
+              <div key={v.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', background: isActive ? `${v.color}15` : 'var(--bg-input)', borderRadius: 6, border: `1px solid ${isActive ? v.color : v.color + '30'}` }}>
+                <div style={{ width: 12, height: 12, borderRadius: '50%', background: v.color, flexShrink: 0 }} />
+                <span style={{ flex: 1, fontWeight: 500 }}>{v.name}</span>
+                {v.rd && <span className="text-xs text-dimmed mono">{v.rd}</span>}
+                <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 8, background: `${v.color}22`, color: v.color, fontWeight: 600, whiteSpace: 'nowrap' }}>{eqCount} éq.</span>
+                <button className="btn btn-ghost btn-sm" onClick={() => { setForm({ name: v.name, color: v.color, rd: v.rd || '', rt_import: v.rt_import || '', rt_export: v.rt_export || '', description: v.description || '' }); setEditing(v.id); setAddEqSel('') }}>✏</button>
+                <button className="btn btn-ghost btn-sm" style={{ color: 'var(--red)' }} onClick={() => del(v.id, v.name)}>✕</button>
               </div>
             )
           })}
