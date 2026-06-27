@@ -19,16 +19,16 @@ type Page = 'new' | 'history' | 'simulation' | 'topology' | 'admin' | 'import' |
 const NAV = [
   { id: 'new',        label: 'Nouveau flux',       icon: '＋', section: 'Flux IP' },
   { id: 'history',    label: 'Historique',          icon: '⏱', section: 'Flux IP' },
-  { id: 'simulation', label: 'Simulation',          icon: '🔬', section: 'Flux IP' },
+  { id: 'simulation', label: 'Simulation',          icon: 'ti ti-adjustments-horizontal', section: 'Flux IP' },
   { id: 'topology',        label: 'Graphe réseau',       icon: '⬡', section: 'Topologie' },
   { id: 'admin',           label: 'Configuration',       icon: '⚙', section: 'Topologie' },
-  { id: 'backups',         label: 'Sauvegardes',         icon: '💾', section: 'Administration' },
+  { id: 'backups',         label: 'Sauvegardes',         icon: 'ti ti-database', section: 'Administration' },
   { id: 'flows-topology',  label: 'Flux',                icon: '↔', section: 'Topologie' },
-  { id: 'policies',        label: 'Politiques réseau',   icon: '🔒', section: 'Topologie' },
+  { id: 'policies',        label: 'Politiques réseau',   icon: 'ti ti-shield', section: 'Topologie' },
   { id: 'import',          label: 'Import / Export',     icon: '⬆', section: 'Topologie' },
-  { id: 'teams',      label: 'Équipes',             icon: '👥', section: 'Organisation' },
+  { id: 'teams',      label: 'Équipes',             icon: 'ti ti-users', section: 'Organisation' },
   { id: 'audit',      label: 'Audit',               icon: '◎', section: 'Référentiel' },
-  { id: 'compliance', label: 'Conformité',          icon: '🛡', section: 'Référentiel' },
+  { id: 'compliance', label: 'Conformité',          icon: 'ti ti-checkbox', section: 'Référentiel' },
 ] as const
 
 function getInitialTheme(): 'dark' | 'light' {
@@ -94,7 +94,9 @@ export default function App() {
                   className={`nav-item${page === item.id ? ' active' : ''}`}
                   onClick={() => { setPage(item.id); if (item.id !== 'topology') setHighlightedPath([]) }}
                 >
-                  <span className="nav-icon">{item.icon}</span>
+                  <span className="nav-icon">
+                    {item.icon.startsWith('ti ') ? <i className={item.icon} aria-hidden="true" /> : item.icon}
+                  </span>
                   {item.label}
                 </button>
               ))}
