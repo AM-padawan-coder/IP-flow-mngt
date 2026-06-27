@@ -32,7 +32,9 @@ const JSON_TEMPLATE = JSON.stringify({
   ]
 }, null, 2)
 
-export default function ImportPage() {
+interface Props { onNavigate?: (page: string) => void }
+
+export default function ImportPage({ onNavigate }: Props) {
   const [mode, setMode] = useState<Mode>('json')
   const [content, setContent] = useState('')
   const [loading, setLoading] = useState(false)
@@ -109,9 +111,15 @@ export default function ImportPage() {
             </div>
 
             <div className="card">
-              <div className="card-title">Export</div>
+              <div className="card-title">Export topologie</div>
               <p className="text-sm text-muted mb-3">Exporter toute l'architecture en JSON pour sauvegarde ou migration</p>
               <button className="btn btn-ghost" onClick={exportJson}>⬇ Télécharger topology.json</button>
+            </div>
+
+            <div className="card" style={{ marginTop: 16 }}>
+              <div className="card-title">Export flux</div>
+              <p className="text-sm text-muted mb-3">Consulter et exporter la matrice de flux au format Excel (CSV)</p>
+              <button className="btn btn-primary" onClick={() => onNavigate?.('flows-topology')}>↔ Ouvrir la vue Flux</button>
             </div>
           </div>
 

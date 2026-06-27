@@ -148,7 +148,7 @@ export default function App() {
         {page === 'flows-topology'  && <FlowsTopologyPage />}
         {page === 'topology'        && <TopologyPage highlightedPath={highlightedPath} />}
         {page === 'admin'      && <AdminPage />}
-        {page === 'import'     && <ImportPage />}
+        {page === 'import'     && <ImportPage onNavigate={(p) => setPage(p as Page)} />}
         {page === 'teams'      && <TeamsPage />}
         {page === 'audit'      && <AuditPage />}
       </main>

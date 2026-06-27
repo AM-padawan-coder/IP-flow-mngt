@@ -28,7 +28,6 @@ function exportToCsv(flows: any[]) {
 }
 
 const STATUS_FILTERS = [
-  { key: '', label: 'Tous' },
   { key: 'validated', label: 'Validé' },
   { key: 'deployed', label: 'Déployé' },
   { key: 'pending', label: 'En attente' },
@@ -37,30 +36,30 @@ const STATUS_FILTERS = [
 
 export default function FlowsTopologyPage() {
   const [flows, setFlows] = useState<any[]>([])
-  const [equipment, setEquipment] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState('')
-  const [eqFilter, setEqFilter] = useState('')
+  const [statusFilters, setStatusFilters] = useState<string[]>([])
   const [selectedId, setSelectedId] = useState<number | null>(null)
 
   const load = () => {
     setLoading(true)
-    Promise.all([api.getFlows(), api.listPolicyEquipment()]).then(([f, e]: any) => {
-      setFlows(f)
-      setEquipment(e)
-      setLoading(false)
-    })
+    api.getFlows().then((f: any) => { setFlows(f); setLoading(false) })
   }
 
   useEffect(() => { load() }, [])
+
+  const toggleStatus = (key: string) => {
+    setStatusFilters(prev =>
+      prev.includes(key) ? prev.filter(s => s !== key) : [...prev, key]
+    )
+  }
 
   const filtered = flows.filter(f => {
     const matchSearch = !search ||
       f.src_ip.includes(search) || f.dst_ip.includes(search) ||
       (f.application || '').toLowerCase().includes(search.toLowerCase()) ||
       f.analyst.toLowerCase().includes(search.toLowerCase())
-    const matchStatus = !statusFilter || f.status === statusFilter
+    const matchStatus = statusFilters.length === 0 || statusFilters.includes(f.status)
     return matchSearch && matchStatus
   })
 
@@ -74,25 +73,38 @@ export default function FlowsTopologyPage() {
 
         {/* Filters + export */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', gap: 4 }}>
-            {STATUS_FILTERS.map(f => (
-              <button key={f.key} onClick={() => setStatusFilter(f.key)} style={{ padding: '4px 10px', borderRadius: 20, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', fontWeight: statusFilter === f.key ? 700 : 400, background: statusFilter === f.key ? 'var(--blue)' : 'var(--bg-input)', color: statusFilter === f.key ? '#fff' : 'var(--text-2)', border: statusFilter === f.key ? '1px solid var(--blue)' : '1px solid var(--border)' }}>
-                {f.label}
-              </button>
-            ))}
+          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+            {STATUS_FILTERS.map(f => {
+              const active = statusFilters.includes(f.key)
+              const color = STATUS_COLOR[f.key]
+              return (
+                <button
+                  key={f.key}
+                  onClick={() => toggleStatus(f.key)}
+                  style={{
+                    padding: '4px 10px', borderRadius: 20, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer',
+                    fontWeight: active ? 700 : 400,
+                    background: active ? `${color}22` : 'var(--bg-input)',
+                    color: active ? color : 'var(--text-2)',
+                    border: active ? `1px solid ${color}` : '1px solid var(--border)',
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  {active && '✓ '}{f.label}
+                </button>
+              )
+            })}
+            {statusFilters.length > 0 && (
+              <button
+                onClick={() => setStatusFilters([])}
+                style={{ padding: '4px 8px', borderRadius: 20, fontSize: 11, fontFamily: 'inherit', cursor: 'pointer', background: 'transparent', color: 'var(--text-3)', border: '1px solid var(--border)' }}
+              >✕</button>
+            )}
           </div>
-          <select
-            value={eqFilter}
-            onChange={e => setEqFilter(e.target.value)}
-            style={{ padding: '4px 10px', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text-2)', fontSize: 12, fontFamily: 'inherit' }}
-          >
-            <option value="">Tous les équipements</option>
-            {equipment.map((e: any) => <option key={e.id} value={e.name}>{e.name}</option>)}
-          </select>
           <input
             className="form-input"
-            style={{ width: 200 }}
-            placeholder="Rechercher IP, appli…"
+            style={{ width: 220 }}
+            placeholder="Rechercher IP, application, analyste…"
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
