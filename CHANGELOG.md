@@ -1,5 +1,24 @@
 # Changelog — IP Flow Manager
 
+## [2.8.3] — 2026-06-27
+
+### Conformité — branchement du moteur réel
+- **Le moteur de conformité s'exécute désormais sur les flux réels** : l'analyse d'un flux (`/flows/analyze`) renvoie son verdict de conformité, évalué sur le **chemin réellement calculé** (zones traversées dérivées des hops → réseaux → zones)
+- Conformité évaluée même sur un flux rejeté, dès que les zones source/destination sont résolues
+- Panneau **Conformité** ajouté à la page Nouveau flux : verdict + violations détaillées (sévérité, frameworks, citation)
+- `/compliance/evaluate/flow/{id}` utilise aussi le chemin réel ; provider partagé (`default_provider`) entre les routers
+- Constructeur de sujet partagé `compliance/subject.py`
+- Correctif compatibilité Python 3.9 (`Optional[str]` au lieu de `str | None`)
+
+### Configuration — zones physiques
+- Les **zones physiques** (Data Centers, salles, baies) sont taguées **« ⬡ Physique »** et apparaissent sous le filtre **Physique** de la page Zones
+- **Boutons modifier et supprimer** ajoutés sur chaque zone physique, avec formulaire d'édition dédié (nom, type, zone parente, localisation, description)
+
+### Roadmap
+- Suppression de l'entrée **v5.3 Compliance** (désormais branchée dans l'outil) ; **v5.4 Firewall Analyzer** décalé en **v5.3**
+
+---
+
 ## [2.8.2] — 2026-06-27
 
 ### Socle de conformité (OSCAL)

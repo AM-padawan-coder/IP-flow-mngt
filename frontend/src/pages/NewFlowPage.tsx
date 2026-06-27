@@ -189,6 +189,45 @@ export default function NewFlowPage({ onShowGraph }: { onShowGraph?: (path: stri
             <ScriptPanel scripts={result.scripts} />
           </div>
         )}
+
+        {/* Conformité (moteur OSCAL — évalué sur le chemin réel) */}
+        {result?.compliance && (
+          <div className="card mt-4">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+              <div className="card-title" style={{ margin: 0 }}>🛡 Conformité</div>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 700,
+                background: result.compliance.summary.compliant ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)',
+                color: result.compliance.summary.compliant ? '#22c55e' : '#ef4444' }}>
+                {result.compliance.summary.compliant ? '✓ Conforme' : `✕ ${result.compliance.summary.violations} violation(s)`}
+              </span>
+              <span style={{ fontSize: 11, color: 'var(--text-3)' }}>
+                {result.compliance.summary.satisfied}/{result.compliance.summary.total} contrôles · catalogue v{result.compliance.catalog_version}
+              </span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {result.compliance.findings.filter((f: any) => f.status === 'not-satisfied').map((f: any) => (
+                <div key={f.control_id} style={{ padding: '8px 12px', borderRadius: 6, background: 'var(--bg-input)',
+                  borderLeft: `3px solid ${f.severity === 'critical' ? '#dc2626' : f.severity === 'high' ? '#ef4444' : f.severity === 'medium' ? '#f59e0b' : '#3b82f6'}` }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontWeight: 600, fontSize: 12 }}>{f.control_label}</span>
+                    <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 6, fontWeight: 700,
+                      background: `${f.severity === 'critical' ? '#dc2626' : f.severity === 'high' ? '#ef4444' : f.severity === 'medium' ? '#f59e0b' : '#3b82f6'}22`,
+                      color: f.severity === 'critical' ? '#dc2626' : f.severity === 'high' ? '#ef4444' : f.severity === 'medium' ? '#f59e0b' : '#3b82f6' }}>{f.severity}</span>
+                    <span style={{ flex: 1 }} />
+                    {f.frameworks.map((fw: string) => (
+                      <span key={fw} style={{ fontSize: 9, padding: '1px 5px', borderRadius: 5, fontWeight: 700, background: 'rgba(100,116,139,0.15)', color: 'var(--text-3)' }}>{fw}</span>
+                    ))}
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 4 }}>{f.title}</div>
+                  {f.citations?.[0] && <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 4, fontStyle: 'italic' }}>📖 {f.citations[0].title}</div>}
+                </div>
+              ))}
+              {result.compliance.summary.compliant && (
+                <div style={{ fontSize: 12, color: 'var(--text-3)' }}>Aucune violation détectée sur le chemin réel.</div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {topoFlow !== null && (

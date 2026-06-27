@@ -1,5 +1,6 @@
 import json
 from datetime import datetime
+from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -8,6 +9,7 @@ from models import FlowRequest
 from engine.validator import validate_flow
 from engine.path_finder import find_path
 from engine.script_generator import generate_scripts
+from compliance import default_provider, build_flow_subject
 
 router = APIRouter()
 
@@ -27,14 +29,25 @@ class FlowIn(BaseModel):
 
 
 @router.post("/analyze")
-def analyze_flow(data: FlowIn, db: Session = Depends(get_db)):
-    """Analyse un flux sans le persister — pour l'aperçu temps réel."""
+def analyze_flow(data: FlowIn, compliance_source: Optional[str] = None,
+                 db: Session = Depends(get_db)):
+    """Analyse un flux sans le persister — pour l'aperçu temps réel.
+
+    Inclut le verdict de conformité (moteur OSCAL) évalué sur le chemin réel.
+    `compliance_source` permet de cibler une source (nis2/anssi-hygiene/cis-v8) ;
+    par défaut tout le catalogue est évalué."""
     validation = validate_flow(data.src_ip, data.dst_ip, data.port, data.protocol, db)
     path = {}
     scripts = {}
+    compliance = None
+
+    # Chemin calculé indépendamment du verdict (topologique) — sert au rendu
+    # ET à la conformité, évaluée même sur un flux rejeté tant que les zones
+    # sont résolues.
+    comp_path = find_path(data.src_ip, data.dst_ip, db)
 
     if validation["valid"]:
-        path = find_path(data.src_ip, data.dst_ip, db)
+        path = comp_path
         if path.get("found"):
             scripts = generate_scripts(
                 src_ip=data.src_ip,
@@ -48,7 +61,18 @@ def analyze_flow(data: FlowIn, db: Session = Depends(get_db)):
                 path_hops=path.get("hops", []),
             )
 
-    return {"validation": validation, "path": path, "scripts": scripts}
+    if validation.get("src_zone") and validation.get("dst_zone"):
+        subject = build_flow_subject(
+            db, data.src_ip, data.dst_ip, data.port, data.protocol,
+            validation.get("src_zone"), validation.get("dst_zone"),
+            comp_path.get("hops", []),
+        )
+        try:
+            compliance = default_provider.evaluate(subject, source=compliance_source).to_dict()
+        except KeyError:
+            compliance = None
+
+    return {"validation": validation, "path": path, "scripts": scripts, "compliance": compliance}
 
 
 @router.post("", status_code=201)

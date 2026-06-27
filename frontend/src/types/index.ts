@@ -42,10 +42,30 @@ export interface ValidationResult {
   dst_network?: { name: string; cidr: string }
 }
 
+export interface ComplianceFinding {
+  control_id: string
+  control_label: string
+  control_version: string
+  title: string
+  group: string
+  severity: string
+  status: string
+  frameworks: string[]
+  citations: { title: string; text: string; source_version?: string }[]
+}
+
+export interface ComplianceResult {
+  catalog_version: string
+  source: string | null
+  summary: { total: number; satisfied: number; violations: number; errors: number; compliant: boolean }
+  findings: ComplianceFinding[]
+}
+
 export interface AnalyzeResponse {
   validation: ValidationResult
   path: PathResult
   scripts: ScriptsResult
+  compliance?: ComplianceResult | null
 }
 
 export interface FlowSummary {

@@ -13,7 +13,6 @@ Endpoints :
 - POST /compliance/evaluate/flow/{id}   → évalue un flux existant (sujet construit)
 """
 
-import ipaddress
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -22,16 +21,15 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 import models
-from compliance import LocalEngineProvider, ComplianceProvider
+from compliance import ComplianceProvider, default_provider, build_flow_subject
+from engine.validator import validate_flow
+from engine.path_finder import find_path
 
 router = APIRouter()
 
-# Provider injectable — on pourrait y substituer un HttpEngineProvider.
-_provider: ComplianceProvider = LocalEngineProvider()
-
 
 def get_provider() -> ComplianceProvider:
-    return _provider
+    return default_provider
 
 
 # ── Lecture du catalogue / sources ─────────────────────────────────────────────
@@ -102,59 +100,6 @@ def evaluate_subject(body: SubjectIn,
     return report.to_dict()
 
 
-# Ports « larges » utilisés pour détecter les règles any
-_ADMIN_ZONE = "ZONE-MANAGEMENT"
-
-
-def _resolve_zone(db: Session, ip: str) -> tuple[str, int]:
-    """Associe une IP à une zone via les réseaux déclarés (match CIDR).
-    Renvoie (nom_zone, trust_level). Valeurs neutres si non résolu."""
-    try:
-        addr = ipaddress.ip_address(ip.split("/")[0])
-    except ValueError:
-        return ("INCONNUE", 50)
-    networks = db.query(models.Network).all()
-    for net in networks:
-        try:
-            if addr in ipaddress.ip_network(net.cidr, strict=False):
-                zone = db.query(models.Zone).filter(models.Zone.id == net.zone_id).first()
-                if zone:
-                    return (zone.name, zone.trust_level)
-        except ValueError:
-            continue
-    return ("INCONNUE", 50)
-
-
-def _is_any(value: str) -> bool:
-    return value.strip().lower() in ("", "any", "0.0.0.0/0", "::/0", "*")
-
-
-def build_flow_subject(db: Session, flow: models.FlowRequest) -> dict:
-    """Construit le sujet OSCAL à partir d'un flux stocké.
-
-    NB : le chemin (path_zones) est approximé par [zone_src, zone_dst] faute
-    d'intégration complète du moteur de chemin ici. L'enrichissement par le
-    chemin réel calculé est un point d'évolution (cf. README gouvernance)."""
-    src_zone, src_trust = _resolve_zone(db, flow.src_ip)
-    dst_zone, dst_trust = _resolve_zone(db, flow.dst_ip)
-    try:
-        port = int(str(flow.port))
-    except (ValueError, TypeError):
-        port = 0
-    path_zones = list(dict.fromkeys([src_zone, dst_zone]))
-    return {
-        "subject_type": "flow",
-        "src_ip": flow.src_ip, "dst_ip": flow.dst_ip,
-        "src_zone": src_zone, "dst_zone": dst_zone,
-        "src_trust": src_trust, "dst_trust": dst_trust,
-        "port": port, "protocol": (flow.protocol or "tcp").lower(),
-        "action": "permit",
-        "src_any": _is_any(flow.src_ip), "dst_any": _is_any(flow.dst_ip),
-        "port_any": _is_any(str(flow.port)),
-        "path_zones": path_zones,
-    }
-
-
 @router.post("/evaluate/flow/{flow_id}")
 def evaluate_flow(flow_id: int, source: Optional[str] = None,
                   db: Session = Depends(get_db),
@@ -162,7 +107,13 @@ def evaluate_flow(flow_id: int, source: Optional[str] = None,
     flow = db.query(models.FlowRequest).filter(models.FlowRequest.id == flow_id).first()
     if flow is None:
         raise HTTPException(404, "Flux introuvable")
-    subject = build_flow_subject(db, flow)
+    # Sujet construit sur le chemin réel calculé
+    validation = validate_flow(flow.src_ip, flow.dst_ip, flow.port, flow.protocol or "tcp", db)
+    path = find_path(flow.src_ip, flow.dst_ip, db) if validation.get("valid") else {}
+    subject = build_flow_subject(
+        db, flow.src_ip, flow.dst_ip, flow.port, flow.protocol or "tcp",
+        validation.get("src_zone"), validation.get("dst_zone"), path.get("hops", []),
+    )
     try:
         report = provider.evaluate(subject, source=source)
     except KeyError as exc:
