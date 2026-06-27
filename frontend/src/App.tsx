@@ -21,7 +21,7 @@ const NAV = [
   { id: 'simulation', label: 'Simulation',          icon: '🔬', section: 'Flux IP' },
   { id: 'topology',        label: 'Graphe réseau',       icon: '⬡', section: 'Topologie' },
   { id: 'admin',           label: 'Configuration',       icon: '⚙', section: 'Topologie' },
-  { id: 'backups',         label: 'Sauvegardes',         icon: '💾', section: 'Topologie' },
+  { id: 'backups',         label: 'Sauvegardes',         icon: '💾', section: 'Administration' },
   { id: 'flows-topology',  label: 'Flux',                icon: '↔', section: 'Topologie' },
   { id: 'policies',        label: 'Politiques réseau',   icon: '🔒', section: 'Topologie' },
   { id: 'import',          label: 'Import / Export',     icon: '⬆', section: 'Topologie' },

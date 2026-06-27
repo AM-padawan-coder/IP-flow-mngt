@@ -14,10 +14,11 @@ const SECTIONS = [
   { id: 'overlays',   icon: '⬡',  label: 'Overlays graphe' },
   { id: 'simulation', icon: '🔬', label: 'Simulation' },
   { id: 'policies',   icon: '🔒', label: 'Politiques réseau' },
-  { id: 'topo',       icon: '⚙',  label: 'Administration' },
+  { id: 'topo',       icon: '⚙',  label: 'Configuration' },
   { id: 'import',     icon: '⬆',  label: 'Import / Export' },
   { id: 'equipes',    icon: '👥', label: 'Équipes & Sites' },
   { id: 'audit',      icon: '◎',  label: 'Audit' },
+  { id: 'sauvegardes',icon: '💾', label: 'Sauvegardes' },
   { id: 'faq',        icon: '❓', label: 'FAQ' },
 ]
 
@@ -338,16 +339,16 @@ const CONTENT: Record<string, JSX.Element> = {
 
   topo: (
     <div>
-      <h2 style={H2}>Administration de la topologie</h2>
-      <p style={P}>La page <strong>Administration</strong> permet de maintenir le référentiel d'architecture : équipements, zones logiques, réseaux et liens de topologie.</p>
+      <h2 style={H2}>Configuration de la topologie</h2>
+      <p style={P}>La page <strong>Configuration</strong> permet de maintenir le référentiel d'architecture : équipements, zones, réseaux et liens de topologie.</p>
 
       <h3 style={H3}>Onglets disponibles</h3>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
         {[
-          { tab: 'Équipements',    desc: "Ajouter / modifier / supprimer des équipements réseau. Associez chaque équipement à une équipe et une zone physique." },
-          { tab: 'Zones logiques', desc: "Gérer les zones de sécurité (INTERNET, DMZ, LAN...) avec leur niveau de confiance et leur couleur d'affichage." },
-          { tab: 'Réseaux',        desc: "Déclarer les sous-réseaux IP avec leur CIDR, VLAN, passerelle et zone associée." },
-          { tab: 'Liens topo',     desc: "Définir les interconnexions entre équipements (Ethernet, Logique, VXLAN, LAG) pour alimenter le graphe." },
+          { tab: 'Équipements', desc: "Ajouter / modifier / supprimer des équipements réseau. Associez chaque équipement à une équipe, une zone physique et une zone logique." },
+          { tab: 'Zones',       desc: "Gérer les zones logiques (INTERNET, DMZ, LAN…) et physiques (Data Center, Salle…) avec niveau de confiance, couleur et hiérarchie. Filtrez par type avec les boutons Tous / Logique / Physique." },
+          { tab: 'Réseaux',     desc: "Déclarer les sous-réseaux IP avec leur CIDR, VLAN, passerelle et zone associée." },
+          { tab: 'Liens topo',  desc: "Définir les interconnexions entre équipements (Ethernet, Logique, VXLAN, LAG) pour alimenter le graphe." },
         ].map(item => (
           <div key={item.tab} style={{ padding: '10px 14px', background: 'var(--bg-input)', borderRadius: 6 }}>
             <div style={{ fontWeight: 700, color: 'var(--blue)', marginBottom: 4 }}>{item.tab}</div>
@@ -644,6 +645,74 @@ const CONTENT: Record<string, JSX.Element> = {
     </div>
   ),
 
+  sauvegardes: (
+    <div>
+      <h2 style={H2}>Sauvegardes & Restauration (v2.8)</h2>
+      <p style={P}>La page <strong>Sauvegardes</strong> (section Administration dans la navigation) gère la protection des données et leur restauration en cas d'incident.</p>
+
+      <h3 style={H3}>Types de sauvegardes</h3>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
+        {[
+          { label: '💾 Complète',      color: '#3b82f6', desc: 'Copie binaire de la base SQLite entière via sqlite3.backup(). Permet une restauration complète à l\'identique. Planifiée chaque dimanche à 03h00 UTC.' },
+          { label: '⬇ Incrémentale',   color: '#64748b', desc: 'Export JSON des tables par domaine métier : Métier (flux, zones, équipements), Audits (ACL, routes, événements), Simulation (VRF). Planifiée chaque jour à 02h00 UTC.' },
+        ].map(item => (
+          <div key={item.label} style={{ padding: '10px 14px', background: 'var(--bg-input)', borderRadius: 6 }}>
+            <div style={{ fontWeight: 700, color: item.color, marginBottom: 4 }}>{item.label}</div>
+            <div style={{ color: 'var(--text-2)', fontSize: 13 }}>{item.desc}</div>
+          </div>
+        ))}
+      </div>
+
+      <h3 style={H3}>Domaines de sauvegarde</h3>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 20 }}>
+        {[
+          { dom: 'Métier',      color: '#22c55e', tables: 'flow_requests, zones, physical_zones, equipment, networks, topology_links, teams, validation_rules' },
+          { dom: 'Audits',      color: '#f59e0b', tables: 'policy_events, acl_rules, routing_entries' },
+          { dom: 'Simulation',  color: '#8b5cf6', tables: 'vrfs, vrf_equipment' },
+        ].map(item => (
+          <div key={item.dom} style={ROW}>
+            <span style={{ minWidth: 90, fontWeight: 700, color: item.color }}>{item.dom}</span>
+            <span style={{ fontSize: 11, color: 'var(--text-3)', fontFamily: 'monospace' }}>{item.tables}</span>
+          </div>
+        ))}
+      </div>
+
+      <h3 style={H3}>Planification automatique</h3>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
+        {[
+          { heure: '02h00 UTC (quotidien)',          action: 'Sauvegarde incrémentale JSON — tous les domaines' },
+          { heure: '03h00 UTC (dimanche)',            action: 'Sauvegarde complète SQLite + vérification intégrité immédiate' },
+          { heure: '08h00 UTC (quotidien)',           action: 'Vérification de présence : alerte CRITICAL si backup absent depuis +26h' },
+        ].map(item => (
+          <div key={item.heure} style={ROW}>
+            <span style={{ minWidth: 220, fontWeight: 600, color: 'var(--blue)', ...MONO }}>{item.heure}</span>
+            <span style={{ color: 'var(--text-2)', fontSize: 12 }}>{item.action}</span>
+          </div>
+        ))}
+      </div>
+
+      <h3 style={H3}>Restauration</h3>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
+        {[
+          'Seules les sauvegardes complètes (.db) permettent une restauration directe de la base.',
+          'Cliquez sur ↺ sur une ligne de type Complète — une confirmation est demandée avant toute action.',
+          'La vérification d\'intégrité (PRAGMA integrity_check) est exécutée automatiquement avant de remplacer la base active.',
+          'Après restauration, un redémarrage du service backend est recommandé pour vider les caches SQLAlchemy.',
+          'Les sauvegardes JSON (incrémentales) servent à réimporter des données métier sélectivement via Import / Export.',
+        ].map((point, i) => (
+          <div key={i} style={ROW}>
+            <span style={{ color: 'var(--blue)' }}>{i + 1}.</span>
+            <span style={{ color: 'var(--text-2)' }}>{point}</span>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ ...CALLOUT, borderColor: 'rgba(234,179,8,0.3)', background: 'rgba(234,179,8,0.07)' }}>
+        ⚠ <strong>Stockage sur Render (plan gratuit)</strong> : le disque est éphémère — les fichiers de sauvegarde sont perdus en cas de redéploiement. Pour un usage en production, montez un disque persistant Render ou exportez les sauvegardes vers un stockage objet externe (S3, Backblaze…).
+      </div>
+    </div>
+  ),
+
   faq: (
     <div>
       <h2 style={H2}>Foire aux questions</h2>
@@ -659,7 +728,7 @@ const CONTENT: Record<string, JSX.Element> = {
           },
           {
             q: "Comment ajouter un nouvel équipement réseau ?",
-            a: "Allez dans Topologie > Administration > onglet Équipements. Renseignez le nom, type, vendor, modèle et IP de management. L'équipement apparaît sur le graphe après rechargement.",
+            a: "Allez dans Topologie > Configuration > onglet Équipements. Renseignez le nom, type, vendor, modèle et IP de management. L'équipement apparaît sur le graphe après rechargement.",
           },
           {
             q: "Comment modifier une règle de validation (ex: autoriser le port 21) ?",
@@ -683,7 +752,7 @@ const CONTENT: Record<string, JSX.Element> = {
           },
           {
             q: "Comment voir les ACL et routes d'un équipement spécifique ?",
-            a: "Depuis Administration ou le Graphe réseau, cliquez sur l'icône 📋 sur la carte de l'équipement. Un modal s'ouvre avec deux onglets : Table de routage et Règles ACL. Pour modifier, allez dans Topologie > Politiques réseau.",
+            a: "Depuis Configuration ou le Graphe réseau, cliquez sur l'icône 📋 sur la carte de l'équipement. Un modal s'ouvre avec deux onglets : Table de routage et Règles ACL. Pour modifier, allez dans Topologie > Politiques réseau.",
           },
           {
             q: "Comment exporter la liste des flux vers Excel ?",
@@ -724,7 +793,7 @@ export default function HelpModal({ onClose }: Props) {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px', borderBottom: '1px solid var(--border)', background: 'var(--bg-card)' }}>
           <div>
             <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--text-1)' }}>Guide d'utilisation — IP Flow Manager</div>
-            <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>v2.5.0 · Documentation en français</div>
+            <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>v2.8 · Documentation en français</div>
           </div>
           <button onClick={onClose} style={{ background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text-2)', cursor: 'pointer', padding: '6px 14px', fontSize: 13, fontFamily: 'inherit' }}>
             ✕ Fermer

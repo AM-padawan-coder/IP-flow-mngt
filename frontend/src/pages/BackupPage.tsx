@@ -184,15 +184,17 @@ export default function BackupPage() {
                 ⬇ JSON {DOMAIN_LABELS[dom]}
               </button>
             ))}
-            <button onClick={load} style={{ marginLeft: 'auto', padding: '7px 14px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-input)', color: 'var(--text-2)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13 }}>
-              ↺ Actualiser
-            </button>
           </div>
         </div>
 
         {/* ── Backup list ── */}
         <div className="card">
-          <div className="card-title">Historique des sauvegardes ({backups.length})</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <div className="card-title" style={{ margin: 0 }}>Historique des sauvegardes ({backups.length})</div>
+            <button onClick={load} style={{ padding: '5px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-input)', color: 'var(--text-2)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12 }}>
+              ↺ Actualiser
+            </button>
+          </div>
           {loading && <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-3)' }}>Chargement…</div>}
           {!loading && backups.length === 0 && (
             <div className="empty-state" style={{ padding: 30 }}>
