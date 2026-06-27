@@ -140,14 +140,23 @@ export default function FlowDetailModal({ flowId, onClose, onDeleted, onStatusCh
             </Section>
 
             {/* Scripts */}
-            {flow.scripts && Object.keys(flow.scripts).length > 0 && (
+            {flow.scripts?.scripts && Object.keys(flow.scripts.scripts).length > 0 && (
               <Section title="Scripts de configuration générés" id="scripts" open={openSection} toggle={toggleSection}>
+                {flow.scripts.rule_id && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, padding: '6px 10px', background: 'var(--bg-input)', borderRadius: 6 }}>
+                    <span style={{ fontSize: 10, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 600 }}>Rule ID</span>
+                    <span style={{ fontFamily: 'monospace', fontSize: 12, color: 'var(--text-2)' }}>{flow.scripts.rule_id}</span>
+                    <span style={{ fontSize: 10, color: 'var(--text-3)', marginLeft: 4 }}>— identifiant unique de la règle, tracé dans les scripts déployés</span>
+                  </div>
+                )}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {Object.entries(flow.scripts).map(([eq, script]) => (
+                  {Object.entries(flow.scripts.scripts).map(([eq, sc]: any) => (
                     <div key={eq}>
-                      <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-3)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.4px' }}>{eq}</div>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-3)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                        {eq} <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0, color: 'var(--text-3)', marginLeft: 6 }}>· {sc?.action}</span>
+                      </div>
                       <div className="script-block" style={{ borderRadius: 6, overflow: 'auto', maxHeight: 160 }}>
-                        <pre style={{ margin: 0, fontSize: 11, lineHeight: 1.6, padding: '10px 12px' }}>{String(script)}</pre>
+                        <pre style={{ margin: 0, fontSize: 11, lineHeight: 1.6, padding: '10px 12px' }}>{sc?.script || ''}</pre>
                       </div>
                     </div>
                   ))}

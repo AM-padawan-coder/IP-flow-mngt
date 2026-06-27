@@ -11,6 +11,7 @@ const SECTIONS = [
   { id: 'validation', icon: '✅', label: 'Validation' },
   { id: 'chemin',     icon: '⬡',  label: 'Chemin réseau' },
   { id: 'scripts',    icon: '📄', label: 'Scripts générés' },
+  { id: 'overlays',   icon: '⬡',  label: 'Overlays graphe' },
   { id: 'simulation', icon: '🔬', label: 'Simulation' },
   { id: 'policies',   icon: '🔒', label: 'Politiques réseau' },
   { id: 'topo',       icon: '⚙',  label: 'Administration' },
@@ -93,7 +94,7 @@ const CONTENT: Record<string, JSX.Element> = {
         {[
           { field: 'IP Source',      req: true,  desc: 'Adresse IP de la machine émettrice du flux (ex: 10.10.1.50)' },
           { field: 'IP Destination', req: true,  desc: 'Adresse IP de la machine réceptrice (ex: 172.16.10.100)' },
-          { field: 'Port',           req: true,  desc: 'Port TCP/UDP de destination (1-65535)' },
+          { field: 'Port de destination', req: true,  desc: 'Port TCP/UDP de destination (1-65535)' },
           { field: 'Protocole',      req: false, desc: 'TCP, UDP, ICMP ou ANY — TCP par défaut' },
           { field: 'Application',    req: false, desc: "Nom de l'application ou du service (ex: SAP, SNMP...)" },
           { field: 'Justification',  req: false, desc: 'Motif métier de la demande — recommandé pour la traçabilité' },
@@ -111,7 +112,7 @@ const CONTENT: Record<string, JSX.Element> = {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
         <div style={BTN_DOC}><span style={BTN_LABEL}>▶ Analyser</span> Lance la validation sans enregistrer. Idéal pour tester un flux avant soumission.</div>
         <div style={BTN_DOC}><span style={BTN_LABEL}>✓ Soumettre</span> Enregistre la demande dans l'historique au statut <strong>En attente</strong>. Un validateur doit ensuite l'approuver depuis l'Historique.</div>
-        <div style={BTN_DOC}><span style={BTN_LABEL}>⬡ Voir sur le graphe</span> Affiche le graphe réseau en modal avec le chemin mis en évidence — sans quitter le formulaire.</div>
+        <div style={BTN_DOC}><span style={BTN_LABEL}>⬡ Voir sur le graphe</span> Affiche le graphe réseau en modal avec le flux animé en overlay (v2.6) — chemin coloré animé sur le graphe sans quitter le formulaire.</div>
       </div>
 
       <div style={CALLOUT}>
@@ -216,7 +217,7 @@ const CONTENT: Record<string, JSX.Element> = {
           { action: 'Survoler un nœud',    result: 'Affiche une infobulle : vendor, modèle, IP de management, équipe, zone physique' },
           { action: 'Cliquer un nœud',     result: 'Ouvre un panneau de détails (coin supérieur droit du graphe)' },
           { action: 'Glisser un nœud',     result: 'Déplace le nœud pour réorganiser le graphe manuellement' },
-          { action: '⬡ Voir sur le graphe', result: 'Depuis Nouveau flux — navigue et colore le chemin en orange' },
+          { action: '⬡ Voir sur le graphe', result: 'Depuis Nouveau flux — affiche le flux analysé en overlay animé sur le graphe (v2.6)' },
         ].map(item => (
           <div key={item.action} style={ROW}>
             <span style={{ minWidth: 160, fontWeight: 600, color: 'var(--blue)', ...MONO }}>{item.action}</span>
@@ -268,6 +269,69 @@ const CONTENT: Record<string, JSX.Element> = {
 
       <div style={{ ...CALLOUT, marginTop: 20, borderColor: 'rgba(234,179,8,0.3)', background: 'rgba(234,179,8,0.07)' }}>
         ⚠ <strong>Mode génération uniquement</strong> : les scripts sont générés pour être validés et appliqués manuellement. L'outil ne pousse pas de configuration directement sur les équipements.
+      </div>
+    </div>
+  ),
+
+  overlays: (
+    <div>
+      <h2 style={H2}>Overlays graphe réseau (v2.6)</h2>
+      <p style={P}>La vue <strong>Graphe réseau</strong> propose trois overlays activables indépendamment depuis le panneau gauche. Chaque overlay enrichit le graphe avec une couche d'information réseau.</p>
+
+      <h3 style={H3}>Overlay Flux</h3>
+      <p style={P}>Affiche les chemins de flux approuvés sur le graphe sous forme de courbes bézier animées colorées par criticité.</p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
+        {[
+          { color: '#ef4444', label: 'Critique', desc: 'Flux critiques pour la production' },
+          { color: '#f97316', label: 'Haute',    desc: 'Flux importants' },
+          { color: '#eab308', label: 'Moyenne',  desc: 'Flux standards' },
+          { color: '#22c55e', label: 'Basse',    desc: 'Flux non-critiques' },
+        ].map(c => (
+          <div key={c.label} style={{ display: 'flex', gap: 10, alignItems: 'center', ...ROW }}>
+            <div style={{ width: 28, height: 3, background: c.color, borderRadius: 2, flexShrink: 0 }} />
+            <span style={{ fontWeight: 600, color: c.color, minWidth: 70 }}>{c.label}</span>
+            <span style={{ color: 'var(--text-2)', fontSize: 12 }}>{c.desc}</span>
+          </div>
+        ))}
+      </div>
+      <div style={CALLOUT}>
+        Utilisez les <strong>Filtres flux</strong> (panneau gauche) pour filtrer par application, protocole, IP source/destination, port, criticité ou statut. Les champs proposent l'autocomplétion sur les valeurs disponibles.
+      </div>
+
+      <h3 style={H3}>Overlay Routes</h3>
+      <p style={P}>Affiche les tables de routage sous forme de traits pointillés animés colorés par protocole, avec des flèches directionnelles.</p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
+        {[
+          { color: '#8b5cf6', label: 'BGP',       desc: 'Routes apprises via BGP (inter-AS)' },
+          { color: '#3b82f6', label: 'OSPF',      desc: 'Routes apprises via OSPF (intra-AS)' },
+          { color: '#06b6d4', label: 'IS-IS',     desc: 'Routes apprises via IS-IS' },
+          { color: '#22c55e', label: 'Connecté',  desc: 'Réseaux directement connectés' },
+          { color: '#f97316', label: 'Statique',  desc: 'Routes statiques configurées' },
+        ].map(c => (
+          <div key={c.label} style={{ display: 'flex', gap: 10, alignItems: 'center', ...ROW }}>
+            <div style={{ width: 28, height: 0, borderTop: `2px dashed ${c.color}`, flexShrink: 0 }} />
+            <span style={{ fontWeight: 600, color: c.color, minWidth: 70 }}>{c.label}</span>
+            <span style={{ color: 'var(--text-2)', fontSize: 12 }}>{c.desc}</span>
+          </div>
+        ))}
+      </div>
+
+      <h3 style={H3}>Overlay VRF</h3>
+      <p style={P}>Met en évidence les équipements membres de chaque VRF avec un halo coloré. Les équipements hors-VRF sont estompés à 18% d'opacité pour focaliser l'attention.</p>
+
+      <h3 style={H3}>Interactions sur les overlays</h3>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {[
+          { action: 'Survoler un flux',   result: 'Tooltip : application, protocole, source/destination/port, VRF, criticité, chemin complet' },
+          { action: 'Survoler une route', result: 'Tooltip : destination, next-hop, équipement, protocole, métrique' },
+          { action: 'Survoler un nœud VRF', result: 'Tooltip : nom de la VRF, RD, RT import/export, nombre d\'équipements' },
+          { action: 'Panneau droit',      result: 'ÉLÉMENTS VISIBLES (compteurs) + Légende colorée par criticité / protocole / VRF' },
+        ].map(item => (
+          <div key={item.action} style={ROW}>
+            <span style={{ minWidth: 170, fontWeight: 600, color: 'var(--blue)', ...MONO }}>{item.action}</span>
+            <span style={{ color: 'var(--text-2)', fontSize: 12 }}>{item.result}</span>
+          </div>
+        ))}
       </div>
     </div>
   ),

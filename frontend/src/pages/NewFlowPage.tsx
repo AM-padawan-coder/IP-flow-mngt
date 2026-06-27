@@ -23,7 +23,7 @@ export default function NewFlowPage({ onShowGraph }: { onShowGraph?: (path: stri
   const [submitted, setSubmitted] = useState(false)
   const [submitMsg, setSubmitMsg] = useState('')
   const [error, setError] = useState('')
-  const [topoPath, setTopoPath] = useState<string[] | null>(null)
+  const [topoFlow, setTopoFlow] = useState<{ path: string[]; flow?: any } | null>(null)
 
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
 
@@ -99,7 +99,7 @@ export default function NewFlowPage({ onShowGraph }: { onShowGraph?: (path: stri
               </div>
               <div className="grid-2">
                 <div className="form-group">
-                  <label className="form-label">Port *</label>
+                  <label className="form-label">Port de destination *</label>
                   <input className="form-input mono" placeholder="443"
                     value={form.port} onChange={e => set('port', e.target.value)} />
                 </div>
@@ -133,7 +133,15 @@ export default function NewFlowPage({ onShowGraph }: { onShowGraph?: (path: stri
                   </button>
                 )}
                 {result?.path?.found && (
-                  <button className="btn btn-ghost" onClick={() => setTopoPath(result.path.hops.map((h: any) => h.equipment))}>
+                  <button className="btn btn-ghost" onClick={() => {
+                    const hops = result.path.hops.map((h: any) => h.equipment)
+                    setTopoFlow({ path: hops, flow: {
+                      id: 0, name: form.application || `${form.src_ip} → ${form.dst_ip}:${form.port}`,
+                      application: form.application, protocol: form.protocol,
+                      src_ip: form.src_ip, dst_ip: form.dst_ip, port: form.port,
+                      status: 'pending', path: hops,
+                    }})
+                  }}>
                     ⬡ Voir sur le graphe
                   </button>
                 )}
@@ -173,8 +181,12 @@ export default function NewFlowPage({ onShowGraph }: { onShowGraph?: (path: stri
         )}
       </div>
 
-      {topoPath !== null && (
-        <TopologyModal highlightedPath={topoPath} onClose={() => setTopoPath(null)} />
+      {topoFlow !== null && (
+        <TopologyModal
+          highlightedPath={topoFlow.path}
+          flowOverlay={topoFlow.flow}
+          onClose={() => setTopoFlow(null)}
+        />
       )}
     </>
   )

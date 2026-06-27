@@ -477,8 +477,6 @@ export default function TopologyGraph({
             ['Destination', overlayTip.item.dst_ip],
             ['Port',        overlayTip.item.port],
             ['VRF',         overlayTip.item.vrf_name],
-            ['Débit max',   overlayTip.item.bandwidth_max != null ? `${overlayTip.item.bandwidth_max} Mbps` : undefined],
-            ['SLA',         overlayTip.item.sla],
           ].filter(([, v]) => v).map(([k, v]) => (
             <div key={k as string} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, gap: 8 }}>
               <span style={{ color: 'var(--text-3)', whiteSpace: 'nowrap' }}>{k}</span>

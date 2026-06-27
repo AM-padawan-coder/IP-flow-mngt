@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useRef } from 'react'
 import { api } from '../api/client'
 import TopologyGraph, { CRITICALITY_COLOR, ROUTE_COLOR } from '../components/TopologyGraph'
 import type { FlowOverlay, RouteOverlay, VRFOverlay } from '../components/TopologyGraph'
@@ -32,6 +32,55 @@ function Toggle({ on, onChange, label, count, color }: {
         <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 8, background: on ? `${color || '#3b82f6'}22` : 'var(--bg-input)', color: on ? (color || '#3b82f6') : 'var(--text-3)', fontWeight: 700 }}>
           {count}
         </span>
+      )}
+    </div>
+  )
+}
+
+// ── Autocomplete input ─────────────────────────────────────────────────────────
+function ComboInput({ value, onChange, options, placeholder, style }: {
+  value: string; onChange: (v: string) => void
+  options: string[]; placeholder?: string; style?: React.CSSProperties
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  const filtered = options.filter(o => !value || o.toLowerCase().includes(value.toLowerCase()))
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  const BASE: React.CSSProperties = {
+    width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)',
+    borderRadius: 4, padding: '5px 8px', fontSize: 11, color: 'var(--text-1)',
+    fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box',
+  }
+
+  return (
+    <div ref={ref} style={{ position: 'relative', ...style }}>
+      <input
+        style={BASE}
+        value={value}
+        placeholder={placeholder}
+        onChange={e => { onChange(e.target.value); setOpen(true) }}
+        onFocus={() => setOpen(true)}
+      />
+      {open && filtered.length > 0 && (
+        <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50, background: '#1c2233', border: '1px solid var(--border)', borderRadius: 4, boxShadow: '0 4px 16px rgba(0,0,0,0.5)', maxHeight: 140, overflowY: 'auto', marginTop: 2 }}>
+          {filtered.slice(0, 20).map(o => (
+            <div
+              key={o}
+              onMouseDown={e => { e.preventDefault(); onChange(o); setOpen(false) }}
+              style={{ padding: '5px 8px', fontSize: 11, color: 'var(--text-2)', cursor: 'pointer', borderBottom: '1px solid rgba(255,255,255,0.04)' }}
+              onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-hover)')}
+              onMouseLeave={e => (e.currentTarget.style.background = '')}
+            >
+              {o}
+            </div>
+          ))}
+        </div>
       )}
     </div>
   )
@@ -121,6 +170,13 @@ export default function TopologyPage({ highlightedPath = [] }: Props) {
     )
   }, [overlayFlows, fActive])
 
+  // Autocomplete option lists derived from loaded flows
+  const optApps   = useMemo(() => [...new Set(overlayFlows.map(f => f.application).filter(Boolean) as string[])].sort(), [overlayFlows])
+  const optProtos = useMemo(() => [...new Set(overlayFlows.map(f => f.protocol).filter(Boolean) as string[])].sort(), [overlayFlows])
+  const optSrcs   = useMemo(() => [...new Set(overlayFlows.map(f => f.src_ip).filter(Boolean) as string[])].sort(), [overlayFlows])
+  const optDsts   = useMemo(() => [...new Set(overlayFlows.map(f => f.dst_ip).filter(Boolean) as string[])].sort(), [overlayFlows])
+  const optPorts  = useMemo(() => [...new Set(overlayFlows.map(f => f.port).filter(Boolean) as string[])].sort(), [overlayFlows])
+
   // Counts for right panel
   const visibleNodes   = graph.nodes.length
   const visibleEdges   = graph.edges.length
@@ -195,16 +251,22 @@ export default function TopologyPage({ highlightedPath = [] }: Props) {
                   {showFlows && (
                     <div className="card" style={{ padding: '10px 12px' }}>
                       <div style={{ fontSize: 10, fontWeight: 700, color: '#f97316', letterSpacing: '0.8px', textTransform: 'uppercase', marginBottom: 10 }}>Filtres flux</div>
+
                       {[
-                        ['Application', fApp,    setFApp,    'text',   'ex: SAP, RH…'],
-                        ['Protocole',   fProto,  setFProto,  'text',   'ex: TCP, UDP…'],
-                        ['Source',      fSrc,    setFSrc,    'text',   'ex: 10.0.0.1'],
-                        ['Destination', fDst,    setFDst,    'text',   'ex: 10.0.1.0'],
-                        ['Port',        fPort,   setFPort,   'text',   'ex: 443, 5432'],
-                      ].map(([lbl, val, set, , ph]) => (
+                        ['Application', fApp,   setFApp,   optApps,   'ex: SAP, RH…'],
+                        ['Protocole',   fProto, setFProto, optProtos, 'ex: TCP, UDP…'],
+                        ['Source',      fSrc,   setFSrc,   optSrcs,   'ex: 10.0.0.1'],
+                        ['Destination', fDst,   setFDst,   optDsts,   'ex: 10.0.1.0'],
+                        ['Port',        fPort,  setFPort,  optPorts,  'ex: 443, 5432'],
+                      ].map(([lbl, val, setter, opts, ph]) => (
                         <div key={lbl as string} style={{ marginBottom: 7 }}>
                           <div style={LABEL}>{lbl as string}</div>
-                          <input style={INPUT} value={val as string} onChange={e => (set as (v:string)=>void)(e.target.value)} placeholder={ph as string} />
+                          <ComboInput
+                            value={val as string}
+                            onChange={setter as (v:string)=>void}
+                            options={opts as string[]}
+                            placeholder={ph as string}
+                          />
                         </div>
                       ))}
 
@@ -231,7 +293,7 @@ export default function TopologyPage({ highlightedPath = [] }: Props) {
                       </div>
 
                       <div style={{ display: 'flex', gap: 6 }}>
-                        <button className="btn btn-primary" style={{ flex: 1, fontSize: 11, padding: '5px 0' }} onClick={applyFilters}>Appliquer</button>
+                        <button className="btn btn-primary" style={{ flex: 1, fontSize: 11, padding: '5px 0', textAlign: 'center', justifyContent: 'center', display: 'flex', alignItems: 'center' }} onClick={applyFilters}>Appliquer</button>
                         <button className="btn btn-ghost"   style={{ fontSize: 11, padding: '5px 8px' }} onClick={resetFilters}>✕</button>
                       </div>
 
