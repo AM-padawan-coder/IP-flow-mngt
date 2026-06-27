@@ -9,8 +9,12 @@ const PHASES = [
     items: ['Graphe interactif canvas force-directed', 'Admin CRUD équipements / zones / réseaux / liens', 'Import/Export JSON + CSV', 'Équipes & Sites physiques (DC > Salle > Baie)'] },
   { v: 'v2.1', title: 'Guide · Dark/Light · Render', status: 'done', label: '✓ Livré', eta: '',
     items: ['Guide d\'utilisation intégré (10 sections, FAQ)', 'Roadmap interactive accessible depuis la sidebar', 'Dark / Light mode + persistance localStorage', 'Déploiement Render (backend Python + Static Site)'] },
-  { v: 'v2.2', title: 'Vérification avant production', status: 'inprog', label: '⚡ En cours', eta: '',
+  { v: 'v2.2', title: 'Vérification avant production', status: 'done', label: '✓ Livré', eta: '',
     items: ['Simulation What-if — impact sur les flux existants', 'Détection de boucles L2/L3 (NetworkX cycles)', 'Analyse d\'impact — flux interrompus si équipement tombe', 'Page Simulation dédiée dans la navigation'] },
+  { v: 'v2.3', title: 'Gestion avancée des flux', status: 'done', label: '✓ Livré', eta: '',
+    items: ['Vue détail par flux (validation, chemin, scripts)', 'Filtres par statut (Validé / Refusé / En attente / Déployé)', 'Suppression de flux avec confirmation', 'KPIs statuts en en-tête (compteurs colorés)'] },
+  { v: 'v2.4', title: 'Tables de routage & ACL', status: 'done', label: '✓ Livré', eta: '',
+    items: ['Tables de routage par équipement (CRUD statique/OSPF/BGP)', 'Règles ACL par équipement (permit/deny, direction in/out)', 'Génération automatique de règles ACL depuis un flux validé', 'Traçabilité flux → règles ACL générées'] },
   { v: 'v3.1', title: 'Parcours de validation', status: 'planned', label: '🗓 Planifié', eta: '',
     items: ['Workflow multi-niveaux : Demandeur → Validateur → Admin', 'Rôles & permissions différenciés', 'Notifications email + webhook par changement de statut', 'Commentaires & justifications sur chaque demande', 'SLA, rappels automatiques, flux expirés'] },
   { v: 'v4.0', title: 'Connecteur IPAM Infoblox', status: 'soon', label: '🔜 Prochain', eta: '',
@@ -34,7 +38,7 @@ const STATUS_STYLE: Record<string, { dot: string; badge: string; badgeText: stri
 }
 
 export default function RoadmapModal({ onClose }: Props) {
-  const [open, setOpen] = useState<string[]>(['v2.2', 'v3.0', 'v3.1'])
+  const [open, setOpen] = useState<string[]>(['v2.3', 'v2.4', 'v3.1'])
 
   const toggle = (v: string) =>
     setOpen(o => o.includes(v) ? o.filter(x => x !== v) : [...o, v])

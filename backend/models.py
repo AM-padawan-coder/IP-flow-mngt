@@ -97,6 +97,36 @@ class ValidationRule(Base):
     message = Column(String)
 
 
+class RoutingEntry(Base):
+    __tablename__ = "routing_entries"
+    id = Column(Integer, primary_key=True, index=True)
+    equipment_id = Column(Integer, ForeignKey("equipment.id"), nullable=False)
+    destination = Column(String, nullable=False)
+    gateway = Column(String)
+    interface = Column(String)
+    metric = Column(Integer, default=1)
+    route_type = Column(String, default="static")   # static | ospf | bgp | connected
+    comment = Column(String)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class AclRule(Base):
+    __tablename__ = "acl_rules"
+    id = Column(Integer, primary_key=True, index=True)
+    equipment_id = Column(Integer, ForeignKey("equipment.id"), nullable=False)
+    priority = Column(Integer, default=100)
+    name = Column(String)
+    direction = Column(String, default="in")        # in | out | both
+    action = Column(String, default="permit")       # permit | deny
+    src_ip = Column(String, default="any")
+    dst_ip = Column(String, default="any")
+    port = Column(String, default="any")
+    protocol = Column(String, default="any")
+    comment = Column(String)
+    flow_id = Column(Integer, ForeignKey("flow_requests.id"), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
 class FlowRequest(Base):
     __tablename__ = "flow_requests"
     id = Column(Integer, primary_key=True, index=True)

@@ -7,15 +7,17 @@ import ImportPage from './pages/ImportPage'
 import TeamsPage from './pages/TeamsPage'
 import AuditPage from './pages/AuditPage'
 import SimulationPage from './pages/SimulationPage'
+import PolicyPage from './pages/PolicyPage'
 import HelpModal from './components/HelpModal'
 import RoadmapModal from './components/RoadmapModal'
 
-type Page = 'new' | 'history' | 'topology' | 'admin' | 'import' | 'teams' | 'audit' | 'simulation'
+type Page = 'new' | 'history' | 'simulation' | 'topology' | 'admin' | 'import' | 'teams' | 'audit' | 'policies'
 
 const NAV = [
   { id: 'new',        label: 'Nouveau flux',       icon: '＋', section: 'Flux IP' },
   { id: 'history',    label: 'Historique',          icon: '⏱', section: 'Flux IP' },
   { id: 'simulation', label: 'Simulation',          icon: '🔬', section: 'Flux IP' },
+  { id: 'policies',  label: 'Politiques réseau',   icon: '🔒', section: 'Flux IP' },
   { id: 'topology',   label: 'Graphe réseau',       icon: '⬡', section: 'Topologie' },
   { id: 'admin',      label: 'Administration',      icon: '⚙', section: 'Topologie' },
   { id: 'import',     label: 'Import / Export',     icon: '⬆', section: 'Topologie' },
@@ -140,6 +142,7 @@ export default function App() {
         {page === 'new'        && <NewFlowPage onShowGraph={goToGraph} />}
         {page === 'history'    && <HistoryPage onSelect={() => {}} />}
         {page === 'simulation' && <SimulationPage />}
+        {page === 'policies'   && <PolicyPage />}
         {page === 'topology'   && <TopologyPage highlightedPath={highlightedPath} />}
         {page === 'admin'      && <AdminPage />}
         {page === 'import'     && <ImportPage />}

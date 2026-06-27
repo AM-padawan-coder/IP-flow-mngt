@@ -19,10 +19,12 @@ app.add_middleware(
 from routers import flows, topology
 from routers import teams as teams_router
 from routers import simulation as simulation_router
+from routers import policies as policies_router
 app.include_router(flows.router,            prefix="/flows",      tags=["Flux IP"])
 app.include_router(topology.router,         prefix="/topology",   tags=["Topologie"])
 app.include_router(teams_router.router,     prefix="/org",        tags=["Organisation"])
 app.include_router(simulation_router.router,prefix="/simulation", tags=["Simulation"])
+app.include_router(policies_router.router,  prefix="/policies",   tags=["Politiques réseau"])
 
 
 @app.on_event("startup")

@@ -137,6 +137,15 @@ def get_flow(flow_id: int, db: Session = Depends(get_db)):
     }
 
 
+@router.delete("/{flow_id}", status_code=204)
+def delete_flow(flow_id: int, db: Session = Depends(get_db)):
+    flow = db.query(FlowRequest).filter(FlowRequest.id == flow_id).first()
+    if not flow:
+        raise HTTPException(status_code=404, detail="Flux non trouvé")
+    db.delete(flow)
+    db.commit()
+
+
 @router.get("/audit/summary")
 def audit_summary(db: Session = Depends(get_db)):
     total = db.query(FlowRequest).count()

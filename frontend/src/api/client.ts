@@ -53,11 +53,28 @@ export const api = {
   importCsvNetworks:  (csv: string)   => req('/topology/import/csv/networks',  { method: 'POST', body: JSON.stringify({ csv }) }),
   importCsvLinks:     (csv: string)   => req('/topology/import/csv/links',     { method: 'POST', body: JSON.stringify({ csv }) }),
 
+  // Flows — delete
+  deleteFlow: (id: number) => req(`/flows/${id}`, { method: 'DELETE' }),
+
   // Simulation
   whatif:          (data: object) => req('/simulation/whatif',           { method: 'POST', body: JSON.stringify(data) }),
   detectLoops:     ()             => req('/simulation/loops'),
   equipmentImpact: (name: string) => req(`/simulation/impact/${encodeURIComponent(name)}`),
   listEquipment:   ()             => req('/simulation/equipment-list'),
+
+  // Policies — routing
+  listRouting:   (equipmentId?: number) => req(`/policies/routing${equipmentId ? `?equipment_id=${equipmentId}` : ''}`),
+  createRoute:   (data: object) => req('/policies/routing', { method: 'POST', body: JSON.stringify(data) }),
+  updateRoute:   (id: number, data: object) => req(`/policies/routing/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteRoute:   (id: number) => req(`/policies/routing/${id}`, { method: 'DELETE' }),
+
+  // Policies — ACL
+  listAcl:        (equipmentId?: number) => req(`/policies/acl${equipmentId ? `?equipment_id=${equipmentId}` : ''}`),
+  createAcl:      (data: object) => req('/policies/acl', { method: 'POST', body: JSON.stringify(data) }),
+  updateAcl:      (id: number, data: object) => req(`/policies/acl/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteAcl:      (id: number) => req(`/policies/acl/${id}`, { method: 'DELETE' }),
+  generateFromFlow: (flowId: number) => req(`/policies/generate-from-flow/${flowId}`, { method: 'POST' }),
+  listPolicyEquipment: () => req('/policies/equipment'),
 
   // Teams & Organisation
   getTeams:    () => req('/org/teams'),
