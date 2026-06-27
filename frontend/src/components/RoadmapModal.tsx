@@ -95,10 +95,10 @@ export default function RoadmapModal({ onClose }: Props) {
             <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>Plateforme de vérification réseau avant production · Inspirée de Forward Networks</div>
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <div style={{ display: 'flex', gap: 14, marginRight: 8 }}>
+            <div style={{ display: 'flex', gap: 10, marginRight: 8, flexWrap: 'nowrap' }}>
               {[['#2ea043','Livré'],['#388bfd','En cours'],['#d29922','Prochain'],['#8b5cf6','Planifié'],['#484f58','Vision']].map(([c,l]) => (
-                <div key={l} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: 'var(--text-3)' }}>
-                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: c }} />{l}
+                <div key={l} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: 'var(--text-3)', whiteSpace: 'nowrap' }}>
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: c, flexShrink: 0 }} />{l}
                 </div>
               ))}
             </div>
