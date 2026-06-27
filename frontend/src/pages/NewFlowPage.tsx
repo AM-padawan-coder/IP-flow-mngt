@@ -5,6 +5,7 @@ import ValidationPanel from '../components/ValidationPanel'
 import PathPanel from '../components/PathPanel'
 import ScriptPanel from '../components/ScriptPanel'
 import TopologyModal from '../components/TopologyModal'
+import FlowImportModal from '../components/FlowImportModal'
 
 const DEMO_FLOWS = [
   { label: 'LAN → Serveur App (HTTPS)',    src_ip: '10.10.1.50',   dst_ip: '172.16.10.100', port: '443',  protocol: 'tcp', application: 'Application RH (SAP)',    justification: 'Accès utilisateurs RH aux modules SAP' },
@@ -24,6 +25,7 @@ export default function NewFlowPage({ onShowGraph }: { onShowGraph?: (path: stri
   const [submitMsg, setSubmitMsg] = useState('')
   const [error, setError] = useState('')
   const [topoFlow, setTopoFlow] = useState<{ path: string[]; flow?: any } | null>(null)
+  const [importOpen, setImportOpen] = useState(false)
 
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
 
@@ -62,9 +64,17 @@ export default function NewFlowPage({ onShowGraph }: { onShowGraph?: (path: stri
 
   return (
     <>
+      {importOpen && <FlowImportModal onClose={() => setImportOpen(false)} onImported={count => { setImportOpen(false); void count }} />}
       <div className="page-header">
-        <h2>Nouveau flux IP</h2>
-        <p>Saisissez les paramètres du flux pour validation et génération des scripts de configuration</p>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
+          <div>
+            <h2>Nouveau flux IP</h2>
+            <p>Saisissez les paramètres du flux pour validation et génération des scripts de configuration</p>
+          </div>
+          <button onClick={() => setImportOpen(true)} style={{ marginTop: 4, flexShrink: 0, padding: '7px 16px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-input)', color: 'var(--text-2)', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+            ⬆ Importer JSON
+          </button>
+        </div>
       </div>
       <div className="page-content">
 

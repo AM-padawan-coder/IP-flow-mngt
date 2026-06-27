@@ -39,7 +39,7 @@ export default function AdminPage() {
   return (
     <>
       <div className="page-header">
-        <h2>Administration topologie</h2>
+        <h2>Configuration topologie</h2>
         <p>Créer, modifier et supprimer les éléments de l'architecture réseau</p>
       </div>
       <div className="page-content">
@@ -167,6 +167,7 @@ function ZoneAdmin({ zones, physZones, onDone }: any) {
   const blank = { name: '', color: '#3b82f6', description: '', trust_level: '50', zone_type: 'logical', datacenter_id: '' }
   const [form, setForm] = useState(blank)
   const [editing, setEditing] = useState<number | null>(null)
+  const [filter, setFilter] = useState('')
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
 
   const save = async () => {
@@ -225,17 +226,45 @@ function ZoneAdmin({ zones, physZones, onDone }: any) {
       </div>
 
       <div className="card">
-        <div className="card-title">Zones existantes ({zones.length})</div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 500, overflowY: 'auto' }}>
-          {zones.map((z: any) => (
-            <div key={z.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', background: 'var(--bg-input)', borderRadius: 6 }}>
+        <div className="card-title">Zones existantes ({zones.length + (physZones || []).length})</div>
+        <input
+          className="form-input"
+          placeholder="Filtrer par nom…"
+          value={filter}
+          onChange={e => setFilter(e.target.value)}
+          style={{ marginBottom: 8, fontSize: 12 }}
+        />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 460, overflowY: 'auto' }}>
+          {/* Zones logiques/physiques (Zone model) */}
+          {zones.filter((z: any) => !filter || z.name.toLowerCase().includes(filter.toLowerCase())).map((z: any) => (
+            <div key={`z-${z.id}`} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', background: 'var(--bg-input)', borderRadius: 6 }}>
               <div style={{ width: 12, height: 12, borderRadius: '50%', background: z.color, flexShrink: 0 }} />
               <span style={{ flex: 1, fontWeight: 500 }}>{z.name}</span>
+              <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 8, fontWeight: 600,
+                background: z.zone_type === 'logical' ? 'rgba(59,130,246,0.15)' : 'rgba(34,197,94,0.15)',
+                color: z.zone_type === 'logical' ? '#3b82f6' : '#22c55e' }}>
+                {z.zone_type === 'logical' ? '◈ Logique' : '⬡ Physique'}
+              </span>
               <span className="badge badge-info text-xs">{z.trust_level}%</span>
-              <button className="btn btn-ghost btn-sm" onClick={() => { setForm({ name: z.name, color: z.color, description: z.description, trust_level: String(z.trust_level), zone_type: z.zone_type, datacenter_id: z.datacenter_id ? String(z.datacenter_id) : '' }); setEditing(z.id) }}>✏</button>
+              <button className="btn btn-ghost btn-sm" onClick={() => { setForm({ name: z.name, color: z.color, description: z.description || '', trust_level: String(z.trust_level), zone_type: z.zone_type, datacenter_id: z.datacenter_id ? String(z.datacenter_id) : '' }); setEditing(z.id) }}>✏</button>
               <button className="btn btn-ghost btn-sm" style={{ color: 'var(--red)' }} onClick={() => del(z.id, z.name)}>✕</button>
             </div>
           ))}
+          {/* Zones physiques (PhysicalZone model — sites, DC) */}
+          {(physZones || []).filter((p: any) => !filter || p.name.toLowerCase().includes(filter.toLowerCase())).map((p: any) => (
+            <div key={`p-${p.id}`} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', background: 'var(--bg-input)', borderRadius: 6, opacity: 0.85 }}>
+              <div style={{ width: 12, height: 12, borderRadius: 2, background: '#f97316', flexShrink: 0 }} />
+              <span style={{ flex: 1, fontWeight: 500 }}>{p.name}</span>
+              <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 8, fontWeight: 600,
+                background: 'rgba(249,115,22,0.15)', color: '#f97316' }}>
+                🏢 {p.type}
+              </span>
+              {p.location && <span className="text-xs text-dimmed">{p.location}</span>}
+            </div>
+          ))}
+          {zones.length + (physZones || []).length === 0 && (
+            <div className="empty-state" style={{ padding: 20 }}>Aucune zone définie</div>
+          )}
         </div>
       </div>
     </div>
