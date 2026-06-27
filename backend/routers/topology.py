@@ -18,6 +18,7 @@ class ZoneIn(BaseModel):
     description: str = ""
     trust_level: int = 50
     zone_type: str = "logical"
+    datacenter_id: Optional[int] = None
 
 
 class EquipmentIn(BaseModel):
@@ -30,6 +31,7 @@ class EquipmentIn(BaseModel):
     active: bool = True
     team_id: Optional[int] = None
     physical_zone_id: Optional[int] = None
+    logical_zone_id: Optional[int] = None
 
 
 class NetworkIn(BaseModel):
@@ -64,10 +66,13 @@ def list_zones(db: Session = Depends(get_db)):
     result = []
     for z in zones:
         nets = db.query(Network).filter(Network.zone_id == z.id).all()
+        dc = db.query(PhysicalZone).filter(PhysicalZone.id == z.datacenter_id).first() if z.datacenter_id else None
         result.append({
             "id": z.id, "name": z.name, "color": z.color,
             "description": z.description, "trust_level": z.trust_level,
             "zone_type": z.zone_type,
+            "datacenter_id": z.datacenter_id,
+            "datacenter_name": dc.name if dc else None,
             "networks": [{"id": n.id, "name": n.name, "cidr": n.cidr, "vlan_id": n.vlan_id} for n in nets],
         })
     return result
@@ -121,8 +126,9 @@ def list_equipment(db: Session = Depends(get_db)):
                 "zone": zone.name if zone else "", "zone_color": zone.color if zone else "#666",
                 "role": i.role,
             })
-        team = db.query(Team).filter(Team.id == e.team_id).first() if e.team_id else None
+        team  = db.query(Team).filter(Team.id == e.team_id).first() if e.team_id else None
         pzone = db.query(PhysicalZone).filter(PhysicalZone.id == e.physical_zone_id).first() if e.physical_zone_id else None
+        lzone = db.query(Zone).filter(Zone.id == e.logical_zone_id).first() if e.logical_zone_id else None
         result.append({
             "id": e.id, "name": e.name, "type": e.type, "vendor": e.vendor,
             "model": e.model or "", "management_ip": e.management_ip or "",
@@ -130,6 +136,8 @@ def list_equipment(db: Session = Depends(get_db)):
             "team_id": e.team_id, "team_name": team.name if team else None,
             "physical_zone_id": e.physical_zone_id,
             "physical_zone_name": pzone.name if pzone else None,
+            "logical_zone_id": e.logical_zone_id,
+            "logical_zone_name": lzone.name if lzone else None,
         })
     return result
 
@@ -266,13 +274,16 @@ def delete_link(link_id: int, db: Session = Depends(get_db)):
 def topology_graph(db: Session = Depends(get_db)):
     nodes = []
     for e in db.query(Equipment).filter(Equipment.active == True).all():
-        team = db.query(Team).filter(Team.id == e.team_id).first() if e.team_id else None
+        team  = db.query(Team).filter(Team.id == e.team_id).first() if e.team_id else None
         pzone = db.query(PhysicalZone).filter(PhysicalZone.id == e.physical_zone_id).first() if e.physical_zone_id else None
+        lzone = db.query(Zone).filter(Zone.id == e.logical_zone_id).first() if e.logical_zone_id else None
         nodes.append({
             "id": e.id, "name": e.name, "type": e.type, "vendor": e.vendor,
             "model": e.model or "", "management_ip": e.management_ip or "",
             "team": team.name if team else None,
             "physical_zone": pzone.name if pzone else None,
+            "logical_zone": lzone.name if lzone else None,
+            "logical_zone_color": lzone.color if lzone else None,
         })
     edges = []
     for lnk in db.query(TopologyLink).all():

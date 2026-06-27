@@ -31,7 +31,7 @@ export default function AdminPage() {
 
   const TABS = [
     { id: 'equipment', label: 'Équipements' },
-    { id: 'zones',     label: 'Zones logiques' },
+    { id: 'zones',     label: 'Zones' },
     { id: 'networks',  label: 'Réseaux' },
     { id: 'links',     label: 'Liens topo' },
   ] as const
@@ -50,7 +50,7 @@ export default function AdminPage() {
         </div>
 
         {tab === 'equipment' && <EquipmentAdmin equipment={equipment} zones={zones} teams={teams} physZones={physZones} onDone={async (m) => { await load(); notify(m) }} />}
-        {tab === 'zones'     && <ZoneAdmin zones={zones} onDone={async (m) => { await load(); notify(m) }} />}
+        {tab === 'zones'     && <ZoneAdmin zones={zones} physZones={physZones} onDone={async (m) => { await load(); notify(m) }} />}
         {tab === 'networks'  && <NetworkAdmin networks={networks} zones={zones} onDone={async (m) => { await load(); notify(m) }} />}
         {tab === 'links'     && <LinkAdmin links={links} equipment={equipment} onDone={async (m) => { await load(); notify(m) }} />}
       </div>
@@ -59,15 +59,15 @@ export default function AdminPage() {
 }
 
 // ── Equipment admin ─────────────────────────────────────────────────────────
-function EquipmentAdmin({ equipment, zones: _z, teams, physZones, onDone }: any) {
-  const blank = { name: '', type: 'firewall', vendor: 'stormshield', model: '', management_ip: '', description: '', team_id: '', physical_zone_id: '' }
+function EquipmentAdmin({ equipment, zones, teams, physZones, onDone }: any) {
+  const blank = { name: '', type: 'firewall', vendor: 'stormshield', model: '', management_ip: '', description: '', team_id: '', physical_zone_id: '', logical_zone_id: '' }
   const [form, setForm] = useState(blank)
   const [editing, setEditing] = useState<number | null>(null)
   const [detailEq, setDetailEq] = useState<any | null>(null)
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
 
   const save = async () => {
-    const payload = { ...form, team_id: form.team_id ? Number(form.team_id) : null, physical_zone_id: form.physical_zone_id ? Number(form.physical_zone_id) : null }
+    const payload = { ...form, team_id: form.team_id ? Number(form.team_id) : null, physical_zone_id: form.physical_zone_id ? Number(form.physical_zone_id) : null, logical_zone_id: form.logical_zone_id ? Number(form.logical_zone_id) : null }
     if (editing) { await api.updateEquipment(editing, payload) } else { await api.createEquipment(payload) }
     setForm(blank); setEditing(null)
     onDone(editing ? `${form.name} mis à jour` : `${form.name} créé`)
@@ -79,7 +79,7 @@ function EquipmentAdmin({ equipment, zones: _z, teams, physZones, onDone }: any)
   }
 
   const edit = (e: any) => {
-    setForm({ name: e.name, type: e.type, vendor: e.vendor, model: e.model, management_ip: e.management_ip, description: e.description, team_id: e.team_id ?? '', physical_zone_id: e.physical_zone_id ?? '' })
+    setForm({ name: e.name, type: e.type, vendor: e.vendor, model: e.model, management_ip: e.management_ip, description: e.description, team_id: e.team_id ?? '', physical_zone_id: e.physical_zone_id ?? '', logical_zone_id: e.logical_zone_id ?? '' })
     setEditing(e.id)
   }
 
@@ -125,6 +125,15 @@ function EquipmentAdmin({ equipment, zones: _z, teams, physZones, onDone }: any)
               </select>
             </div>
           </div>
+          <div className="form-group">
+            <label className="form-label">Zone logique</label>
+            <select className="form-select" value={form.logical_zone_id} onChange={e => set('logical_zone_id', e.target.value)}>
+              <option value="">— Aucune —</option>
+              {zones.filter((z: any) => z.zone_type === 'logical').map((z: any) => (
+                <option key={z.id} value={z.id}>{z.name}</option>
+              ))}
+            </select>
+          </div>
           <div className="flex gap-2 mt-2">
             <button className="btn btn-primary" onClick={save} disabled={!form.name}>{editing ? 'Mettre à jour' : 'Créer'}</button>
             {editing && <button className="btn btn-ghost" onClick={() => { setForm(blank); setEditing(null) }}>Annuler</button>}
@@ -154,14 +163,14 @@ function EquipmentAdmin({ equipment, zones: _z, teams, physZones, onDone }: any)
 }
 
 // ── Zone admin ──────────────────────────────────────────────────────────────
-function ZoneAdmin({ zones, onDone }: any) {
-  const blank = { name: '', color: '#3b82f6', description: '', trust_level: '50', zone_type: 'logical' }
+function ZoneAdmin({ zones, physZones, onDone }: any) {
+  const blank = { name: '', color: '#3b82f6', description: '', trust_level: '50', zone_type: 'logical', datacenter_id: '' }
   const [form, setForm] = useState(blank)
   const [editing, setEditing] = useState<number | null>(null)
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
 
   const save = async () => {
-    const payload = { ...form, trust_level: Number(form.trust_level) }
+    const payload = { ...form, trust_level: Number(form.trust_level), datacenter_id: form.datacenter_id ? Number(form.datacenter_id) : null }
     if (editing) { await api.updateZone(editing, payload) } else { await api.createZone(payload) }
     setForm(blank); setEditing(null)
     onDone(editing ? `Zone ${form.name} mise à jour` : `Zone ${form.name} créée`)
@@ -196,6 +205,15 @@ function ZoneAdmin({ zones, onDone }: any) {
             </div>
           </div>
           <div className="form-group">
+            <label className="form-label">Data Center (zone physique)</label>
+            <select className="form-select" value={form.datacenter_id} onChange={e => set('datacenter_id', e.target.value)}>
+              <option value="">— Aucun —</option>
+              {(physZones || []).map((p: any) => (
+                <option key={p.id} value={p.id}>{p.name} ({p.type})</option>
+              ))}
+            </select>
+          </div>
+          <div className="form-group">
             <label className="form-label">Niveau de confiance : {form.trust_level}%</label>
             <input type="range" min="0" max="100" value={form.trust_level} onChange={e => set('trust_level', e.target.value)} style={{ width: '100%', accentColor: 'var(--blue)' }} />
           </div>
@@ -214,7 +232,7 @@ function ZoneAdmin({ zones, onDone }: any) {
               <div style={{ width: 12, height: 12, borderRadius: '50%', background: z.color, flexShrink: 0 }} />
               <span style={{ flex: 1, fontWeight: 500 }}>{z.name}</span>
               <span className="badge badge-info text-xs">{z.trust_level}%</span>
-              <button className="btn btn-ghost btn-sm" onClick={() => { setForm({ name: z.name, color: z.color, description: z.description, trust_level: String(z.trust_level), zone_type: z.zone_type }); setEditing(z.id) }}>✏</button>
+              <button className="btn btn-ghost btn-sm" onClick={() => { setForm({ name: z.name, color: z.color, description: z.description, trust_level: String(z.trust_level), zone_type: z.zone_type, datacenter_id: z.datacenter_id ? String(z.datacenter_id) : '' }); setEditing(z.id) }}>✏</button>
               <button className="btn btn-ghost btn-sm" style={{ color: 'var(--red)' }} onClick={() => del(z.id, z.name)}>✕</button>
             </div>
           ))}

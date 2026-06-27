@@ -102,7 +102,7 @@ export default function RoadmapModal({ onClose }: Props) {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px', borderBottom: '1px solid var(--border)', background: 'var(--bg-card)', flexShrink: 0 }}>
           <div>
             <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--text-1)' }}>Roadmap — IP Flow Manager</div>
-            <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>Plateforme de vérification réseau avant production · Inspirée de Forward Networks</div>
+            <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>Plateforme de vérification réseau avant production</div>
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <div style={{ display: 'flex', gap: 10, marginRight: 8, flexWrap: 'nowrap' }}>

@@ -3,7 +3,8 @@ import { useRef, useEffect, useCallback, useState } from 'react'
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface GraphNode {
   id: number; name: string; type: string; vendor: string
-  model: string; management_ip: string; team?: string; physical_zone?: string
+  model: string; management_ip: string; team?: string
+  physical_zone?: string; logical_zone?: string; logical_zone_color?: string
   x: number; y: number; vx: number; vy: number
 }
 interface GraphEdge {
@@ -40,11 +41,27 @@ interface Props {
   flowsOverlay?: FlowOverlay[]
   routesOverlay?: RouteOverlay[]
   vrfOverlay?: VRFOverlay[]
+  zoneMode?: 'none' | 'physical' | 'logical'
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
-const TYPE_COLORS: Record<string, string> = {
-  firewall: '#ef4444', router: '#22c55e', nsx: '#a855f7', switch: '#3b82f6',
+export const TYPE_COLORS: Record<string, string> = {
+  firewall: '#ef4444', router: '#22c55e', switch: '#3b82f6', nsx: '#a855f7',
+}
+const TYPE_LABELS: Record<string, string> = {
+  firewall: 'Firewall', router: 'Routeur / Switch', switch: 'Switch', nsx: 'Security / NF',
+}
+const PHYS_ZONE_PALETTE = ['#22c55e', '#3b82f6', '#f97316', '#a855f7', '#06b6d4', '#eab308', '#ef4444']
+function hashZoneColor(name: string): string {
+  let h = 0; for (const c of name) h = (h * 31 + c.charCodeAt(0)) & 0xFFFF
+  return PHYS_ZONE_PALETTE[h % PHYS_ZONE_PALETTE.length]
+}
+function rndRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  ctx.beginPath()
+  ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y); ctx.arcTo(x + w, y, x + w, y + r, r)
+  ctx.lineTo(x + w, y + h - r); ctx.arcTo(x + w, y + h, x + w - r, y + h, r)
+  ctx.lineTo(x + r, y + h); ctx.arcTo(x, y + h, x, y + h - r, r)
+  ctx.lineTo(x, y + r); ctx.arcTo(x, y, x + r, y, r); ctx.closePath()
 }
 const VENDOR_LETTER: Record<string, string> = {
   stormshield: 'S', paloalto: 'P', juniper: 'J', nsx: 'N', fortinet: 'F', checkpoint: 'C',
@@ -104,12 +121,16 @@ export default function TopologyGraph({
   nodes: rawNodes, edges, highlightedPath = [], height = 520,
   showFlows = false, showRoutes = false, showVRF = false,
   flowsOverlay = [], routesOverlay = [], vrfOverlay = [],
+  zoneMode = 'none',
 }: Props) {
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const nodesRef  = useRef<GraphNode[]>([])
-  const dragRef   = useRef<{ id: number; ox: number; oy: number } | null>(null)
-  const rafIdRef  = useRef(0)
-  const dashOffRef= useRef(0)
+  const canvasRef    = useRef<HTMLCanvasElement>(null)
+  const nodesRef     = useRef<GraphNode[]>([])
+  const dragRef      = useRef<{ id: number; ox: number; oy: number } | null>(null)
+  const dragZoneRef  = useRef<{ name: string; nodeStarts: Array<{node:GraphNode;sx:number;sy:number}>; mx0:number; my0:number } | null>(null)
+  const rafIdRef     = useRef(0)
+  const dashOffRef   = useRef(0)
+  const zoneAlphaRef = useRef(zoneMode !== 'none' ? 1 : 0)
+  const zoneBoxesRef = useRef<Map<string, {minX:number;minY:number;maxX:number;maxY:number;color:string}>>(new Map())
 
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null)
   const [nodeTip,      setNodeTip]      = useState<{ node: GraphNode; x: number; y: number } | null>(null)
@@ -134,6 +155,50 @@ export default function TopologyGraph({
     const byId   = new Map(ns.map(n => [n.id, n]))
     const byName = new Map(ns.map(n => [n.name, n]))
     const highlighted = new Set(highlightedPath)
+
+    // ── Zone containers ────────────────────────────────────────────────────
+    const alpha = zoneAlphaRef.current
+    zoneBoxesRef.current.clear()
+    if (zoneMode !== 'none' && alpha > 0.01) {
+      const groups = new Map<string, { nodes: GraphNode[]; color: string }>()
+      for (const n of ns) {
+        const key = zoneMode === 'physical' ? (n.physical_zone || '') : (n.logical_zone || '')
+        if (!key) continue
+        if (!groups.has(key)) {
+          const color = zoneMode === 'logical' ? (n.logical_zone_color || hashZoneColor(key)) : hashZoneColor(key)
+          groups.set(key, { nodes: [], color })
+        }
+        groups.get(key)!.nodes.push(n)
+      }
+      const PAD = 48
+      for (const [name, { nodes: zns, color }] of groups) {
+        const minX = Math.min(...zns.map(n => n.x)) - PAD
+        const minY = Math.min(...zns.map(n => n.y)) - PAD - 16
+        const maxX = Math.max(...zns.map(n => n.x)) + PAD
+        const maxY = Math.max(...zns.map(n => n.y)) + PAD
+        const w = maxX - minX, h = maxY - minY
+        zoneBoxesRef.current.set(name, { minX, minY, maxX, maxY, color })
+        ctx.save()
+        ctx.globalAlpha = alpha
+        rndRect(ctx, minX, minY, w, h, 12)
+        ctx.fillStyle = color
+        ctx.globalAlpha = alpha * (zoneMode === 'physical' ? 0.07 : 0.12)
+        ctx.fill()
+        ctx.globalAlpha = alpha * (zoneMode === 'physical' ? 0.5 : 0.65)
+        rndRect(ctx, minX, minY, w, h, 12)
+        ctx.strokeStyle = color
+        ctx.lineWidth = 1.5
+        ctx.setLineDash(zoneMode === 'physical' ? [7, 5] : [3, 3])
+        ctx.stroke()
+        ctx.setLineDash([])
+        ctx.globalAlpha = alpha * 0.85
+        ctx.font = 'bold 10px Inter, sans-serif'
+        ctx.fillStyle = color
+        ctx.textAlign = 'left'; ctx.textBaseline = 'top'
+        ctx.fillText(name.toUpperCase(), minX + 9, minY + 7)
+        ctx.restore()
+      }
+    }
 
     // VRF member set
     const vrfMemberNames = new Set<string>()
@@ -333,21 +398,41 @@ export default function TopologyGraph({
     ctx.textAlign = 'right'; ctx.textBaseline = 'bottom'
     ctx.fillText('Glisser pour déplacer · Cliquer pour détails', W - 10, H - 6)
     ctx.restore()
-  }, [edges, highlightedPath, selectedNode, showFlows, showRoutes, showVRF, flowsOverlay, routesOverlay, vrfOverlay])
+  }, [edges, highlightedPath, selectedNode, showFlows, showRoutes, showVRF, flowsOverlay, routesOverlay, vrfOverlay, zoneMode])
 
   // Always keep a ref to the latest draw (for rAF)
   const drawRef = useRef(draw)
   useEffect(() => { drawRef.current = draw }, [draw])
 
-  // Initial force layout
+  // Initial force layout + restore saved positions
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas || !rawNodes.length) return
     const W = canvas.offsetWidth
     canvas.width = W; canvas.height = height
-    nodesRef.current = runForce(rawNodes as GraphNode[], edges, W, height)
+    const laid = runForce(rawNodes as GraphNode[], edges, W, height)
+    try {
+      const saved = JSON.parse(localStorage.getItem('ipfm_graph_positions') || '{}')
+      for (const n of laid) { if (saved[n.name]) { n.x = saved[n.name].x; n.y = saved[n.name].y } }
+    } catch {}
+    nodesRef.current = laid
     draw()
   }, [rawNodes, edges, height])
+
+  // Zone fade animation
+  useEffect(() => {
+    const target = zoneMode !== 'none' ? 1 : 0
+    let id: number
+    const step = () => {
+      const d = target - zoneAlphaRef.current
+      if (Math.abs(d) < 0.02) { zoneAlphaRef.current = target; drawRef.current(); return }
+      zoneAlphaRef.current += d * 0.14
+      drawRef.current()
+      id = requestAnimationFrame(step)
+    }
+    id = requestAnimationFrame(step)
+    return () => cancelAnimationFrame(id)
+  }, [zoneMode])
 
   // Redraw on prop changes
   useEffect(() => { draw() }, [draw])
@@ -408,36 +493,74 @@ export default function TopologyGraph({
     return null
   }
 
+  const savePositions = () => {
+    const pos: Record<string, {x:number;y:number}> = {}
+    for (const n of nodesRef.current) pos[n.name] = { x: Math.round(n.x), y: Math.round(n.y) }
+    localStorage.setItem('ipfm_graph_positions', JSON.stringify(pos))
+  }
+
   const onMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const { x, y } = getPos(e)
     const n = getNodeAt(x, y)
-    if (n) dragRef.current = { id: n.id, ox: x - n.x, oy: y - n.y }
+    if (n) { dragRef.current = { id: n.id, ox: x - n.x, oy: y - n.y }; return }
+    // Zone drag
+    if (zoneMode !== 'none') {
+      for (const [name, box] of zoneBoxesRef.current) {
+        if (x >= box.minX && x <= box.maxX && y >= box.minY && y <= box.maxY) {
+          const zns = nodesRef.current.filter(nd =>
+            (zoneMode === 'physical' ? nd.physical_zone : nd.logical_zone) === name
+          )
+          dragZoneRef.current = { name, nodeStarts: zns.map(nd => ({ node: nd, sx: nd.x, sy: nd.y })), mx0: x, my0: y }
+          return
+        }
+      }
+    }
   }
   const onMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const { x, y } = getPos(e)
+    const canvas = canvasRef.current!
     if (dragRef.current) {
       const n = nodesRef.current.find(n => n.id === dragRef.current!.id)
       if (n) { n.x = x - dragRef.current.ox; n.y = y - dragRef.current.oy; draw() }
       return
     }
+    if (dragZoneRef.current) {
+      const dz = dragZoneRef.current, dx = x - dz.mx0, dy = y - dz.my0
+      const W = canvas.width, H = canvas.height
+      for (const { node, sx, sy } of dz.nodeStarts) {
+        node.x = Math.max(NODE_R + 10, Math.min(W - NODE_R - 10, sx + dx))
+        node.y = Math.max(NODE_R + 20, Math.min(H - NODE_R - 20, sy + dy))
+      }
+      draw(); return
+    }
     const node = getNodeAt(x, y)
     if (node) {
       setNodeTip({ node, x, y }); setOverlayTip(null)
-      canvasRef.current!.style.cursor = 'grab'
+      canvas.style.cursor = 'grab'
     } else {
       setNodeTip(null)
+      // Check zone hover
+      let onZone = false
+      if (zoneMode !== 'none') {
+        for (const box of zoneBoxesRef.current.values()) {
+          if (x >= box.minX && x <= box.maxX && y >= box.minY && y <= box.maxY) { onZone = true; break }
+        }
+      }
       const hit = getOverlayAt(x, y)
       setOverlayTip(hit)
-      canvasRef.current!.style.cursor = hit ? 'pointer' : 'default'
+      canvas.style.cursor = onZone ? 'move' : hit ? 'pointer' : 'default'
     }
   }
   const onMouseUp = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!dragRef.current) {
+    const wasDragging = dragRef.current !== null || dragZoneRef.current !== null
+    if (!wasDragging) {
       const { x, y } = getPos(e)
       const n = getNodeAt(x, y)
       setSelectedNode(prev => prev?.id === n?.id ? null : n ?? null)
     }
+    if (dragRef.current || dragZoneRef.current) savePositions()
     dragRef.current = null
+    dragZoneRef.current = null
   }
 
   // ── Tooltip helpers ────────────────────────────────────────────────────────
@@ -462,6 +585,16 @@ export default function TopologyGraph({
         onMouseLeave={() => { setNodeTip(null); setOverlayTip(null); dragRef.current = null }}
       />
 
+      {/* Equipment type legend */}
+      <div style={{ position: 'absolute', bottom: 28, left: 8, background: 'rgba(15,20,30,0.82)', border: '1px solid var(--border)', borderRadius: 6, padding: '6px 10px', pointerEvents: 'none' }}>
+        {Object.entries(TYPE_COLORS).map(([type, color]) => (
+          <div key={type} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+            <div style={{ width: 10, height: 10, borderRadius: '50%', border: `2px solid ${color}`, background: '#161b27', flexShrink: 0 }} />
+            <span style={{ fontSize: 10, color: 'var(--text-3)' }}>{TYPE_LABELS[type] || type}</span>
+          </div>
+        ))}
+      </div>
+
       {/* Node tooltip */}
       {nodeTip && !dragRef.current && (
         <div style={{ position: 'absolute', left: nodeTip.x + 14, top: nodeTip.y - 10, background: '#1c2233', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 12px', fontSize: 12, pointerEvents: 'none', zIndex: 10, boxShadow: '0 4px 20px rgba(0,0,0,0.5)', minWidth: 180 }}>
@@ -470,6 +603,7 @@ export default function TopologyGraph({
           {nodeTip.node.management_ip && <div style={{ color: 'var(--text-3)', fontFamily: 'monospace', marginTop: 2 }}>🖥 {nodeTip.node.management_ip}</div>}
           {nodeTip.node.team && <div style={{ color: 'var(--text-3)', marginTop: 2 }}>👥 {nodeTip.node.team}</div>}
           {nodeTip.node.physical_zone && <div style={{ color: 'var(--text-3)' }}>📍 {nodeTip.node.physical_zone}</div>}
+          {nodeTip.node.logical_zone && <div style={{ color: nodeTip.node.logical_zone_color || 'var(--text-3)', marginTop: 2 }}>◈ {nodeTip.node.logical_zone}</div>}
         </div>
       )}
 

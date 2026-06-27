@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo, useRef } from 'react'
 import { api } from '../api/client'
-import TopologyGraph, { CRITICALITY_COLOR, ROUTE_COLOR } from '../components/TopologyGraph'
+import TopologyGraph, { CRITICALITY_COLOR, ROUTE_COLOR, TYPE_COLORS } from '../components/TopologyGraph'
 import type { FlowOverlay, RouteOverlay, VRFOverlay } from '../components/TopologyGraph'
 import type { Equipment, Network, Zone } from '../types'
 
@@ -94,6 +94,12 @@ export default function TopologyPage({ highlightedPath = [] }: Props) {
   const [zones,     setZones]     = useState<Zone[]>([])
   const [links,     setLinks]     = useState<Link[]>([])
   const [loading,   setLoading]   = useState(true)
+
+  // Zone mode (physical / logical / none) — persisted
+  const [zoneMode, setZoneMode] = useState<'none' | 'physical' | 'logical'>(
+    () => (localStorage.getItem('ipfm_zone_mode') as 'none' | 'physical' | 'logical') || 'none'
+  )
+  useEffect(() => { localStorage.setItem('ipfm_zone_mode', zoneMode) }, [zoneMode])
 
   // Overlay toggles
   const [showFlows,  setShowFlows]  = useState(false)
@@ -221,6 +227,31 @@ export default function TopologyPage({ highlightedPath = [] }: Props) {
                 {/* ── Left panel ─────────────────────────────────────────── */}
                 <div style={{ width: 220, minWidth: 220, display: 'flex', flexDirection: 'column', gap: 10 }}>
 
+                  {/* Zone representation toggle */}
+                  <div className="card" style={{ padding: '10px 12px' }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-3)', letterSpacing: '0.8px', textTransform: 'uppercase', marginBottom: 8 }}>Représentation</div>
+                    <div style={{ display: 'flex', gap: 4 }}>
+                      {([['none','Aucune'],['physical','Physique'],['logical','Logique']] as const).map(([mode, label]) => (
+                        <button
+                          key={mode}
+                          onClick={() => setZoneMode(mode)}
+                          style={{
+                            flex: 1, padding: '5px 0', fontSize: 10, fontFamily: 'inherit', cursor: 'pointer',
+                            borderRadius: 5, border: zoneMode === mode ? '1px solid var(--blue)' : '1px solid var(--border)',
+                            background: zoneMode === mode ? 'rgba(59,130,246,0.15)' : 'var(--bg-input)',
+                            color: zoneMode === mode ? 'var(--blue)' : 'var(--text-3)',
+                            fontWeight: zoneMode === mode ? 700 : 400, transition: 'all 0.15s',
+                          }}
+                        >{label}</button>
+                      ))}
+                    </div>
+                    {zoneMode !== 'none' && (
+                      <div style={{ marginTop: 6, fontSize: 10, color: 'var(--text-3)' }}>
+                        {zoneMode === 'physical' ? '— Zones par site / datacenter' : '— Zones logiques (segmentation)'}
+                      </div>
+                    )}
+                  </div>
+
                   {/* Overlay toggles */}
                   <div className="card" style={{ padding: '10px 12px' }}>
                     <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-3)', letterSpacing: '0.8px', textTransform: 'uppercase', marginBottom: 8 }}>Overlays</div>
@@ -344,6 +375,7 @@ export default function TopologyPage({ highlightedPath = [] }: Props) {
                     flowsOverlay={filteredFlows}
                     routesOverlay={overlayRoutes}
                     vrfOverlay={overlayVRF}
+                    zoneMode={zoneMode}
                   />
                 </div>
 

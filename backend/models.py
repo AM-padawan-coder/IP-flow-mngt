@@ -12,6 +12,7 @@ class Zone(Base):
     description = Column(String)
     trust_level = Column(Integer, default=50)
     zone_type = Column(String, default="logical")   # logical | physical
+    datacenter_id = Column(Integer, ForeignKey("physical_zones.id"), nullable=True)
     networks = relationship("Network", back_populates="zone")
 
 
@@ -46,6 +47,7 @@ class Equipment(Base):
     active = Column(Boolean, default=True)
     team_id = Column(Integer, ForeignKey("teams.id"), nullable=True)
     physical_zone_id = Column(Integer, ForeignKey("physical_zones.id"), nullable=True)
+    logical_zone_id  = Column(Integer, ForeignKey("zones.id"), nullable=True)
     interfaces = relationship("EquipmentInterface", back_populates="equipment", cascade="all, delete-orphan")
 
 

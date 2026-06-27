@@ -5,6 +5,18 @@ import models  # noqa
 
 Base.metadata.create_all(bind=engine)
 
+# SQLite column migrations (safe: try/except per column)
+from sqlalchemy import text as _text
+with engine.connect() as _conn:
+    for _stmt in [
+        "ALTER TABLE zones ADD COLUMN datacenter_id INTEGER REFERENCES physical_zones(id)",
+        "ALTER TABLE equipment ADD COLUMN logical_zone_id INTEGER REFERENCES zones(id)",
+    ]:
+        try:
+            _conn.execute(_text(_stmt)); _conn.commit()
+        except Exception:
+            pass
+
 app = FastAPI(title="IP Flow Manager", version="2.0.0")
 
 app.add_middleware(
