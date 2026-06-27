@@ -20,15 +20,34 @@ from routers import flows, topology
 from routers import teams as teams_router
 from routers import simulation as simulation_router
 from routers import policies as policies_router
+from routers import overlay as overlay_router
 app.include_router(flows.router,            prefix="/flows",      tags=["Flux IP"])
 app.include_router(topology.router,         prefix="/topology",   tags=["Topologie"])
 app.include_router(teams_router.router,     prefix="/org",        tags=["Organisation"])
 app.include_router(simulation_router.router,prefix="/simulation", tags=["Simulation"])
 app.include_router(policies_router.router,  prefix="/policies",   tags=["Politiques réseau"])
+app.include_router(overlay_router.router,   prefix="/overlay",    tags=["Overlays"])
+
+
+def _run_migrations():
+    from sqlalchemy import text
+    with engine.connect() as conn:
+        for table, col, typ in [
+            ("flow_requests", "criticality",   "VARCHAR"),
+            ("flow_requests", "sla",           "VARCHAR"),
+            ("flow_requests", "bandwidth_max", "FLOAT"),
+            ("flow_requests", "vrf_name",      "VARCHAR"),
+        ]:
+            try:
+                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {col} {typ}"))
+                conn.commit()
+            except Exception:
+                pass
 
 
 @app.on_event("startup")
 async def startup_event():
+    _run_migrations()
     from seed import seed_database
     db = SessionLocal()
     try:

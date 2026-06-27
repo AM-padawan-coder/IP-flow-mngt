@@ -1,7 +1,7 @@
 """Données de démonstration réalistes pour l'outil de gestion de flux IP."""
 import json
 from datetime import datetime, timedelta
-from models import Zone, Equipment, Network, EquipmentInterface, TopologyLink, ValidationRule, FlowRequest, Team, PhysicalZone
+from models import Zone, Equipment, Network, EquipmentInterface, TopologyLink, ValidationRule, FlowRequest, Team, PhysicalZone, VRF, VRFEquipment
 
 
 def seed_database(db):
@@ -145,15 +145,44 @@ def seed_database(db):
     db.flush()
 
     # ─── Historique de flux (démo) ────────────────────────────────────────────
+    _p = lambda *hops: json.dumps({"hops": [{"equipment": h} for h in hops], "total_hops": len(hops)})
     demo_flows = [
-        FlowRequest(created_at=datetime.utcnow()-timedelta(days=5),  src_ip="10.10.1.50",   dst_ip="172.16.10.100",  port="443",  protocol="tcp", application="Application RH (SAP)",  justification="Accès RH SAP", status="deployed",  analyst="a.dupont",   team_id=teams["app"].id),
-        FlowRequest(created_at=datetime.utcnow()-timedelta(days=3),  src_ip="10.10.2.100",  dst_ip="172.16.20.50",   port="5432", protocol="tcp", application="PostgreSQL",            justification="App legacy BDD", status="validated", analyst="m.martin",   team_id=teams["app"].id),
-        FlowRequest(created_at=datetime.utcnow()-timedelta(days=2),  src_ip="10.10.5.20",   dst_ip="192.168.100.50", port="80",   protocol="tcp", application="Portail intranet",      justification="Accès intranet", status="deployed",  analyst="a.dupont",   team_id=teams["infra"].id),
-        FlowRequest(created_at=datetime.utcnow()-timedelta(hours=6), src_ip="10.20.1.30",   dst_ip="10.10.5.0",      port="23",   protocol="tcp", application="Test Telnet",           justification="Test connectivité", status="rejected", analyst="b.lefebvre", team_id=teams["ops"].id),
-        FlowRequest(created_at=datetime.utcnow()-timedelta(hours=2), src_ip="172.16.20.10", dst_ip="192.168.250.100",port="22",   protocol="tcp", application="Sauvegarde Oracle",     justification="Backup nightly", status="validated", analyst="m.martin",   team_id=teams["ops"].id),
+        FlowRequest(created_at=datetime.utcnow()-timedelta(days=5),  src_ip="10.10.1.50",   dst_ip="172.16.10.100",  port="443",  protocol="tcp", application="SAP",            justification="Accès RH SAP",      status="deployed",  analyst="a.dupont",   team_id=teams["app"].id,   criticality="moyenne", sla="Standard",  bandwidth_max=10.0,  path_result=_p("FW-INTERNE-01","NSX-DFW")),
+        FlowRequest(created_at=datetime.utcnow()-timedelta(days=3),  src_ip="10.10.2.100",  dst_ip="172.16.20.50",   port="5432", protocol="tcp", application="PostgreSQL",      justification="App legacy BDD",   status="validated", analyst="m.martin",   team_id=teams["app"].id,   criticality="haute",   sla="DB-SLA",    bandwidth_max=50.0,  path_result=_p("FW-INTERNE-01","NSX-DFW")),
+        FlowRequest(created_at=datetime.utcnow()-timedelta(days=2),  src_ip="10.10.5.20",   dst_ip="192.168.100.50", port="80",   protocol="tcp", application="Portail intranet",justification="Accès intranet",   status="deployed",  analyst="a.dupont",   team_id=teams["infra"].id, criticality="basse",   sla="Web-Std",   bandwidth_max=5.0,   path_result=_p("FW-INTERNE-01","RTR-CORE-01","RTR-DMZ-01")),
+        FlowRequest(created_at=datetime.utcnow()-timedelta(hours=6), src_ip="10.20.1.30",   dst_ip="10.10.5.0",      port="23",   protocol="tcp", application="Test Telnet",     justification="Test connectivité",status="rejected",  analyst="b.lefebvre", team_id=teams["ops"].id,   criticality="critique"),
+        FlowRequest(created_at=datetime.utcnow()-timedelta(hours=2), src_ip="172.16.20.10", dst_ip="192.168.250.100",port="22",   protocol="tcp", application="Sauvegarde Oracle",justification="Backup nightly",  status="validated", analyst="m.martin",   team_id=teams["ops"].id,   criticality="haute",   sla="Backup-SLA",bandwidth_max=100.0, path_result=_p("NSX-DFW","RTR-CORE-01","FW-MGMT-01")),
+        FlowRequest(created_at=datetime.utcnow()-timedelta(days=1),  src_ip="10.10.3.15",   dst_ip="172.16.10.200",  port="8080", protocol="tcp", application="API Gateway",     justification="Microservices",    status="deployed",  analyst="a.dupont",   team_id=teams["app"].id,   criticality="haute",   sla="API-SLA",   bandwidth_max=20.0,  path_result=_p("FW-INTERNE-01","NSX-DFW","FW-CP-GW-01")),
+        FlowRequest(created_at=datetime.utcnow()-timedelta(hours=4), src_ip="192.168.100.10",dst_ip="172.16.10.50",  port="443",  protocol="tcp", application="Reverse Proxy",   justification="SSL offload",      status="deployed",  analyst="m.martin",   team_id=teams["infra"].id, criticality="moyenne", sla="Web-Std",   bandwidth_max=25.0,  path_result=_p("RTR-DMZ-01","RTR-CORE-01","FW-INTERNE-01","NSX-DFW")),
     ]
     for f in demo_flows:
         db.add(f)
+    db.flush()
+
+    # ─── VRF de démo ──────────────────────────────────────────────────────────
+    vrfs = {
+        "prod":    VRF(name="VRF Production",  rd="65000:1",   rt_import="65000:1",   rt_export="65000:1",   color="#22c55e",  description="VRF production applicatifs"),
+        "voix":    VRF(name="VRF Voix",        rd="65000:10",  rt_import="65000:10",  rt_export="65000:10",  color="#8b5cf6",  description="VRF flux voix SIP/RTP"),
+        "mgmt":    VRF(name="VRF Management",  rd="65000:99",  rt_import="65000:99",  rt_export="65000:99",  color="#f97316",  description="VRF OAM / management"),
+        "backup":  VRF(name="VRF Backup",      rd="65000:50",  rt_import="65000:50",  rt_export="65000:50",  color="#64748b",  description="VRF sauvegardes"),
+    }
+    for v in vrfs.values():
+        db.add(v)
+    db.flush()
+
+    # Assignation équipements → VRF
+    vrf_members = {
+        "prod":   ["FW-INTERNE-01", "NSX-DFW", "RTR-CORE-01", "FW-CP-GW-01"],
+        "voix":   ["FW-INTERNE-01", "NSX-DFW", "RTR-DMZ-01"],
+        "mgmt":   ["FW-MGMT-01", "RTR-CORE-01", "FW-INTERNET-01"],
+        "backup": ["FW-MGMT-01", "RTR-CORE-01"],
+    }
+    eq_by_name = {e.name: e for e in eqp.values()}
+    for vrf_key, members in vrf_members.items():
+        for eq_name in members:
+            eq = eq_by_name.get(eq_name)
+            if eq:
+                db.add(VRFEquipment(vrf_id=vrfs[vrf_key].id, equipment_id=eq.id))
 
     db.commit()
-    print("[seed] Base initialisée avec données de démo v2.")
+    print("[seed] Base initialisée avec données de démo v2.6 (overlays: flux, routes, VRF)")

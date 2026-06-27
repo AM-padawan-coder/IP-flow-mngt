@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, Text, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, Boolean, Text, DateTime, Float, ForeignKey
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from database import Base
@@ -155,3 +155,27 @@ class FlowRequest(Base):
     validation_result = Column(Text)
     path_result = Column(Text)
     scripts_result = Column(Text)
+    # v2.6 overlay fields
+    criticality = Column(String, nullable=True)   # critique | haute | moyenne | basse
+    sla = Column(String, nullable=True)
+    bandwidth_max = Column(Float, nullable=True)
+    vrf_name = Column(String, nullable=True)
+
+
+class VRF(Base):
+    __tablename__ = "vrfs"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False, unique=True)
+    rd = Column(String)
+    rt_import = Column(String)
+    rt_export = Column(String)
+    description = Column(String)
+    color = Column(String, default="#3b82f6")
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class VRFEquipment(Base):
+    __tablename__ = "vrf_equipment"
+    id = Column(Integer, primary_key=True, index=True)
+    vrf_id = Column(Integer, ForeignKey("vrfs.id"), nullable=False)
+    equipment_id = Column(Integer, ForeignKey("equipment.id"), nullable=False)

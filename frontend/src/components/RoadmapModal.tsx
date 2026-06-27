@@ -19,6 +19,8 @@ const PHASES = [
     items: ['Correctif bouton Enregistrer routes + feedback erreur', 'Politiques réseau déplacées dans Topologie', 'Journal des événements politiques réseau dans Historique', 'Vue Flux dans Topologie avec export Excel (CSV)', 'Correctif visuel Import/Export (overflow)', 'Graphe ⬡ affiché en modal inline (sans quitter le formulaire)'] },
   { v: 'v2.5', title: 'Workflow & Simulation avancée', status: 'done', label: '✓ Livré', eta: '',
     items: ['Soumission flux → statut En attente (workflow manuel)', 'Valider / Déployer / Refuser depuis l\'Historique', 'Scénarios rapides = derniers flux créés', 'Détail équipement : routing + ACL depuis Administration', 'Détection SPOF (points d\'articulation du graphe)', 'Analyse d\'impact : actions proposées (ACL deny, routes)'] },
+  { v: 'v2.6', title: 'Overlays graphe réseau', status: 'done', label: '✓ Livré', eta: '',
+    items: ['Overlay Flux : chemins animés sur le graphe (criticité, SLA, VRF)', 'Overlay Routes : liens BGP/OSPF/IS-IS/Static colorés avec flèches', 'Overlay VRF : halos colorés + transparence des équipements hors-VRF', 'Panneau filtres Flux (application, protocole, criticité, statut)', 'Légende dynamique + compteurs ÉLÉMENTS VISIBLES', 'Tooltips hover sur flux, routes et nœuds VRF', 'Animation dashes temps-réel pour flux et routes actifs'] },
   { v: 'v3.0', title: 'Parcours de validation', status: 'planned', label: '🗓 Planifié', eta: '',
     items: ['Workflow multi-niveaux : Demandeur → Validateur → Admin', 'Rôles & permissions différenciés', 'Notifications email + webhook par changement de statut', 'Commentaires & justifications sur chaque demande', 'SLA, rappels automatiques, flux expirés'] },
   { v: 'v4.0', title: 'Connecteur IPAM Infoblox', status: 'soon', label: '🔜 Prochain', eta: '',
@@ -42,7 +44,7 @@ const STATUS_STYLE: Record<string, { dot: string; badge: string; badgeText: stri
 }
 
 export default function RoadmapModal({ onClose }: Props) {
-  const [open, setOpen] = useState<string[]>(['v2.4.1', 'v2.5', 'v3.0'])
+  const [open, setOpen] = useState<string[]>(['v2.6', 'v3.0'])
 
   const toggle = (v: string) =>
     setOpen(o => o.includes(v) ? o.filter(x => x !== v) : [...o, v])

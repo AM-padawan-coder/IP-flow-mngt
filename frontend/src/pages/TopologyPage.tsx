@@ -1,37 +1,72 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { api } from '../api/client'
-import TopologyGraph from '../components/TopologyGraph'
+import TopologyGraph, { CRITICALITY_COLOR, ROUTE_COLOR } from '../components/TopologyGraph'
+import type { FlowOverlay, RouteOverlay, VRFOverlay } from '../components/TopologyGraph'
 import type { Equipment, Network, Zone } from '../types'
 
 type Tab = 'graph' | 'equipment' | 'networks' | 'zones' | 'links'
 
 interface Link {
   id: number
-  equipment_a_id: number
-  equipment_a_name: string
-  equipment_b_id: number
-  equipment_b_name: string
-  link_type: string
-  description: string
+  equipment_a_id: number; equipment_a_name: string
+  equipment_b_id: number; equipment_b_name: string
+  link_type: string; description: string
 }
+interface GraphData { nodes: any[]; edges: any[] }
+interface Props { highlightedPath?: string[] }
 
-interface GraphData {
-  nodes: any[]
-  edges: any[]
-}
-
-interface Props {
-  highlightedPath?: string[]
+// ── Toggle switch ──────────────────────────────────────────────────────────────
+function Toggle({ on, onChange, label, count, color }: {
+  on: boolean; onChange: () => void; label: string; count?: number; color?: string
+}) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 0', borderBottom: '1px solid var(--border)' }}>
+      <button
+        onClick={onChange}
+        style={{ width: 36, height: 20, borderRadius: 10, border: 'none', cursor: 'pointer', background: on ? (color || '#3b82f6') : 'var(--bg-input)', position: 'relative', transition: 'background 0.2s', flexShrink: 0 }}
+      >
+        <div style={{ position: 'absolute', top: 3, left: on ? 18 : 3, width: 14, height: 14, borderRadius: '50%', background: '#fff', transition: 'left 0.2s' }} />
+      </button>
+      <span style={{ fontSize: 12, fontWeight: 600, color: on ? 'var(--text-1)' : 'var(--text-3)', flex: 1 }}>{label}</span>
+      {count !== undefined && (
+        <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 8, background: on ? `${color || '#3b82f6'}22` : 'var(--bg-input)', color: on ? (color || '#3b82f6') : 'var(--text-3)', fontWeight: 700 }}>
+          {count}
+        </span>
+      )}
+    </div>
+  )
 }
 
 export default function TopologyPage({ highlightedPath = [] }: Props) {
-  const [tab, setTab] = useState<Tab>(highlightedPath.length ? 'graph' : 'graph')
-  const [graph, setGraph] = useState<GraphData>({ nodes: [], edges: [] })
+  const [tab, setTab] = useState<Tab>('graph')
+  const [graph,     setGraph]     = useState<GraphData>({ nodes: [], edges: [] })
   const [equipment, setEquipment] = useState<Equipment[]>([])
-  const [networks, setNetworks] = useState<Network[]>([])
-  const [zones, setZones] = useState<Zone[]>([])
-  const [links, setLinks] = useState<Link[]>([])
-  const [loading, setLoading] = useState(true)
+  const [networks,  setNetworks]  = useState<Network[]>([])
+  const [zones,     setZones]     = useState<Zone[]>([])
+  const [links,     setLinks]     = useState<Link[]>([])
+  const [loading,   setLoading]   = useState(true)
+
+  // Overlay toggles
+  const [showFlows,  setShowFlows]  = useState(false)
+  const [showRoutes, setShowRoutes] = useState(false)
+  const [showVRF,    setShowVRF]    = useState(false)
+
+  // Overlay data
+  const [overlayFlows,  setOverlayFlows]  = useState<FlowOverlay[]>([])
+  const [overlayRoutes, setOverlayRoutes] = useState<RouteOverlay[]>([])
+  const [overlayVRF,    setOverlayVRF]    = useState<VRFOverlay[]>([])
+  const [loadingOverlay, setLoadingOverlay] = useState<string | null>(null)
+
+  // Flux filter state
+  const [fApp,      setFApp]      = useState('')
+  const [fProto,    setFProto]    = useState('')
+  const [fCrit,     setFCrit]     = useState('')
+  const [fStatus,   setFStatus]   = useState('')
+  const [fSrc,      setFSrc]      = useState('')
+  const [fDst,      setFDst]      = useState('')
+  const [fPort,     setFPort]     = useState('')
+  const [fPending,  setFPending]  = useState<{app:string;proto:string;crit:string;status:string;src:string;dst:string;port:string} | null>(null)
+  const [fActive,   setFActive]   = useState<typeof fPending>(null)
 
   const load = () => {
     setLoading(true)
@@ -43,16 +78,69 @@ export default function TopologyPage({ highlightedPath = [] }: Props) {
       api.getLinks().then(d => setLinks(d as Link[])),
     ]).finally(() => setLoading(false))
   }
-
   useEffect(() => { load() }, [])
 
+  // Load overlay data on toggle
+  useEffect(() => {
+    if (showFlows && overlayFlows.length === 0) {
+      setLoadingOverlay('flows')
+      api.getOverlayFlows().then((d: any) => setOverlayFlows(d as FlowOverlay[])).catch(() => {}).finally(() => setLoadingOverlay(null))
+    }
+  }, [showFlows])
+  useEffect(() => {
+    if (showRoutes && overlayRoutes.length === 0) {
+      setLoadingOverlay('routes')
+      api.getOverlayRoutes().then((d: any) => setOverlayRoutes(d as RouteOverlay[])).catch(() => {}).finally(() => setLoadingOverlay(null))
+    }
+  }, [showRoutes])
+  useEffect(() => {
+    if (showVRF && overlayVRF.length === 0) {
+      setLoadingOverlay('vrf')
+      api.getOverlayVRF().then((d: any) => setOverlayVRF(d as VRFOverlay[])).catch(() => {}).finally(() => setLoadingOverlay(null))
+    }
+  }, [showVRF])
+
+  const applyFilters = () => {
+    setFActive({ app: fApp, proto: fProto, crit: fCrit, status: fStatus, src: fSrc, dst: fDst, port: fPort })
+  }
+  const resetFilters = () => {
+    setFApp(''); setFProto(''); setFCrit(''); setFStatus(''); setFSrc(''); setFDst(''); setFPort('')
+    setFActive(null)
+  }
+
+  const filteredFlows = useMemo(() => {
+    if (!fActive) return overlayFlows
+    return overlayFlows.filter(f =>
+      (!fActive.app    || f.application?.toLowerCase().includes(fActive.app.toLowerCase())) &&
+      (!fActive.proto  || f.protocol?.toLowerCase().includes(fActive.proto.toLowerCase())) &&
+      (!fActive.crit   || f.criticality === fActive.crit) &&
+      (!fActive.status || f.status === fActive.status) &&
+      (!fActive.src    || f.src_ip?.includes(fActive.src)) &&
+      (!fActive.dst    || f.dst_ip?.includes(fActive.dst)) &&
+      (!fActive.port   || f.port?.includes(fActive.port))
+    )
+  }, [overlayFlows, fActive])
+
+  // Counts for right panel
+  const visibleNodes   = graph.nodes.length
+  const visibleEdges   = graph.edges.length
+  const vrfNodes       = showVRF ? new Set(overlayVRF.flatMap(v => v.equipment_names)).size : 0
+
   const TABS = [
-    { id: 'graph',     label: `Graphe réseau` },
+    { id: 'graph',     label: 'Graphe réseau' },
     { id: 'equipment', label: `Équipements (${equipment.length})` },
     { id: 'networks',  label: `Réseaux (${networks.length})` },
     { id: 'zones',     label: `Zones (${zones.length})` },
     { id: 'links',     label: `Liens (${links.length})` },
   ] as const
+
+  const INPUT: React.CSSProperties = {
+    width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)',
+    borderRadius: 4, padding: '5px 8px', fontSize: 11, color: 'var(--text-1)',
+    fontFamily: 'inherit', outline: 'none',
+  }
+  const SELECT: React.CSSProperties = { ...INPUT, cursor: 'pointer' }
+  const LABEL: React.CSSProperties  = { fontSize: 10, color: 'var(--text-3)', fontWeight: 600, letterSpacing: '0.5px', textTransform: 'uppercase', marginBottom: 3 }
 
   return (
     <>
@@ -61,7 +149,6 @@ export default function TopologyPage({ highlightedPath = [] }: Props) {
         <p>Vue graphique de l'architecture et référentiel des équipements</p>
       </div>
       <div className="page-content">
-
         <div className="script-tabs mb-4">
           {TABS.map(t => (
             <button key={t.id} className={`script-tab${tab === t.id ? ' active' : ''}`} onClick={() => setTab(t.id as Tab)}>
@@ -73,31 +160,209 @@ export default function TopologyPage({ highlightedPath = [] }: Props) {
         {loading ? <div className="empty-state"><div className="spinner" /></div> : (
           <>
             {tab === 'graph' && (
-              <div>
-                {highlightedPath.length > 0 && (
-                  <div style={{ background: 'rgba(249,115,22,0.1)', border: '1px solid rgba(249,115,22,0.3)', borderRadius: 6, padding: '10px 16px', marginBottom: 12, fontSize: 13, color: '#f97316', display: 'flex', alignItems: 'center', gap: 8 }}>
-                    🔶 Chemin mis en évidence :
-                    {highlightedPath.map((name, i) => (
-                      <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                        {i > 0 && <span style={{ color: 'rgba(249,115,22,0.5)' }}>→</span>}
-                        <span style={{ background: 'rgba(249,115,22,0.15)', padding: '1px 8px', borderRadius: 4, fontFamily: 'monospace', fontSize: 12 }}>{name}</span>
-                      </span>
-                    ))}
+              <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+
+                {/* ── Left panel ─────────────────────────────────────────── */}
+                <div style={{ width: 220, minWidth: 220, display: 'flex', flexDirection: 'column', gap: 10 }}>
+
+                  {/* Overlay toggles */}
+                  <div className="card" style={{ padding: '10px 12px' }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-3)', letterSpacing: '0.8px', textTransform: 'uppercase', marginBottom: 8 }}>Overlays</div>
+                    <Toggle
+                      on={showFlows}  onChange={() => setShowFlows(v => !v)}
+                      label="Flux"    count={overlayFlows.length || undefined}
+                      color="#f97316"
+                    />
+                    <Toggle
+                      on={showRoutes} onChange={() => setShowRoutes(v => !v)}
+                      label="Routes"  count={overlayRoutes.length || undefined}
+                      color="#3b82f6"
+                    />
+                    <Toggle
+                      on={showVRF}    onChange={() => setShowVRF(v => !v)}
+                      label="VRF"     count={overlayVRF.length || undefined}
+                      color="#a855f7"
+                    />
+                    {loadingOverlay && (
+                      <div style={{ marginTop: 8, fontSize: 11, color: 'var(--text-3)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <div className="spinner" style={{ width: 10, height: 10, border: '2px solid var(--border)', borderTopColor: '#3b82f6', borderRadius: '50%', animation: 'spin 0.6s linear infinite' }} />
+                        Chargement {loadingOverlay}…
+                      </div>
+                    )}
                   </div>
-                )}
-                <TopologyGraph
-                  nodes={graph.nodes}
-                  edges={graph.edges}
-                  highlightedPath={highlightedPath}
-                  height={560}
-                />
+
+                  {/* Flux filters (visible when Flux overlay is on) */}
+                  {showFlows && (
+                    <div className="card" style={{ padding: '10px 12px' }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: '#f97316', letterSpacing: '0.8px', textTransform: 'uppercase', marginBottom: 10 }}>Filtres flux</div>
+                      {[
+                        ['Application', fApp,    setFApp,    'text',   'ex: SAP, RH…'],
+                        ['Protocole',   fProto,  setFProto,  'text',   'ex: TCP, UDP…'],
+                        ['Source',      fSrc,    setFSrc,    'text',   'ex: 10.0.0.1'],
+                        ['Destination', fDst,    setFDst,    'text',   'ex: 10.0.1.0'],
+                        ['Port',        fPort,   setFPort,   'text',   'ex: 443, 5432'],
+                      ].map(([lbl, val, set, , ph]) => (
+                        <div key={lbl as string} style={{ marginBottom: 7 }}>
+                          <div style={LABEL}>{lbl as string}</div>
+                          <input style={INPUT} value={val as string} onChange={e => (set as (v:string)=>void)(e.target.value)} placeholder={ph as string} />
+                        </div>
+                      ))}
+
+                      <div style={{ marginBottom: 7 }}>
+                        <div style={LABEL}>Criticité</div>
+                        <select style={SELECT} value={fCrit} onChange={e => setFCrit(e.target.value)}>
+                          <option value="">Toutes</option>
+                          <option value="critique">Critique</option>
+                          <option value="haute">Haute</option>
+                          <option value="moyenne">Moyenne</option>
+                          <option value="basse">Basse</option>
+                        </select>
+                      </div>
+
+                      <div style={{ marginBottom: 10 }}>
+                        <div style={LABEL}>Statut</div>
+                        <select style={SELECT} value={fStatus} onChange={e => setFStatus(e.target.value)}>
+                          <option value="">Tous</option>
+                          <option value="deployed">Déployé</option>
+                          <option value="validated">Validé</option>
+                          <option value="pending">En attente</option>
+                          <option value="rejected">Refusé</option>
+                        </select>
+                      </div>
+
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button className="btn btn-primary" style={{ flex: 1, fontSize: 11, padding: '5px 0' }} onClick={applyFilters}>Appliquer</button>
+                        <button className="btn btn-ghost"   style={{ fontSize: 11, padding: '5px 8px' }} onClick={resetFilters}>✕</button>
+                      </div>
+
+                      {fActive && (
+                        <div style={{ marginTop: 8, fontSize: 10, color: '#f97316', textAlign: 'center' }}>
+                          {filteredFlows.length} / {overlayFlows.length} flux affichés
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* VRF list (visible when VRF overlay is on) */}
+                  {showVRF && overlayVRF.length > 0 && (
+                    <div className="card" style={{ padding: '10px 12px' }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: '#a855f7', letterSpacing: '0.8px', textTransform: 'uppercase', marginBottom: 8 }}>VRF actives</div>
+                      {overlayVRF.map(v => (
+                        <div key={v.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', borderBottom: '1px solid var(--border)' }}>
+                          <div style={{ width: 8, height: 8, borderRadius: '50%', background: v.color, flexShrink: 0 }} />
+                          <span style={{ fontSize: 11, color: 'var(--text-1)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.name}</span>
+                          <span style={{ fontSize: 10, color: 'var(--text-3)' }}>{v.equipment_names.length} éq.</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* ── Main canvas ─────────────────────────────────────────── */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  {highlightedPath.length > 0 && (
+                    <div style={{ background: 'rgba(249,115,22,0.1)', border: '1px solid rgba(249,115,22,0.3)', borderRadius: 6, padding: '10px 16px', marginBottom: 12, fontSize: 13, color: '#f97316', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      🔶 Chemin :
+                      {highlightedPath.map((name, i) => (
+                        <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                          {i > 0 && <span style={{ color: 'rgba(249,115,22,0.5)' }}>→</span>}
+                          <span style={{ background: 'rgba(249,115,22,0.15)', padding: '1px 8px', borderRadius: 4, fontFamily: 'monospace', fontSize: 12 }}>{name}</span>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  <TopologyGraph
+                    nodes={graph.nodes}
+                    edges={graph.edges}
+                    highlightedPath={highlightedPath}
+                    height={560}
+                    showFlows={showFlows}
+                    showRoutes={showRoutes}
+                    showVRF={showVRF}
+                    flowsOverlay={filteredFlows}
+                    routesOverlay={overlayRoutes}
+                    vrfOverlay={overlayVRF}
+                  />
+                </div>
+
+                {/* ── Right panel ─────────────────────────────────────────── */}
+                <div style={{ width: 182, minWidth: 182, display: 'flex', flexDirection: 'column', gap: 10 }}>
+
+                  {/* Éléments visibles */}
+                  <div className="card" style={{ padding: '10px 12px' }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-3)', letterSpacing: '0.8px', textTransform: 'uppercase', marginBottom: 8 }}>Éléments visibles</div>
+                    {[
+                      ['Équipements', visibleNodes, '#64748b'],
+                      ['Liens',       visibleEdges, '#64748b'],
+                      showFlows  ? ['Flux',   filteredFlows.length,   '#f97316'] : null,
+                      showRoutes ? ['Routes', overlayRoutes.length,   '#3b82f6'] : null,
+                      showVRF    ? ['VRF',    overlayVRF.length,      '#a855f7'] : null,
+                      showVRF    ? ['Nœuds VRF', vrfNodes,            '#a855f7'] : null,
+                    ].filter(Boolean).map((row) => { const [lbl, cnt, color] = row as [string, number, string]; return (
+                      <div key={lbl} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '3px 0', borderBottom: '1px solid var(--border)' }}>
+                        <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{lbl}</span>
+                        <span style={{ fontSize: 12, fontWeight: 700, color }}>{cnt}</span>
+                      </div>
+                    )})}
+                  </div>
+
+                  {/* Légende flux */}
+                  {showFlows && (
+                    <div className="card" style={{ padding: '10px 12px' }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: '#f97316', letterSpacing: '0.8px', textTransform: 'uppercase', marginBottom: 8 }}>Criticité flux</div>
+                      {[['critique','Critique'],['haute','Haute'],['moyenne','Moyenne'],['basse','Basse']].map(([k, lbl]) => (
+                        <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
+                          <div style={{ width: 28, height: 3, background: CRITICALITY_COLOR[k], borderRadius: 2 }} />
+                          <span style={{ fontSize: 11, color: 'var(--text-2)' }}>{lbl}</span>
+                          <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--text-3)' }}>
+                            {filteredFlows.filter(f => f.criticality === k).length}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Légende routes */}
+                  {showRoutes && (
+                    <div className="card" style={{ padding: '10px 12px' }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: '#3b82f6', letterSpacing: '0.8px', textTransform: 'uppercase', marginBottom: 8 }}>Protocoles routes</div>
+                      {[['bgp','BGP'],['ospf','OSPF'],['isis','IS-IS'],['connected','Connecté'],['static','Statique']].map(([k, lbl]) => {
+                        const cnt = overlayRoutes.filter(r => r.route_type === k).length
+                        if (!cnt) return null
+                        return (
+                          <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
+                            <div style={{ width: 28, height: 0, borderTop: `2px dashed ${ROUTE_COLOR[k]}`, borderRadius: 2 }} />
+                            <span style={{ fontSize: 11, color: 'var(--text-2)' }}>{lbl}</span>
+                            <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--text-3)' }}>{cnt}</span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+
+                  {/* Légende VRF */}
+                  {showVRF && overlayVRF.length > 0 && (
+                    <div className="card" style={{ padding: '10px 12px' }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: '#a855f7', letterSpacing: '0.8px', textTransform: 'uppercase', marginBottom: 8 }}>Légende VRF</div>
+                      {overlayVRF.map(v => (
+                        <div key={v.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
+                          <div style={{ width: 14, height: 14, borderRadius: '50%', border: `2px dashed ${v.color}`, background: `${v.color}18`, flexShrink: 0 }} />
+                          <span style={{ fontSize: 10, color: 'var(--text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.name}</span>
+                        </div>
+                      ))}
+                      <div style={{ marginTop: 6, fontSize: 10, color: 'var(--text-3)', borderTop: '1px solid var(--border)', paddingTop: 6 }}>
+                        Équipements hors-VRF estompés
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
             {tab === 'equipment' && <EquipmentTable equipment={equipment} onRefresh={load} />}
-            {tab === 'networks'  && <NetworkTable networks={networks} onRefresh={load} />}
-            {tab === 'zones'     && <ZoneTable zones={zones} onRefresh={load} />}
-            {tab === 'links'     && <LinkTable links={links} onRefresh={load} />}
+            {tab === 'networks'  && <NetworkTable networks={networks}     onRefresh={load} />}
+            {tab === 'zones'     && <ZoneTable zones={zones}             onRefresh={load} />}
+            {tab === 'links'     && <LinkTable links={links}             onRefresh={load} />}
           </>
         )}
       </div>
@@ -105,6 +370,7 @@ export default function TopologyPage({ highlightedPath = [] }: Props) {
   )
 }
 
+// ── Sub-tables (unchanged) ────────────────────────────────────────────────────
 function EquipmentTable({ equipment, onRefresh }: { equipment: Equipment[]; onRefresh: () => void }) {
   return (
     <div className="card">

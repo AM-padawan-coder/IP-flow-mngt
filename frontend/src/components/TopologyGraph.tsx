@@ -1,87 +1,88 @@
 import { useRef, useEffect, useCallback, useState } from 'react'
 
+// ── Types ─────────────────────────────────────────────────────────────────────
 interface GraphNode {
-  id: number
-  name: string
-  type: string
-  vendor: string
-  model: string
-  management_ip: string
-  team?: string
-  physical_zone?: string
-  x: number
-  y: number
-  vx: number
-  vy: number
+  id: number; name: string; type: string; vendor: string
+  model: string; management_ip: string; team?: string; physical_zone?: string
+  x: number; y: number; vx: number; vy: number
+}
+interface GraphEdge {
+  id: number; source: number; target: number; type: string; description: string
+}
+export interface FlowOverlay {
+  id: number; name: string; application?: string; protocol?: string
+  src_ip?: string; dst_ip?: string; port?: string
+  criticality?: string; sla?: string; bandwidth_max?: number
+  vrf_name?: string; status?: string; path: string[]; hop_count?: number
+}
+export interface RouteOverlay {
+  id: number; destination: string; gateway?: string; route_type: string
+  equipment_name: string; gateway_equipment?: string; metric?: number
+}
+export interface VRFOverlay {
+  id: number; name: string; rd?: string; rt_import?: string; rt_export?: string
+  color: string; equipment_names: string[]; equipment_count?: number; description?: string
 }
 
-interface GraphEdge {
-  id: number
-  source: number
-  target: number
-  type: string
-  description: string
-}
+type OverlayTip =
+  | { kind: 'flow';  item: FlowOverlay;  x: number; y: number }
+  | { kind: 'route'; item: RouteOverlay; x: number; y: number }
+  | { kind: 'vrf';   vrf: VRFOverlay; nodeName: string; x: number; y: number }
 
 interface Props {
   nodes: GraphNode[]
   edges: GraphEdge[]
   highlightedPath?: string[]
   height?: number
+  showFlows?: boolean
+  showRoutes?: boolean
+  showVRF?: boolean
+  flowsOverlay?: FlowOverlay[]
+  routesOverlay?: RouteOverlay[]
+  vrfOverlay?: VRFOverlay[]
 }
 
+// ── Constants ─────────────────────────────────────────────────────────────────
 const TYPE_COLORS: Record<string, string> = {
-  firewall: '#ef4444',
-  router:   '#22c55e',
-  nsx:      '#a855f7',
-  switch:   '#3b82f6',
+  firewall: '#ef4444', router: '#22c55e', nsx: '#a855f7', switch: '#3b82f6',
 }
 const VENDOR_LETTER: Record<string, string> = {
-  stormshield: 'S', paloalto: 'P', juniper: 'J',
-  nsx: 'N', fortinet: 'F', checkpoint: 'C',
+  stormshield: 'S', paloalto: 'P', juniper: 'J', nsx: 'N', fortinet: 'F', checkpoint: 'C',
+}
+export const CRITICALITY_COLOR: Record<string, string> = {
+  critique: '#ef4444', haute: '#f97316', moyenne: '#eab308', basse: '#22c55e',
+}
+export const ROUTE_COLOR: Record<string, string> = {
+  bgp: '#8b5cf6', ospf: '#3b82f6', isis: '#06b6d4', connected: '#22c55e', static: '#f97316',
 }
 const NODE_R = 28
 
+// ── Force layout ──────────────────────────────────────────────────────────────
 function runForce(nodes: GraphNode[], edges: GraphEdge[], W: number, H: number): GraphNode[] {
   const ns = nodes.map((n, i) => {
     const angle = (2 * Math.PI * i) / nodes.length
     return { ...n, x: W / 2 + Math.cos(angle) * 220, y: H / 2 + Math.sin(angle) * 180, vx: 0, vy: 0 }
   })
   const idxById = new Map(ns.map((n, i) => [n.id, i]))
-
   for (let iter = 0; iter < 400; iter++) {
-    // Repulsion
     for (let i = 0; i < ns.length; i++) {
       for (let j = i + 1; j < ns.length; j++) {
-        const dx = ns[j].x - ns[i].x || 0.1
-        const dy = ns[j].y - ns[i].y || 0.1
+        const dx = ns[j].x - ns[i].x || 0.1, dy = ns[j].y - ns[i].y || 0.1
         const dist = Math.sqrt(dx * dx + dy * dy) || 1
-        const force = 6000 / (dist * dist)
-        const fx = (force * dx) / dist
-        const fy = (force * dy) / dist
-        ns[i].vx -= fx; ns[i].vy -= fy
-        ns[j].vx += fx; ns[j].vy += fy
+        const f = 6000 / (dist * dist), fx = (f * dx) / dist, fy = (f * dy) / dist
+        ns[i].vx -= fx; ns[i].vy -= fy; ns[j].vx += fx; ns[j].vy += fy
       }
     }
-    // Attraction (edges)
     for (const e of edges) {
-      const si = idxById.get(e.source)
-      const ti = idxById.get(e.target)
+      const si = idxById.get(e.source), ti = idxById.get(e.target)
       if (si == null || ti == null) continue
-      const dx = ns[ti].x - ns[si].x
-      const dy = ns[ti].y - ns[si].y
+      const dx = ns[ti].x - ns[si].x, dy = ns[ti].y - ns[si].y
       const dist = Math.sqrt(dx * dx + dy * dy) || 1
-      const ideal = 180
-      const force = 0.04 * (dist - ideal)
-      const fx = (force * dx) / dist
-      const fy = (force * dy) / dist
-      ns[si].vx += fx; ns[si].vy += fy
-      ns[ti].vx -= fx; ns[ti].vy -= fy
+      const f = 0.04 * (dist - 180), fx = (f * dx) / dist, fy = (f * dy) / dist
+      ns[si].vx += fx; ns[si].vy += fy; ns[ti].vx -= fx; ns[ti].vy -= fy
     }
-    // Gravity
     for (const n of ns) {
-      n.vx += (W / 2 - n.x) * 0.008
-      n.vy += (H / 2 - n.y) * 0.008
+      n.vx += (W / 2 - n.x) * 0.008; n.vy += (H / 2 - n.y) * 0.008
       n.vx *= 0.82; n.vy *= 0.82
       n.x = Math.max(NODE_R + 10, Math.min(W - NODE_R - 10, n.x + n.vx))
       n.y = Math.max(NODE_R + 20, Math.min(H - NODE_R - 20, n.y + n.vy))
@@ -90,24 +91,39 @@ function runForce(nodes: GraphNode[], edges: GraphEdge[], W: number, H: number):
   return ns
 }
 
-export default function TopologyGraph({ nodes: rawNodes, edges, highlightedPath = [], height = 520 }: Props) {
+// ── Distance point → segment ──────────────────────────────────────────────────
+function distToSeg(px: number, py: number, ax: number, ay: number, bx: number, by: number): number {
+  const dx = bx - ax, dy = by - ay, len2 = dx * dx + dy * dy
+  if (len2 === 0) return Math.hypot(px - ax, py - ay)
+  const t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / len2))
+  return Math.hypot(px - (ax + t * dx), py - (ay + t * dy))
+}
+
+// ── Component ─────────────────────────────────────────────────────────────────
+export default function TopologyGraph({
+  nodes: rawNodes, edges, highlightedPath = [], height = 520,
+  showFlows = false, showRoutes = false, showVRF = false,
+  flowsOverlay = [], routesOverlay = [], vrfOverlay = [],
+}: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const nodesRef = useRef<GraphNode[]>([])
-  const dragRef = useRef<{ id: number; ox: number; oy: number } | null>(null)
-  const [tooltip, setTooltip] = useState<{ node: GraphNode; x: number; y: number } | null>(null)
+  const nodesRef  = useRef<GraphNode[]>([])
+  const dragRef   = useRef<{ id: number; ox: number; oy: number } | null>(null)
+  const rafIdRef  = useRef(0)
+  const dashOffRef= useRef(0)
+
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null)
+  const [nodeTip,      setNodeTip]      = useState<{ node: GraphNode; x: number; y: number } | null>(null)
+  const [overlayTip,   setOverlayTip]   = useState<OverlayTip | null>(null)
 
-  const highlighted = new Set(highlightedPath)
-
+  // ── Draw ──────────────────────────────────────────────────────────────────
   const draw = useCallback(() => {
     const canvas = canvasRef.current
     if (!canvas) return
     const ctx = canvas.getContext('2d')!
-    const W = canvas.width
-    const H = canvas.height
+    const W = canvas.width, H = canvas.height
     ctx.clearRect(0, 0, W, H)
 
-    // Background grid
+    // Grid
     ctx.strokeStyle = 'rgba(255,255,255,0.03)'
     ctx.lineWidth = 1
     for (let x = 0; x < W; x += 40) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke() }
@@ -115,157 +131,274 @@ export default function TopologyGraph({ nodes: rawNodes, edges, highlightedPath 
 
     const ns = nodesRef.current
     if (!ns.length) return
-    const byId = new Map(ns.map(n => [n.id, n]))
+    const byId   = new Map(ns.map(n => [n.id, n]))
+    const byName = new Map(ns.map(n => [n.name, n]))
+    const highlighted = new Set(highlightedPath)
 
-    // Draw edges
+    // VRF member set
+    const vrfMemberNames = new Set<string>()
+    if (showVRF && vrfOverlay.length > 0)
+      vrfOverlay.forEach(v => v.equipment_names.forEach(n => vrfMemberNames.add(n)))
+
+    // ── Base edges ──────────────────────────────────────────────────────────
     for (const e of edges) {
-      const src = byId.get(e.source)
-      const dst = byId.get(e.target)
+      const src = byId.get(e.source), dst = byId.get(e.target)
       if (!src || !dst) continue
-      const inPath = highlighted.size > 0 && highlighted.has(src.name) && highlighted.has(dst.name)
+      const inPath  = highlighted.size > 0 && highlighted.has(src.name) && highlighted.has(dst.name)
+      const dimmed  = showVRF && vrfMemberNames.size > 0
+                      && !vrfMemberNames.has(src.name) && !vrfMemberNames.has(dst.name)
       ctx.save()
-      ctx.beginPath()
-      ctx.moveTo(src.x, src.y)
-      ctx.lineTo(dst.x, dst.y)
+      ctx.globalAlpha = dimmed ? 0.1 : 1
+      ctx.beginPath(); ctx.moveTo(src.x, src.y); ctx.lineTo(dst.x, dst.y)
       if (inPath) {
-        ctx.strokeStyle = '#f97316'
-        ctx.lineWidth = 3
-        ctx.setLineDash([])
-        // Glow
-        ctx.shadowColor = '#f97316'
-        ctx.shadowBlur = 10
+        ctx.strokeStyle = '#f97316'; ctx.lineWidth = 3; ctx.setLineDash([])
+        ctx.shadowColor = '#f97316'; ctx.shadowBlur = 10
       } else if (e.type === 'logical') {
-        ctx.strokeStyle = 'rgba(139,147,168,0.35)'
-        ctx.lineWidth = 1.5
-        ctx.setLineDash([5, 4])
+        ctx.strokeStyle = 'rgba(139,147,168,0.35)'; ctx.lineWidth = 1.5; ctx.setLineDash([5, 4])
       } else {
-        ctx.strokeStyle = 'rgba(139,147,168,0.5)'
-        ctx.lineWidth = 1.5
-        ctx.setLineDash([])
+        ctx.strokeStyle = 'rgba(139,147,168,0.5)'; ctx.lineWidth = 1.5; ctx.setLineDash([])
       }
-      ctx.stroke()
-      ctx.restore()
+      ctx.stroke(); ctx.restore()
+    }
 
-      // Edge label
-      if (e.description) {
-        const mx = (src.x + dst.x) / 2
-        const my = (src.y + dst.y) / 2
+    // ── Route overlay ───────────────────────────────────────────────────────
+    if (showRoutes && routesOverlay.length > 0) {
+      const validRoutes = routesOverlay.filter(
+        r => r.gateway_equipment && byName.has(r.equipment_name) && byName.has(r.gateway_equipment!)
+      )
+      // Count routes per edge pair for offset
+      const edgeCnt = new Map<string, number>()
+      const edgeIdx = new Map<string, number>()
+      validRoutes.forEach(r => {
+        const k = [r.equipment_name, r.gateway_equipment].sort().join('||')
+        edgeCnt.set(k, (edgeCnt.get(k) || 0) + 1)
+      })
+      for (const r of validRoutes) {
+        const sn = byName.get(r.equipment_name)!, dn = byName.get(r.gateway_equipment!)!
+        const k  = [r.equipment_name, r.gateway_equipment].sort().join('||')
+        const cnt = edgeCnt.get(k) || 1
+        const idx = edgeIdx.get(k) || 0; edgeIdx.set(k, idx + 1)
+        const color = ROUTE_COLOR[r.route_type] || '#64748b'
+        const dx = dn.x - sn.x, dy = dn.y - sn.y, len = Math.hypot(dx, dy) || 1
+        const px = -dy / len, py = dx / len
+        const om = (idx - (cnt - 1) / 2) * 10
+        const ox = px * om, oy = py * om
+        // Line
         ctx.save()
-        ctx.font = '10px Inter, sans-serif'
-        ctx.fillStyle = inPath ? '#f97316' : 'rgba(139,147,168,0.6)'
-        ctx.textAlign = 'center'
-        ctx.fillText(e.type === 'logical' ? '(logique)' : '', mx, my - 4)
-        ctx.restore()
+        ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.globalAlpha = 0.8
+        ctx.setLineDash([4, 4]); ctx.lineDashOffset = -dashOffRef.current * 0.5
+        ctx.beginPath(); ctx.moveTo(sn.x + ox, sn.y + oy); ctx.lineTo(dn.x + ox, dn.y + oy)
+        ctx.stroke()
+        // Arrowhead
+        const ang = Math.atan2(dn.y - sn.y, dn.x - sn.x)
+        const ex = dn.x + ox - (NODE_R + 4) * Math.cos(ang)
+        const ey = dn.y + oy - (NODE_R + 4) * Math.sin(ang)
+        ctx.setLineDash([]); ctx.lineWidth = 1.5; ctx.beginPath()
+        ctx.moveTo(ex, ey); ctx.lineTo(ex - 8 * Math.cos(ang - 0.4), ey - 8 * Math.sin(ang - 0.4))
+        ctx.moveTo(ex, ey); ctx.lineTo(ex - 8 * Math.cos(ang + 0.4), ey - 8 * Math.sin(ang + 0.4))
+        ctx.stroke(); ctx.restore()
       }
     }
 
-    // Draw nodes
+    // ── Flow overlay ────────────────────────────────────────────────────────
+    if (showFlows && flowsOverlay.length > 0) {
+      const validFlows = flowsOverlay.filter(
+        f => f.path.length >= 2 && f.path.every(n => byName.has(n))
+      )
+      // Count flows per edge segment for perpendicular offset
+      const edgeCnt = new Map<string, number>()
+      const edgeIdx = new Map<string, number>()
+      validFlows.forEach(f => {
+        for (let i = 0; i < f.path.length - 1; i++) {
+          const k = [f.path[i], f.path[i + 1]].sort().join('||')
+          edgeCnt.set(k, (edgeCnt.get(k) || 0) + 1)
+        }
+      })
+      // Reset per-edge index for actual drawing
+      const edgeDrawIdx = new Map<string, number>()
+
+      validFlows.forEach((flow, fi) => {
+        const color = CRITICALITY_COLOR[flow.criticality || ''] || '#3b82f6'
+        const pathNodes = flow.path.map(n => byName.get(n)!)
+        const localEdgeIdx = new Map<string, number>()
+
+        ctx.save()
+        ctx.strokeStyle = color; ctx.lineWidth = 2.5
+        ctx.setLineDash([10, 6]); ctx.lineDashOffset = -dashOffRef.current + fi * 5
+        ctx.globalAlpha = 0.85; ctx.shadowColor = color; ctx.shadowBlur = 5
+        ctx.beginPath()
+
+        for (let i = 0; i < pathNodes.length - 1; i++) {
+          const src = pathNodes[i], dst = pathNodes[i + 1]
+          const k  = [src.name, dst.name].sort().join('||')
+          const cnt = edgeCnt.get(k) || 1
+          const globalIdx = edgeDrawIdx.get(k) || 0
+          const localIdx  = localEdgeIdx.get(k) ?? globalIdx
+          localEdgeIdx.set(k, localIdx)
+          edgeDrawIdx.set(k, globalIdx + 1)
+
+          const dx = dst.x - src.x, dy = dst.y - src.y, len = Math.hypot(dx, dy) || 1
+          const px = -dy / len, py = dx / len
+          const om = (localIdx - (cnt - 1) / 2) * 14
+          const ox = px * om, oy = py * om
+
+          const cpOff = 18 + (fi % 3) * 9
+          const mx = (src.x + dst.x) / 2 + px * cpOff + ox
+          const my = (src.y + dst.y) / 2 + py * cpOff + oy
+
+          if (i === 0) ctx.moveTo(src.x + ox, src.y + oy)
+          ctx.quadraticCurveTo(mx, my, dst.x + ox, dst.y + oy)
+        }
+        ctx.stroke()
+
+        // Arrowhead at last segment
+        if (pathNodes.length >= 2) {
+          const last = pathNodes[pathNodes.length - 1]
+          const prev = pathNodes[pathNodes.length - 2]
+          const ang  = Math.atan2(last.y - prev.y, last.x - prev.x)
+          const ex   = last.x - (NODE_R + 2) * Math.cos(ang)
+          const ey   = last.y - (NODE_R + 2) * Math.sin(ang)
+          ctx.setLineDash([]); ctx.lineWidth = 2.5; ctx.beginPath()
+          ctx.moveTo(ex, ey)
+          ctx.lineTo(ex - 11 * Math.cos(ang - 0.4), ey - 11 * Math.sin(ang - 0.4))
+          ctx.moveTo(ex, ey)
+          ctx.lineTo(ex - 11 * Math.cos(ang + 0.4), ey - 11 * Math.sin(ang + 0.4))
+          ctx.stroke()
+        }
+        ctx.restore()
+      })
+    }
+
+    // ── Nodes ───────────────────────────────────────────────────────────────
+    const nodeVRFColor = new Map<string, string>()
+    if (showVRF) vrfOverlay.forEach(v => v.equipment_names.forEach(n => nodeVRFColor.set(n, v.color)))
+
     for (const n of ns) {
-      const inPath = highlighted.size > 0 && highlighted.has(n.name)
-      const isSelected = selectedNode?.id === n.id
-      const color = TYPE_COLORS[n.type] || '#64748b'
-      const letter = VENDOR_LETTER[n.vendor] || n.vendor[0]?.toUpperCase() || '?'
+      const inPath    = highlighted.size > 0 && highlighted.has(n.name)
+      const isSelected= selectedNode?.id === n.id
+      const color     = TYPE_COLORS[n.type] || '#64748b'
+      const letter    = VENDOR_LETTER[n.vendor] || n.vendor[0]?.toUpperCase() || '?'
+      const dimmed    = showVRF && vrfMemberNames.size > 0 && !vrfMemberNames.has(n.name)
+      const vrfColor  = nodeVRFColor.get(n.name)
 
       ctx.save()
+      ctx.globalAlpha = dimmed ? 0.18 : 1
 
-      // Glow for highlighted
-      if (inPath) {
-        ctx.shadowColor = '#f97316'
-        ctx.shadowBlur = 20
-      } else if (isSelected) {
-        ctx.shadowColor = '#3b82f6'
-        ctx.shadowBlur = 15
+      // VRF halo
+      if (vrfColor) {
+        ctx.beginPath(); ctx.arc(n.x, n.y, NODE_R + 9, 0, Math.PI * 2)
+        ctx.strokeStyle = vrfColor; ctx.lineWidth = 2
+        ctx.setLineDash([3, 3]); ctx.globalAlpha = dimmed ? 0.18 : 0.7
+        ctx.stroke(); ctx.setLineDash([])
+        ctx.globalAlpha = dimmed ? 0.18 : 1
       }
 
-      // Outer ring
-      ctx.beginPath()
-      ctx.arc(n.x, n.y, NODE_R + 4, 0, Math.PI * 2)
+      if (inPath)      { ctx.shadowColor = '#f97316'; ctx.shadowBlur = 20 }
+      else if (isSelected) { ctx.shadowColor = '#3b82f6'; ctx.shadowBlur = 15 }
+
+      ctx.beginPath(); ctx.arc(n.x, n.y, NODE_R + 4, 0, Math.PI * 2)
       ctx.fillStyle = inPath ? 'rgba(249,115,22,0.2)' : isSelected ? 'rgba(59,130,246,0.15)' : 'rgba(255,255,255,0.04)'
       ctx.fill()
 
-      // Node circle
-      ctx.beginPath()
-      ctx.arc(n.x, n.y, NODE_R, 0, Math.PI * 2)
-      ctx.fillStyle = '#161b27'
-      ctx.fill()
+      ctx.beginPath(); ctx.arc(n.x, n.y, NODE_R, 0, Math.PI * 2)
+      ctx.fillStyle = '#161b27'; ctx.fill()
       ctx.strokeStyle = inPath ? '#f97316' : isSelected ? '#3b82f6' : color
-      ctx.lineWidth = inPath || isSelected ? 2.5 : 1.5
-      ctx.stroke()
+      ctx.lineWidth = inPath || isSelected ? 2.5 : 1.5; ctx.stroke()
 
-      // Vendor letter
-      ctx.font = `bold 15px Inter, monospace`
-      ctx.fillStyle = color
-      ctx.textAlign = 'center'
-      ctx.textBaseline = 'middle'
+      ctx.font = 'bold 15px Inter, monospace'
+      ctx.fillStyle = color; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
       ctx.fillText(letter, n.x, n.y)
-
       ctx.restore()
 
-      // Node name
+      // Node label
       ctx.save()
+      ctx.globalAlpha = dimmed ? 0.18 : 1
       ctx.font = `${inPath ? '600' : '500'} 11px Inter, sans-serif`
       ctx.fillStyle = inPath ? '#f97316' : '#e8eaf0'
-      ctx.textAlign = 'center'
-      ctx.textBaseline = 'top'
+      ctx.textAlign = 'center'; ctx.textBaseline = 'top'
       ctx.fillText(n.name, n.x, n.y + NODE_R + 5)
       ctx.restore()
     }
 
-    // Legend
-    const types = [
-      { label: 'Firewall', color: TYPE_COLORS.firewall },
-      { label: 'Routeur',  color: TYPE_COLORS.router },
-      { label: 'NSX',      color: TYPE_COLORS.nsx },
-      { label: 'Switch',   color: TYPE_COLORS.switch },
-    ]
+    // Bottom hint
     ctx.save()
-    types.forEach((t, i) => {
-      const lx = 16
-      const ly = 16 + i * 20
-      ctx.beginPath()
-      ctx.arc(lx, ly, 6, 0, Math.PI * 2)
-      ctx.fillStyle = t.color
-      ctx.fill()
-      ctx.font = '11px Inter, sans-serif'
-      ctx.fillStyle = '#8b93a8'
-      ctx.textAlign = 'left'
-      ctx.textBaseline = 'middle'
-      ctx.fillText(t.label, lx + 12, ly)
-    })
-    if (highlighted.size > 0) {
-      const ly = 16 + types.length * 20 + 8
-      ctx.beginPath(); ctx.moveTo(16, ly); ctx.lineTo(26, ly)
-      ctx.strokeStyle = '#f97316'; ctx.lineWidth = 3; ctx.stroke()
-      ctx.fillStyle = '#f97316'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'
-      ctx.fillText('Chemin flux', 30, ly)
-    }
+    ctx.font = '10px Inter, sans-serif'; ctx.fillStyle = 'rgba(139,147,168,0.4)'
+    ctx.textAlign = 'right'; ctx.textBaseline = 'bottom'
+    ctx.fillText('Glisser pour déplacer · Cliquer pour détails', W - 10, H - 6)
     ctx.restore()
-  }, [edges, highlightedPath, selectedNode])
+  }, [edges, highlightedPath, selectedNode, showFlows, showRoutes, showVRF, flowsOverlay, routesOverlay, vrfOverlay])
 
+  // Always keep a ref to the latest draw (for rAF)
+  const drawRef = useRef(draw)
+  useEffect(() => { drawRef.current = draw }, [draw])
+
+  // Initial force layout
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas || !rawNodes.length) return
     const W = canvas.offsetWidth
-    const H = height
-    canvas.width = W
-    canvas.height = H
-    nodesRef.current = runForce(rawNodes as GraphNode[], edges, W, H)
+    canvas.width = W; canvas.height = height
+    nodesRef.current = runForce(rawNodes as GraphNode[], edges, W, height)
     draw()
   }, [rawNodes, edges, height])
 
+  // Redraw on prop changes
   useEffect(() => { draw() }, [draw])
 
-  const getNodeAt = (x: number, y: number): GraphNode | null => {
-    for (const n of nodesRef.current) {
-      const dx = n.x - x; const dy = n.y - y
-      if (Math.sqrt(dx * dx + dy * dy) <= NODE_R + 4) return n
+  // Animation loop (flows + routes)
+  useEffect(() => {
+    if (!showFlows && !showRoutes) {
+      cancelAnimationFrame(rafIdRef.current)
+      return
     }
-    return null
-  }
+    let alive = true
+    const loop = () => {
+      if (!alive) return
+      dashOffRef.current = (dashOffRef.current + 0.4) % 24
+      drawRef.current()
+      rafIdRef.current = requestAnimationFrame(loop)
+    }
+    rafIdRef.current = requestAnimationFrame(loop)
+    return () => { alive = false; cancelAnimationFrame(rafIdRef.current) }
+  }, [showFlows, showRoutes])
 
+  // ── Mouse helpers ──────────────────────────────────────────────────────────
   const getPos = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const r = canvasRef.current!.getBoundingClientRect()
     return { x: e.clientX - r.left, y: e.clientY - r.top }
+  }
+  const getNodeAt = (x: number, y: number): GraphNode | null => {
+    for (const n of nodesRef.current)
+      if (Math.hypot(n.x - x, n.y - y) <= NODE_R + 4) return n
+    return null
+  }
+  const getOverlayAt = (x: number, y: number): OverlayTip | null => {
+    const byName = new Map(nodesRef.current.map(n => [n.name, n]))
+    if (showFlows) {
+      for (const flow of flowsOverlay) {
+        for (let i = 0; i < flow.path.length - 1; i++) {
+          const a = byName.get(flow.path[i]), b = byName.get(flow.path[i + 1])
+          if (a && b && distToSeg(x, y, a.x, a.y, b.x, b.y) < 12)
+            return { kind: 'flow', item: flow, x, y }
+        }
+      }
+    }
+    if (showRoutes) {
+      for (const r of routesOverlay) {
+        if (!r.gateway_equipment) continue
+        const a = byName.get(r.equipment_name), b = byName.get(r.gateway_equipment)
+        if (a && b && distToSeg(x, y, a.x, a.y, b.x, b.y) < 10)
+          return { kind: 'route', item: r, x, y }
+      }
+    }
+    if (showVRF) {
+      const node = getNodeAt(x, y)
+      if (node) {
+        const vrf = vrfOverlay.find(v => v.equipment_names.includes(node.name))
+        if (vrf) return { kind: 'vrf', vrf, nodeName: node.name, x, y }
+      }
+    }
+    return null
   }
 
   const onMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -273,7 +406,6 @@ export default function TopologyGraph({ nodes: rawNodes, edges, highlightedPath 
     const n = getNodeAt(x, y)
     if (n) dragRef.current = { id: n.id, ox: x - n.x, oy: y - n.y }
   }
-
   const onMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const { x, y } = getPos(e)
     if (dragRef.current) {
@@ -281,11 +413,17 @@ export default function TopologyGraph({ nodes: rawNodes, edges, highlightedPath 
       if (n) { n.x = x - dragRef.current.ox; n.y = y - dragRef.current.oy; draw() }
       return
     }
-    const n = getNodeAt(x, y)
-    setTooltip(n ? { node: n, x, y } : null)
-    canvasRef.current!.style.cursor = n ? 'grab' : 'default'
+    const node = getNodeAt(x, y)
+    if (node) {
+      setNodeTip({ node, x, y }); setOverlayTip(null)
+      canvasRef.current!.style.cursor = 'grab'
+    } else {
+      setNodeTip(null)
+      const hit = getOverlayAt(x, y)
+      setOverlayTip(hit)
+      canvasRef.current!.style.cursor = hit ? 'pointer' : 'default'
+    }
   }
-
   const onMouseUp = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!dragRef.current) {
       const { x, y } = getPos(e)
@@ -293,6 +431,14 @@ export default function TopologyGraph({ nodes: rawNodes, edges, highlightedPath 
       setSelectedNode(prev => prev?.id === n?.id ? null : n ?? null)
     }
     dragRef.current = null
+  }
+
+  // ── Tooltip helpers ────────────────────────────────────────────────────────
+  const STATUS_BADGE: Record<string, string> = {
+    deployed: '#22c55e', validated: '#3b82f6', pending: '#eab308', rejected: '#ef4444',
+  }
+  const CRIT_LABEL: Record<string, string> = {
+    critique: 'Critique', haute: 'Haute', moyenne: 'Moyenne', basse: 'Basse',
   }
 
   return (
@@ -303,48 +449,118 @@ export default function TopologyGraph({ nodes: rawNodes, edges, highlightedPath 
         onMouseDown={onMouseDown}
         onMouseMove={onMouseMove}
         onMouseUp={onMouseUp}
-        onMouseLeave={() => { setTooltip(null); dragRef.current = null }}
+        onMouseLeave={() => { setNodeTip(null); setOverlayTip(null); dragRef.current = null }}
       />
-      {tooltip && !dragRef.current && (
-        <div style={{
-          position: 'absolute', left: tooltip.x + 14, top: tooltip.y - 10,
-          background: '#1c2233', border: '1px solid var(--border)', borderRadius: 6,
-          padding: '8px 12px', fontSize: 12, pointerEvents: 'none', zIndex: 10,
-          boxShadow: '0 4px 20px rgba(0,0,0,0.5)', minWidth: 180,
-        }}>
-          <div style={{ fontWeight: 700, color: 'var(--text-1)', marginBottom: 4 }}>{tooltip.node.name}</div>
-          <div style={{ color: 'var(--text-2)' }}>{tooltip.node.vendor} · {tooltip.node.model}</div>
-          {tooltip.node.management_ip && <div style={{ color: 'var(--text-3)', fontFamily: 'monospace', marginTop: 2 }}>🖥 {tooltip.node.management_ip}</div>}
-          {tooltip.node.team && <div style={{ color: 'var(--text-3)', marginTop: 2 }}>👥 {tooltip.node.team}</div>}
-          {tooltip.node.physical_zone && <div style={{ color: 'var(--text-3)' }}>📍 {tooltip.node.physical_zone}</div>}
+
+      {/* Node tooltip */}
+      {nodeTip && !dragRef.current && (
+        <div style={{ position: 'absolute', left: nodeTip.x + 14, top: nodeTip.y - 10, background: '#1c2233', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 12px', fontSize: 12, pointerEvents: 'none', zIndex: 10, boxShadow: '0 4px 20px rgba(0,0,0,0.5)', minWidth: 180 }}>
+          <div style={{ fontWeight: 700, color: 'var(--text-1)', marginBottom: 4 }}>{nodeTip.node.name}</div>
+          <div style={{ color: 'var(--text-2)' }}>{nodeTip.node.vendor} · {nodeTip.node.model}</div>
+          {nodeTip.node.management_ip && <div style={{ color: 'var(--text-3)', fontFamily: 'monospace', marginTop: 2 }}>🖥 {nodeTip.node.management_ip}</div>}
+          {nodeTip.node.team && <div style={{ color: 'var(--text-3)', marginTop: 2 }}>👥 {nodeTip.node.team}</div>}
+          {nodeTip.node.physical_zone && <div style={{ color: 'var(--text-3)' }}>📍 {nodeTip.node.physical_zone}</div>}
         </div>
       )}
+
+      {/* Overlay tooltip — flow */}
+      {overlayTip?.kind === 'flow' && (
+        <div style={{ position: 'absolute', left: Math.min(overlayTip.x + 14, 500), top: overlayTip.y - 10, background: '#1c2233', border: `1px solid ${CRITICALITY_COLOR[overlayTip.item.criticality || ''] || '#3b82f6'}40`, borderRadius: 8, padding: '12px 14px', fontSize: 12, pointerEvents: 'none', zIndex: 20, boxShadow: '0 8px 32px rgba(0,0,0,0.6)', minWidth: 220, maxWidth: 280 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <span style={{ fontWeight: 700, color: 'var(--text-1)', fontSize: 13 }}>FLUX: {overlayTip.item.name}</span>
+            <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 10, background: `${STATUS_BADGE[overlayTip.item.status || ''] || '#64748b'}22`, color: STATUS_BADGE[overlayTip.item.status || ''] || '#64748b' }}>● Actif</span>
+          </div>
+          {[
+            ['Application', overlayTip.item.application],
+            ['Protocole',   overlayTip.item.protocol?.toUpperCase()],
+            ['Source',      overlayTip.item.src_ip],
+            ['Destination', overlayTip.item.dst_ip],
+            ['Port',        overlayTip.item.port],
+            ['VRF',         overlayTip.item.vrf_name],
+            ['Débit max',   overlayTip.item.bandwidth_max != null ? `${overlayTip.item.bandwidth_max} Mbps` : undefined],
+            ['SLA',         overlayTip.item.sla],
+          ].filter(([, v]) => v).map(([k, v]) => (
+            <div key={k as string} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, gap: 8 }}>
+              <span style={{ color: 'var(--text-3)', whiteSpace: 'nowrap' }}>{k}</span>
+              <span style={{ color: 'var(--text-2)', fontFamily: ['Source','Destination','Port','VRF'].includes(k as string) ? 'monospace' : 'inherit', textAlign: 'right' }}>{v}</span>
+            </div>
+          ))}
+          {overlayTip.item.criticality && (
+            <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: CRITICALITY_COLOR[overlayTip.item.criticality] || '#64748b' }} />
+              <span style={{ color: CRITICALITY_COLOR[overlayTip.item.criticality] || '#64748b', fontWeight: 600 }}>Criticité {CRIT_LABEL[overlayTip.item.criticality] || overlayTip.item.criticality}</span>
+            </div>
+          )}
+          {overlayTip.item.path.length > 0 && (
+            <div style={{ marginTop: 8, fontSize: 11, color: 'var(--text-3)' }}>
+              Chemin ({overlayTip.item.path.length} sauts) · {overlayTip.item.path.join(' → ')}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Overlay tooltip — route */}
+      {overlayTip?.kind === 'route' && (
+        <div style={{ position: 'absolute', left: Math.min(overlayTip.x + 14, 500), top: overlayTip.y - 10, background: '#1c2233', border: `1px solid ${ROUTE_COLOR[overlayTip.item.route_type] || '#64748b'}40`, borderRadius: 8, padding: '12px 14px', fontSize: 12, pointerEvents: 'none', zIndex: 20, boxShadow: '0 8px 32px rgba(0,0,0,0.6)', minWidth: 200 }}>
+          <div style={{ fontWeight: 700, color: 'var(--text-1)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ width: 10, height: 10, borderRadius: 2, background: ROUTE_COLOR[overlayTip.item.route_type] || '#64748b' }} />
+            Route {overlayTip.item.route_type.toUpperCase()}
+          </div>
+          {[
+            ['Destination', overlayTip.item.destination],
+            ['Next-hop',    overlayTip.item.gateway],
+            ['Équipement',  overlayTip.item.equipment_name],
+            ['Via',         overlayTip.item.gateway_equipment],
+            ['Métrique',    overlayTip.item.metric?.toString()],
+          ].filter(([, v]) => v).map(([k, v]) => (
+            <div key={k as string} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, gap: 12 }}>
+              <span style={{ color: 'var(--text-3)' }}>{k}</span>
+              <span style={{ color: 'var(--text-2)', fontFamily: 'monospace' }}>{v}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Overlay tooltip — VRF */}
+      {overlayTip?.kind === 'vrf' && (
+        <div style={{ position: 'absolute', left: Math.min(overlayTip.x + 14, 500), top: overlayTip.y - 10, background: '#1c2233', border: `1px solid ${overlayTip.vrf.color}40`, borderRadius: 8, padding: '12px 14px', fontSize: 12, pointerEvents: 'none', zIndex: 20, boxShadow: '0 8px 32px rgba(0,0,0,0.6)', minWidth: 200 }}>
+          <div style={{ fontWeight: 700, color: 'var(--text-1)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ width: 10, height: 10, borderRadius: '50%', background: overlayTip.vrf.color }} />
+            {overlayTip.vrf.name}
+          </div>
+          <div style={{ color: 'var(--text-3)', marginBottom: 6 }}>{overlayTip.nodeName}</div>
+          {[
+            ['RD',        overlayTip.vrf.rd],
+            ['RT Import', overlayTip.vrf.rt_import],
+            ['RT Export', overlayTip.vrf.rt_export],
+            ['Équipements', overlayTip.vrf.equipment_count?.toString()],
+          ].filter(([, v]) => v).map(([k, v]) => (
+            <div key={k as string} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, gap: 12 }}>
+              <span style={{ color: 'var(--text-3)' }}>{k}</span>
+              <span style={{ color: 'var(--text-2)', fontFamily: 'monospace' }}>{v}</span>
+            </div>
+          ))}
+          {overlayTip.vrf.description && <div style={{ marginTop: 8, fontSize: 11, color: 'var(--text-3)', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: 6 }}>{overlayTip.vrf.description}</div>}
+        </div>
+      )}
+
+      {/* Selected node panel */}
       {selectedNode && (
-        <div style={{
-          position: 'absolute', right: 12, top: 12, width: 200,
-          background: '#1c2233', border: '1px solid var(--border-focus)', borderRadius: 8,
-          padding: '12px 14px', fontSize: 12,
-        }}>
+        <div style={{ position: 'absolute', right: 12, top: 12, width: 200, background: '#1c2233', border: '1px solid var(--border-focus)', borderRadius: 8, padding: '12px 14px', fontSize: 12, zIndex: 5 }}>
           <div style={{ fontWeight: 700, color: 'var(--text-1)', marginBottom: 8 }}>{selectedNode.name}</div>
           {[
-            ['Type', selectedNode.type],
-            ['Vendor', selectedNode.vendor],
-            ['Modèle', selectedNode.model],
-            ['IP MGMT', selectedNode.management_ip],
-            ['Équipe', selectedNode.team],
-            ['Zone physique', selectedNode.physical_zone],
+            ['Type', selectedNode.type], ['Vendor', selectedNode.vendor],
+            ['Modèle', selectedNode.model], ['IP MGMT', selectedNode.management_ip],
+            ['Équipe', selectedNode.team], ['Zone', selectedNode.physical_zone],
           ].filter(([, v]) => v).map(([k, v]) => (
             <div key={k as string} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
               <span style={{ color: 'var(--text-3)' }}>{k}</span>
-              <span style={{ color: 'var(--text-2)', fontFamily: k === 'IP MGMT' ? 'monospace' : 'inherit' }}>{v}</span>
+              <span style={{ color: 'var(--text-2)', fontFamily: k === 'IP MGMT' ? 'monospace' : 'inherit', fontSize: k === 'IP MGMT' ? 11 : 12 }}>{v}</span>
             </div>
           ))}
-          <button onClick={() => setSelectedNode(null)} style={{ marginTop: 8, width: '100%', background: 'var(--bg-hover)', border: '1px solid var(--border)', borderRadius: 4, color: 'var(--text-2)', padding: '4px 0', cursor: 'pointer', fontSize: 11 }}>Fermer</button>
+          <button onClick={() => setSelectedNode(null)} style={{ marginTop: 8, width: '100%', background: 'var(--bg-hover)', border: '1px solid var(--border)', borderRadius: 4, color: 'var(--text-2)', padding: '4px 0', cursor: 'pointer', fontSize: 11, fontFamily: 'inherit' }}>Fermer</button>
         </div>
       )}
-      <div style={{ position: 'absolute', bottom: 10, right: 12, fontSize: 10, color: 'var(--text-3)' }}>
-        Glisser pour déplacer · Cliquer pour détails
-      </div>
     </div>
   )
 }

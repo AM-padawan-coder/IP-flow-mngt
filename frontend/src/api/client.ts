@@ -81,6 +81,16 @@ export const api = {
   generateFromFlow: (flowId: number) => req(`/policies/generate-from-flow/${flowId}`, { method: 'POST' }),
   listPolicyEquipment: () => req('/policies/equipment'),
 
+  // Overlays (v2.6)
+  getOverlayFlows:  () => req('/overlay/flows'),
+  getOverlayRoutes: () => req('/overlay/routes'),
+  getOverlayVRF:    () => req('/overlay/vrf'),
+  createVRF:        (data: object) => req('/overlay/vrf', { method: 'POST', body: JSON.stringify(data) }),
+  updateVRF:        (id: number, data: object) => req(`/overlay/vrf/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteVRF:        (id: number) => req(`/overlay/vrf/${id}`, { method: 'DELETE' }),
+  addVRFEquipment:  (vrfId: number, eqId: number) => req(`/overlay/vrf/${vrfId}/equipment/${eqId}`, { method: 'POST' }),
+  removeVRFEquipment: (vrfId: number, eqId: number) => req(`/overlay/vrf/${vrfId}/equipment/${eqId}`, { method: 'DELETE' }),
+
   // Teams & Organisation
   getTeams:    () => req('/org/teams'),
   createTeam:  (data: object)             => req('/org/teams',       { method: 'POST',   body: JSON.stringify(data) }),
