@@ -1,5 +1,14 @@
 # Changelog — IP Flow Manager
 
+## [2.8.5] — 2026-06-27
+
+### Configuration — VRF, ajout d'équipements à la création
+- La section **"Équipements membres"** est désormais visible dès la **création** d'une VRF (et pas seulement en modification)
+- Les équipements sélectionnés sont mis en attente localement (`pendingEq`) ; ils sont rattachés à la VRF dès la confirmation de la création
+- Les boutons **Créer / Mettre à jour / Annuler** sont maintenant positionnés **sous** la liste des membres
+
+---
+
 ## [2.8.4] — 2026-06-27
 
 ### Navigation & organisation
