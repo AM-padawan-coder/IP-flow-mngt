@@ -146,6 +146,16 @@ const PHASES: Phase[] = [
     items: ['Schémas Pydantic renforcés sur tous les endpoints', 'Rejet des requêtes malformées avec messages d\'erreur normalisés', 'Protection contre les injections via les champs libres'] },
   { v: 'v4.6', title: 'Sécurité base de données', status: 'planned', label: '🗓 Planifié', eta: '',
     items: ['Authentification des accès à la base (utilisateur dédié, moindre privilège)', 'Chiffrement au repos des données sensibles', 'Protection contre la corruption : contraintes d\'intégrité, transactions atomiques', 'Défense contre l\'injection directe en base (ORM strict, pas de requêtes brutes dynamiques)'] },
+  { v: 'v4.7', title: 'Migration PostgreSQL — système multi-client', status: 'planned', label: '🗓 Planifié', eta: '',
+    items: [
+      'Exploration et benchmark SQLite → PostgreSQL (concurrence d\'écriture, performances sous charge multi-utilisateurs)',
+      'Migration SQLAlchemy : remplacement de la base SQLite par une instance PostgreSQL sur Render',
+      'Gestion des connexions concurrentes : pool de connexions, transactions isolées',
+      'Script de migration des données existantes (schéma + données de démo)',
+      'Tests de charge : simulation de plusieurs clients web simultanés sur le même backend',
+      'Aucun changement côté code métier ni API — transparence totale pour le frontend',
+    ] },
+
   { v: 'v5.0', title: 'Services & Dépendances', status: 'planned', label: '🗓 Planifié', eta: '',
     items: ['Overlay Services : couche applicative sur le graphe réseau', 'Cartographie des dépendances inter-services', 'SLA par service avec alertes de dépassement', 'Criticité métier propagée aux flux et équipements'] },
   { v: 'v5.1', title: 'Forward Validation', status: 'planned', label: '🗓 Planifié', eta: '',
