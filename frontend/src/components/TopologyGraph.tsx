@@ -222,6 +222,9 @@ export default function TopologyGraph({
         const pathNodes = flow.path.map(n => byName.get(n)!)
         const localEdgeIdx = new Map<string, number>()
 
+        // Track last bezier segment for arrowhead (tangent = cp→end)
+        let lastCpX = 0, lastCpY = 0, lastEndX = 0, lastEndY = 0
+
         ctx.save()
         ctx.strokeStyle = color; ctx.lineWidth = 2.5
         ctx.setLineDash([10, 6]); ctx.lineDashOffset = -dashOffRef.current + fi * 5
@@ -248,21 +251,25 @@ export default function TopologyGraph({
 
           if (i === 0) ctx.moveTo(src.x + ox, src.y + oy)
           ctx.quadraticCurveTo(mx, my, dst.x + ox, dst.y + oy)
+
+          // Remember last segment's control point and endpoint (with offset)
+          if (i === pathNodes.length - 2) {
+            lastCpX = mx; lastCpY = my
+            lastEndX = dst.x + ox; lastEndY = dst.y + oy
+          }
         }
         ctx.stroke()
 
-        // Arrowhead at last segment
+        // Arrowhead: direction = tangent at end of last bezier (cp → endpoint)
         if (pathNodes.length >= 2) {
-          const last = pathNodes[pathNodes.length - 1]
-          const prev = pathNodes[pathNodes.length - 2]
-          const ang  = Math.atan2(last.y - prev.y, last.x - prev.x)
-          const ex   = last.x - (NODE_R + 2) * Math.cos(ang)
-          const ey   = last.y - (NODE_R + 2) * Math.sin(ang)
+          const ang = Math.atan2(lastEndY - lastCpY, lastEndX - lastCpX)
+          const ex  = lastEndX - (NODE_R + 3) * Math.cos(ang)
+          const ey  = lastEndY - (NODE_R + 3) * Math.sin(ang)
           ctx.setLineDash([]); ctx.lineWidth = 2.5; ctx.beginPath()
           ctx.moveTo(ex, ey)
-          ctx.lineTo(ex - 11 * Math.cos(ang - 0.4), ey - 11 * Math.sin(ang - 0.4))
+          ctx.lineTo(ex - 12 * Math.cos(ang - 0.4), ey - 12 * Math.sin(ang - 0.4))
           ctx.moveTo(ex, ey)
-          ctx.lineTo(ex - 11 * Math.cos(ang + 0.4), ey - 11 * Math.sin(ang + 0.4))
+          ctx.lineTo(ex - 12 * Math.cos(ang + 0.4), ey - 12 * Math.sin(ang + 0.4))
           ctx.stroke()
         }
         ctx.restore()
@@ -437,6 +444,9 @@ export default function TopologyGraph({
   const STATUS_BADGE: Record<string, string> = {
     deployed: '#22c55e', validated: '#3b82f6', pending: '#eab308', rejected: '#ef4444',
   }
+  const STATUS_LABEL: Record<string, string> = {
+    deployed: 'Déployé', validated: 'Validé', pending: 'En attente', rejected: 'Refusé',
+  }
   const CRIT_LABEL: Record<string, string> = {
     critique: 'Critique', haute: 'Haute', moyenne: 'Moyenne', basse: 'Basse',
   }
@@ -468,7 +478,7 @@ export default function TopologyGraph({
         <div style={{ position: 'absolute', left: Math.min(overlayTip.x + 14, 500), top: overlayTip.y - 10, background: '#1c2233', border: `1px solid ${CRITICALITY_COLOR[overlayTip.item.criticality || ''] || '#3b82f6'}40`, borderRadius: 8, padding: '12px 14px', fontSize: 12, pointerEvents: 'none', zIndex: 20, boxShadow: '0 8px 32px rgba(0,0,0,0.6)', minWidth: 220, maxWidth: 280 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
             <span style={{ fontWeight: 700, color: 'var(--text-1)', fontSize: 13 }}>FLUX: {overlayTip.item.name}</span>
-            <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 10, background: `${STATUS_BADGE[overlayTip.item.status || ''] || '#64748b'}22`, color: STATUS_BADGE[overlayTip.item.status || ''] || '#64748b' }}>● Actif</span>
+            <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 10, background: `${STATUS_BADGE[overlayTip.item.status || ''] || '#64748b'}22`, color: STATUS_BADGE[overlayTip.item.status || ''] || '#64748b' }}>● {STATUS_LABEL[overlayTip.item.status || ''] || overlayTip.item.status || '—'}</span>
           </div>
           {[
             ['Application', overlayTip.item.application],
