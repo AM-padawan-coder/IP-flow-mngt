@@ -19,7 +19,7 @@ const NAV = [
   { id: 'history',    label: 'Historique',          icon: '⏱', section: 'Flux IP' },
   { id: 'simulation', label: 'Simulation',          icon: '🔬', section: 'Flux IP' },
   { id: 'topology',        label: 'Graphe réseau',       icon: '⬡', section: 'Topologie' },
-  { id: 'admin',           label: 'Administration',      icon: '⚙', section: 'Topologie' },
+  { id: 'admin',           label: 'Configuration',       icon: '⚙', section: 'Topologie' },
   { id: 'flows-topology',  label: 'Flux',                icon: '↔', section: 'Topologie' },
   { id: 'policies',        label: 'Politiques réseau',   icon: '🔒', section: 'Topologie' },
   { id: 'import',          label: 'Import / Export',     icon: '⬆', section: 'Topologie' },
@@ -100,7 +100,7 @@ export default function App() {
 
         {/* Footer — version + actions */}
         <div style={{ padding: '10px 14px', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 6 }}>
-          <div className="text-xs text-dimmed" style={{ flex: 1 }}>demo · v2.6.6</div>
+          <div className="text-xs text-dimmed" style={{ flex: 1 }}>demo · v2.6.7</div>
 
           {/* Dark/Light toggle */}
           <button
