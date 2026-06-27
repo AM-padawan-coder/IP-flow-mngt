@@ -19,6 +19,7 @@ const SECTIONS = [
   { id: 'equipes',    icon: '👥', label: 'Équipes & Sites' },
   { id: 'audit',      icon: '◎',  label: 'Audit' },
   { id: 'sauvegardes',icon: '💾', label: 'Sauvegardes' },
+  { id: 'conformite', icon: '🛡', label: 'Conformité' },
   { id: 'faq',        icon: '❓', label: 'FAQ' },
 ]
 
@@ -713,6 +714,62 @@ const CONTENT: Record<string, JSX.Element> = {
     </div>
   ),
 
+  conformite: (
+    <div>
+      <h2 style={H2}>Conformité (v2.8.2)</h2>
+      <p style={P}>La page <strong>Conformité</strong> (section Administration) évalue les flux contre un <strong>catalogue de contrôles au format OSCAL</strong> (le standard du NIST pour les contrôles de sécurité lisibles par machine). Le verdict est <strong>déterministe</strong> : aucun LLM n'intervient dans la décision de conformité.</p>
+
+      <h3 style={H3}>Sélection de la source de référence</h3>
+      <p style={P}>Chaque source (NIS2, ANSSI, CIS) est un <strong>profil OSCAL</strong> qui sélectionne un sous-ensemble du catalogue. Choisir une source ne charge et n'évalue que ses contrôles — pas besoin de tout charger.</p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
+        {[
+          { src: 'NIS2',  color: '#3b82f6', desc: 'Directive (UE) 2022/2555 — obligations de sécurité réseau (art. 21)' },
+          { src: 'ANSSI', color: '#22c55e', desc: 'Guide d\'hygiène + administration sécurisée — contrôles techniques concrets' },
+          { src: 'CIS',   color: '#8b5cf6', desc: 'CIS Controls v8 — contrôles opérationnels (filtrage, segmentation)' },
+        ].map(s => (
+          <div key={s.src} style={{ display: 'flex', gap: 12, alignItems: 'center', ...ROW }}>
+            <span style={{ minWidth: 70, fontWeight: 700, color: s.color }}>{s.src}</span>
+            <span style={{ color: 'var(--text-2)', fontSize: 12 }}>{s.desc}</span>
+          </div>
+        ))}
+      </div>
+
+      <h3 style={H3}>Familles de contrôles</h3>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
+        {[
+          ['SEG-001', 'Pas d\'accès direct d\'une zone non maîtrisée vers une zone sensible sans DMZ'],
+          ['FLT-001', 'Interdire les règles permissives any → any (deny par défaut)'],
+          ['EXP-001', 'Pas de service d\'administration (Telnet, RDP, SMB, WinRM) exposé depuis l\'extérieur'],
+          ['ADM-001', 'Les flux d\'administration transitent par la zone de management'],
+          ['CRY-001', 'Pas de protocole en clair (FTP, Telnet, HTTP…) depuis une zone non maîtrisée'],
+        ].map(([id, desc]) => (
+          <div key={id} style={ROW}>
+            <span style={{ minWidth: 80, fontWeight: 600, color: 'var(--blue)', ...MONO }}>{id}</span>
+            <span style={{ color: 'var(--text-2)', fontSize: 12 }}>{desc}</span>
+          </div>
+        ))}
+      </div>
+
+      <h3 style={H3}>Architecture & réutilisabilité</h3>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
+        {[
+          'Le moteur expose une interface stable (ComplianceProvider) : l\'implémentation locale peut être remplacée par un moteur externe (HTTP) sans rien changer ailleurs.',
+          'Le sujet évalué est un simple dictionnaire de faits → le moteur est réutilisable pour d\'autres objets que les flux (équipements, configurations).',
+          'L\'exécution des expressions de contrôle se fait via un évaluateur sûr (sans eval), inoffensif même pour un catalogue tiers.',
+        ].map((p, i) => (
+          <div key={i} style={ROW}>
+            <span style={{ color: 'var(--blue)' }}>→</span>
+            <span style={{ color: 'var(--text-2)', fontSize: 12 }}>{p}</span>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ ...CALLOUT, borderColor: 'rgba(234,179,8,0.3)', background: 'rgba(234,179,8,0.07)' }}>
+        ⚠ <strong>Contrôles d'exemple</strong> : le catalogue livré est un socle à <strong>faire valider par un architecte sécurité</strong> avant usage en production. La gouvernance (versionnement, propriétaire, cadence de revue, traçabilité des verdicts) est documentée dans <code>backend/compliance/README.md</code>.
+      </div>
+    </div>
+  ),
+
   faq: (
     <div>
       <h2 style={H2}>Foire aux questions</h2>
@@ -793,7 +850,7 @@ export default function HelpModal({ onClose }: Props) {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px', borderBottom: '1px solid var(--border)', background: 'var(--bg-card)' }}>
           <div>
             <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--text-1)' }}>Guide d'utilisation — IP Flow Manager</div>
-            <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>v2.8 · Documentation en français</div>
+            <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>v2.8.2 · Documentation en français</div>
           </div>
           <button onClick={onClose} style={{ background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text-2)', cursor: 'pointer', padding: '6px 14px', fontSize: 13, fontFamily: 'inherit' }}>
             ✕ Fermer

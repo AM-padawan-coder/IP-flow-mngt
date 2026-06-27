@@ -1,0 +1,24 @@
+{
+  "profile": {
+    "uuid": "a1000000-0000-4000-8000-000000000002",
+    "metadata": {
+      "title": "Profil ANSSI — Guide d'hygiène",
+      "last-modified": "2026-06-27T00:00:00Z",
+      "version": "1.0.0",
+      "oscal-version": "1.1.2",
+      "props": [
+        { "name": "framework", "ns": "https://ip-flow-manager/ns/oscal", "value": "ANSSI" },
+        { "name": "source-version", "ns": "https://ip-flow-manager/ns/oscal", "value": "Guide d'hygiène v2.0" }
+      ],
+      "remarks": "Sélection des contrôles techniques concrets issus du Guide d'hygiène et des recommandations d'administration sécurisée ANSSI."
+    },
+    "imports": [
+      {
+        "href": "catalog-network-flows.oscal.json",
+        "include-controls": [
+          { "with-ids": ["seg-001", "exp-001", "adm-001", "cry-001"] }
+        ]
+      }
+    ]
+  }
+}

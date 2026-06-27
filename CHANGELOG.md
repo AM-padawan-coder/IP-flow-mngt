@@ -1,5 +1,18 @@
 # Changelog — IP Flow Manager
 
+## [2.8.2] — 2026-06-27
+
+### Socle de conformité (OSCAL)
+- **Catalogue de contrôles au format OSCAL 1.1.2** (`backend/compliance/catalogs/`) avec 5 contrôles d'exemple : cloisonnement (SEG-001), filtrage deny-all (FLT-001), exposition de services (EXP-001), administration sécurisée (ADM-001), chiffrement en transit (CRY-001)
+- **Profils OSCAL = sélection de source** : NIS2, ANSSI Guide d'hygiène, CIS v8 — seuls les contrôles de la source choisie sont chargés et évalués (« ne pas tout charger »)
+- **Moteur générique réutilisable** : interface `ComplianceProvider` (remplaçable par un moteur HTTP externe sans impact) + `LocalEngineProvider` de référence ; sujet = simple dict de faits → réutilisable pour d'autres types d'objets que les flux
+- **Évaluateur d'expressions sûr** basé sur `ast` (sans `eval`) pour exécuter les `violation-when` du catalogue
+- **API REST** : `/compliance/sources`, `/compliance/catalog`, `/compliance/controls`, `/compliance/evaluate` (sujet arbitraire), `/compliance/evaluate/flow/{id}` (résolution de zone par CIDR)
+- **Gouvernance** : versionnement catalogue + par contrôle, traçabilité de la version de source, propriétaire et cadence de revue dans les métadonnées OSCAL, traçabilité verdict (control_id + versions + source dans chaque finding) ; documentée dans `backend/compliance/README.md`
+- **Page "Conformité"** (section Administration) : sélecteur de source, testeur de flux, verdict détaillé par contrôle avec citation, liste des contrôles chargés
+
+---
+
 ## [2.8.0] — 2026-06-27
 
 ### Sauvegarde & Restauration

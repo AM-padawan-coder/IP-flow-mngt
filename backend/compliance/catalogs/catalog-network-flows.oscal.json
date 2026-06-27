@@ -1,0 +1,215 @@
+{
+  "catalog": {
+    "uuid": "b7c3a1e0-1f4d-4c2a-9e10-000000000001",
+    "metadata": {
+      "title": "Catalogue de contrôles — Flux réseau & Segmentation",
+      "published": "2026-06-27T00:00:00Z",
+      "last-modified": "2026-06-27T00:00:00Z",
+      "version": "1.0.0",
+      "oscal-version": "1.1.2",
+      "props": [
+        { "name": "review-cadence", "ns": "https://ip-flow-manager/ns/oscal", "value": "trimestrielle" },
+        { "name": "next-review", "ns": "https://ip-flow-manager/ns/oscal", "value": "2026-09-27" },
+        { "name": "status", "ns": "https://ip-flow-manager/ns/oscal", "value": "exemple-a-valider" }
+      ],
+      "roles": [
+        { "id": "catalog-owner", "title": "Propriétaire du catalogue" },
+        { "id": "control-author", "title": "Rédacteur de contrôle" },
+        { "id": "reviewer", "title": "Relecteur sécurité" }
+      ],
+      "parties": [
+        {
+          "uuid": "c0ffee00-0000-4000-8000-000000000001",
+          "type": "organization",
+          "name": "Équipe Sécurité — IP Flow Manager"
+        }
+      ],
+      "responsible-parties": [
+        { "role-id": "catalog-owner", "party-uuids": ["c0ffee00-0000-4000-8000-000000000001"] }
+      ],
+      "remarks": "Contrôles d'exemple destinés à être relus et validés par un architecte sécurité avant usage en production. La sémantique 'violation-when' (prop personnalisée) exprime la condition de NON-conformité : si l'expression s'évalue à VRAI sur un sujet, le contrôle est en violation."
+    },
+    "groups": [
+      {
+        "id": "seg",
+        "class": "family",
+        "title": "Cloisonnement & Segmentation",
+        "controls": [
+          {
+            "id": "seg-001",
+            "title": "Pas d'accès direct d'une zone non maîtrisée vers une zone sensible",
+            "props": [
+              { "name": "label", "value": "SEG-001" },
+              { "name": "version", "ns": "https://ip-flow-manager/ns/oscal", "value": "1.0.0" },
+              { "name": "severity", "ns": "https://ip-flow-manager/ns/oscal", "value": "high" },
+              { "name": "subject-type", "ns": "https://ip-flow-manager/ns/oscal", "value": "flow" },
+              { "name": "framework", "ns": "https://ip-flow-manager/ns/oscal", "value": "NIS2" },
+              { "name": "framework", "ns": "https://ip-flow-manager/ns/oscal", "value": "ANSSI" },
+              { "name": "framework", "ns": "https://ip-flow-manager/ns/oscal", "value": "CIS" },
+              { "name": "violation-when", "ns": "https://ip-flow-manager/ns/oscal", "value": "action == \"permit\" and src_trust <= 20 and dst_trust >= 80 and \"DMZ\" not in path_zones" }
+            ],
+            "links": [
+              { "href": "#res-anssi-hygiene", "rel": "reference", "text": "ANSSI — Guide d'hygiène, mesure 12 (cloisonner le SI)" },
+              { "href": "#res-nis2", "rel": "reference", "text": "NIS2 art. 21 §2(d) — sécurité des réseaux" },
+              { "href": "#res-cis-v8", "rel": "reference", "text": "CIS Controls v8 — 12.2" }
+            ],
+            "parts": [
+              { "id": "seg-001_stmt", "name": "statement", "prose": "Un flux autorisé issu d'une zone de faible confiance (trust ≤ 20) vers une zone sensible (trust ≥ 80) doit obligatoirement transiter par une zone tampon (DMZ)." },
+              { "id": "seg-001_guidance", "name": "guidance", "prose": "Vérifier que le chemin calculé du flux traverse une DMZ. À défaut, le flux établit une connexion directe Internet → cœur de SI, contraire au cloisonnement." }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "flt",
+        "class": "family",
+        "title": "Filtrage",
+        "controls": [
+          {
+            "id": "flt-001",
+            "title": "Interdire les règles permissives any → any",
+            "props": [
+              { "name": "label", "value": "FLT-001" },
+              { "name": "version", "ns": "https://ip-flow-manager/ns/oscal", "value": "1.0.0" },
+              { "name": "severity", "ns": "https://ip-flow-manager/ns/oscal", "value": "high" },
+              { "name": "subject-type", "ns": "https://ip-flow-manager/ns/oscal", "value": "flow" },
+              { "name": "framework", "ns": "https://ip-flow-manager/ns/oscal", "value": "NIS2" },
+              { "name": "framework", "ns": "https://ip-flow-manager/ns/oscal", "value": "CIS" },
+              { "name": "framework", "ns": "https://ip-flow-manager/ns/oscal", "value": "NIST" },
+              { "name": "violation-when", "ns": "https://ip-flow-manager/ns/oscal", "value": "action == \"permit\" and src_any and dst_any and port_any" }
+            ],
+            "links": [
+              { "href": "#res-cis-v8", "rel": "reference", "text": "CIS Controls v8 — 4.4 / 12.2" },
+              { "href": "#res-nist-800-41", "rel": "reference", "text": "NIST SP 800-41r1 — politique de filtrage par défaut deny" },
+              { "href": "#res-nis2", "rel": "reference", "text": "NIS2 art. 21 §2(d)" }
+            ],
+            "parts": [
+              { "id": "flt-001_stmt", "name": "statement", "prose": "Aucune règle ne doit autoriser tout source vers toute destination sur tout port (principe du deny par défaut, moindre privilège)." },
+              { "id": "flt-001_guidance", "name": "guidance", "prose": "Un flux dont la source, la destination et le port sont tous indéterminés ('any') est une règle trop large qui annule le bénéfice du filtrage." }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "exp",
+        "class": "family",
+        "title": "Exposition de services",
+        "controls": [
+          {
+            "id": "exp-001",
+            "title": "Pas de service d'administration exposé depuis une zone non maîtrisée",
+            "props": [
+              { "name": "label", "value": "EXP-001" },
+              { "name": "version", "ns": "https://ip-flow-manager/ns/oscal", "value": "1.0.0" },
+              { "name": "severity", "ns": "https://ip-flow-manager/ns/oscal", "value": "critical" },
+              { "name": "subject-type", "ns": "https://ip-flow-manager/ns/oscal", "value": "flow" },
+              { "name": "framework", "ns": "https://ip-flow-manager/ns/oscal", "value": "NIS2" },
+              { "name": "framework", "ns": "https://ip-flow-manager/ns/oscal", "value": "ANSSI" },
+              { "name": "framework", "ns": "https://ip-flow-manager/ns/oscal", "value": "CIS" },
+              { "name": "violation-when", "ns": "https://ip-flow-manager/ns/oscal", "value": "action == \"permit\" and src_trust <= 20 and port in [23, 445, 3389, 5985, 5986]" }
+            ],
+            "links": [
+              { "href": "#res-anssi-hygiene", "rel": "reference", "text": "ANSSI — Guide d'hygiène, mesure 16 (services exposés)" },
+              { "href": "#res-cis-v8", "rel": "reference", "text": "CIS Controls v8 — 4.6 / 9" },
+              { "href": "#res-nis2", "rel": "reference", "text": "NIS2 art. 21 §2(d)(e)" }
+            ],
+            "parts": [
+              { "id": "exp-001_stmt", "name": "statement", "prose": "Les protocoles d'administration (Telnet 23, SMB 445, RDP 3389, WinRM 5985/5986) ne doivent jamais être accessibles depuis une zone de faible confiance." },
+              { "id": "exp-001_guidance", "name": "guidance", "prose": "Ces services exposés en frontal sont des vecteurs d'intrusion majeurs. L'accès doit passer par un rebond d'administration dédié." }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "adm",
+        "class": "family",
+        "title": "Administration sécurisée",
+        "controls": [
+          {
+            "id": "adm-001",
+            "title": "Les flux d'administration transitent par la zone de management",
+            "props": [
+              { "name": "label", "value": "ADM-001" },
+              { "name": "version", "ns": "https://ip-flow-manager/ns/oscal", "value": "1.0.0" },
+              { "name": "severity", "ns": "https://ip-flow-manager/ns/oscal", "value": "high" },
+              { "name": "subject-type", "ns": "https://ip-flow-manager/ns/oscal", "value": "flow" },
+              { "name": "framework", "ns": "https://ip-flow-manager/ns/oscal", "value": "NIS2" },
+              { "name": "framework", "ns": "https://ip-flow-manager/ns/oscal", "value": "ANSSI" },
+              { "name": "violation-when", "ns": "https://ip-flow-manager/ns/oscal", "value": "action == \"permit\" and port in [22, 23, 161, 3389, 5985, 5986] and \"ZONE-MANAGEMENT\" not in path_zones" }
+            ],
+            "links": [
+              { "href": "#res-anssi-admin", "rel": "reference", "text": "ANSSI — Recommandations relatives à l'administration sécurisée des SI" },
+              { "href": "#res-nis2", "rel": "reference", "text": "NIS2 art. 21 §2(i) — contrôle d'accès" }
+            ],
+            "parts": [
+              { "id": "adm-001_stmt", "name": "statement", "prose": "Tout flux d'administration (SSH, Telnet, SNMP, RDP, WinRM) doit emprunter un réseau d'administration dédié et cloisonné (ZONE-MANAGEMENT)." },
+              { "id": "adm-001_guidance", "name": "guidance", "prose": "Vérifier que le chemin du flux d'administration traverse la zone de management. À défaut, l'administration se fait sur le réseau de production, contraire au principe de séparation des plans." }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "cry",
+        "class": "family",
+        "title": "Chiffrement en transit",
+        "controls": [
+          {
+            "id": "cry-001",
+            "title": "Pas de protocole en clair depuis une zone non maîtrisée",
+            "props": [
+              { "name": "label", "value": "CRY-001" },
+              { "name": "version", "ns": "https://ip-flow-manager/ns/oscal", "value": "1.0.0" },
+              { "name": "severity", "ns": "https://ip-flow-manager/ns/oscal", "value": "medium" },
+              { "name": "subject-type", "ns": "https://ip-flow-manager/ns/oscal", "value": "flow" },
+              { "name": "framework", "ns": "https://ip-flow-manager/ns/oscal", "value": "NIS2" },
+              { "name": "framework", "ns": "https://ip-flow-manager/ns/oscal", "value": "ANSSI" },
+              { "name": "violation-when", "ns": "https://ip-flow-manager/ns/oscal", "value": "action == \"permit\" and src_trust <= 20 and port in [21, 23, 80, 110, 143]" }
+            ],
+            "links": [
+              { "href": "#res-anssi-hygiene", "rel": "reference", "text": "ANSSI — Guide d'hygiène, mesure 31 (chiffrement des flux)" },
+              { "href": "#res-nis2", "rel": "reference", "text": "NIS2 art. 21 §2(h) — cryptographie" }
+            ],
+            "parts": [
+              { "id": "cry-001_stmt", "name": "statement", "prose": "Les protocoles transmettant des données en clair (FTP 21, Telnet 23, HTTP 80, POP3 110, IMAP 143) ne doivent pas être utilisés depuis une zone de faible confiance." },
+              { "id": "cry-001_guidance", "name": "guidance", "prose": "Privilégier les équivalents chiffrés (SFTP/FTPS, SSH, HTTPS, POP3S, IMAPS). Un flux en clair transitant par un segment non maîtrisé expose les données à l'interception." }
+            ]
+          }
+        ]
+      }
+    ],
+    "back-matter": {
+      "resources": [
+        {
+          "uuid": "res-nis2",
+          "title": "Directive NIS2 (UE) 2022/2555",
+          "props": [{ "name": "source-version", "ns": "https://ip-flow-manager/ns/oscal", "value": "2022-12-14" }],
+          "citation": { "text": "Directive (UE) 2022/2555 du Parlement européen et du Conseil du 14 décembre 2022 (NIS2), article 21." }
+        },
+        {
+          "uuid": "res-anssi-hygiene",
+          "title": "ANSSI — Guide d'hygiène informatique",
+          "props": [{ "name": "source-version", "ns": "https://ip-flow-manager/ns/oscal", "value": "v2.0 (2017)" }],
+          "citation": { "text": "ANSSI, Guide d'hygiène informatique — Renforcer la sécurité de son système d'information en 42 mesures, version 2.0." }
+        },
+        {
+          "uuid": "res-anssi-admin",
+          "title": "ANSSI — Administration sécurisée des SI",
+          "props": [{ "name": "source-version", "ns": "https://ip-flow-manager/ns/oscal", "value": "v3.0 (2021)" }],
+          "citation": { "text": "ANSSI, Recommandations relatives à l'administration sécurisée des systèmes d'information, version 3.0." }
+        },
+        {
+          "uuid": "res-cis-v8",
+          "title": "CIS Critical Security Controls v8",
+          "props": [{ "name": "source-version", "ns": "https://ip-flow-manager/ns/oscal", "value": "v8" }],
+          "citation": { "text": "Center for Internet Security, CIS Controls version 8, Control 4 (Secure Configuration) & Control 12 (Network Infrastructure Management)." }
+        },
+        {
+          "uuid": "res-nist-800-41",
+          "title": "NIST SP 800-41r1 — Guidelines on Firewalls and Firewall Policy",
+          "props": [{ "name": "source-version", "ns": "https://ip-flow-manager/ns/oscal", "value": "Rev. 1 (2009)" }],
+          "citation": { "text": "NIST Special Publication 800-41 Revision 1, Guidelines on Firewalls and Firewall Policy." }
+        }
+      ]
+    }
+  }
+}

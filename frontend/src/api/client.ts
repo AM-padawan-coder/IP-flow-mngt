@@ -99,6 +99,13 @@ export const api = {
   deleteBackup:      (id: string)            => req(`/backups/${id}`,        { method: 'DELETE' }),
   getSchedulerStatus:()                      => req('/backups/scheduler/status'),
 
+  // Conformité (v2.8.2)
+  getComplianceSources:  ()                          => req('/compliance/sources'),
+  getComplianceCatalog:  ()                          => req('/compliance/catalog'),
+  getComplianceControls: (source?: string)           => req(`/compliance/controls${source ? `?source=${source}` : ''}`),
+  evaluateCompliance:    (subject: object, source?: string) => req('/compliance/evaluate', { method: 'POST', body: JSON.stringify({ subject, source: source || null }) }),
+  evaluateFlowCompliance:(id: number, source?: string)=> req(`/compliance/evaluate/flow/${id}${source ? `?source=${source}` : ''}`, { method: 'POST' }),
+
   // Teams & Organisation
   getTeams:    () => req('/org/teams'),
   createTeam:  (data: object)             => req('/org/teams',       { method: 'POST',   body: JSON.stringify(data) }),
