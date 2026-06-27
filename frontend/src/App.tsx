@@ -3,6 +3,7 @@ import NewFlowPage from './pages/NewFlowPage'
 import HistoryPage from './pages/HistoryPage'
 import TopologyPage from './pages/TopologyPage'
 import AdminPage from './pages/AdminPage'
+import BackupPage from './pages/BackupPage'
 import ImportPage from './pages/ImportPage'
 import TeamsPage from './pages/TeamsPage'
 import AuditPage from './pages/AuditPage'
@@ -12,7 +13,7 @@ import FlowsTopologyPage from './pages/FlowsTopologyPage'
 import HelpModal from './components/HelpModal'
 import RoadmapModal from './components/RoadmapModal'
 
-type Page = 'new' | 'history' | 'simulation' | 'topology' | 'admin' | 'import' | 'teams' | 'audit' | 'policies' | 'flows-topology'
+type Page = 'new' | 'history' | 'simulation' | 'topology' | 'admin' | 'import' | 'teams' | 'audit' | 'policies' | 'flows-topology' | 'backups'
 
 const NAV = [
   { id: 'new',        label: 'Nouveau flux',       icon: '＋', section: 'Flux IP' },
@@ -20,6 +21,7 @@ const NAV = [
   { id: 'simulation', label: 'Simulation',          icon: '🔬', section: 'Flux IP' },
   { id: 'topology',        label: 'Graphe réseau',       icon: '⬡', section: 'Topologie' },
   { id: 'admin',           label: 'Configuration',       icon: '⚙', section: 'Topologie' },
+  { id: 'backups',         label: 'Sauvegardes',         icon: '💾', section: 'Topologie' },
   { id: 'flows-topology',  label: 'Flux',                icon: '↔', section: 'Topologie' },
   { id: 'policies',        label: 'Politiques réseau',   icon: '🔒', section: 'Topologie' },
   { id: 'import',          label: 'Import / Export',     icon: '⬆', section: 'Topologie' },
@@ -100,7 +102,7 @@ export default function App() {
 
         {/* Footer — version + actions */}
         <div style={{ padding: '10px 14px', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 6 }}>
-          <div className="text-xs text-dimmed" style={{ flex: 1 }}>demo · v2.7</div>
+          <div className="text-xs text-dimmed" style={{ flex: 1 }}>demo · v2.8</div>
 
           {/* Dark/Light toggle */}
           <button
@@ -148,6 +150,7 @@ export default function App() {
         {page === 'flows-topology'  && <FlowsTopologyPage />}
         {page === 'topology'        && <TopologyPage highlightedPath={highlightedPath} />}
         {page === 'admin'      && <AdminPage />}
+        {page === 'backups'    && <BackupPage />}
         {page === 'import'     && <ImportPage onNavigate={(p) => setPage(p as Page)} />}
         {page === 'teams'      && <TeamsPage />}
         {page === 'audit'      && <AuditPage />}

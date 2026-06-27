@@ -91,6 +91,14 @@ export const api = {
   addVRFEquipment:  (vrfId: number, eqId: number) => req(`/overlay/vrf/${vrfId}/equipment/${eqId}`, { method: 'POST' }),
   removeVRFEquipment: (vrfId: number, eqId: number) => req(`/overlay/vrf/${vrfId}/equipment/${eqId}`, { method: 'DELETE' }),
 
+  // Backups (v2.8)
+  listBackups:       ()                      => req('/backups'),
+  createBackup:      (data: object)          => req('/backups',              { method: 'POST', body: JSON.stringify(data) }),
+  verifyBackup:      (id: string)            => req(`/backups/${id}/verify`, { method: 'POST' }),
+  restoreBackup:     (id: string)            => req(`/backups/${id}/restore`,{ method: 'POST', body: JSON.stringify({ confirm: true }) }),
+  deleteBackup:      (id: string)            => req(`/backups/${id}`,        { method: 'DELETE' }),
+  getSchedulerStatus:()                      => req('/backups/scheduler/status'),
+
   // Teams & Organisation
   getTeams:    () => req('/org/teams'),
   createTeam:  (data: object)             => req('/org/teams',       { method: 'POST',   body: JSON.stringify(data) }),

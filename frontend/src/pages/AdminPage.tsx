@@ -167,7 +167,7 @@ function ZoneAdmin({ zones, physZones, onDone }: any) {
   const blank = { name: '', color: '#3b82f6', description: '', trust_level: '50', zone_type: 'logical', datacenter_id: '' }
   const [form, setForm] = useState(blank)
   const [editing, setEditing] = useState<number | null>(null)
-  const [filter, setFilter] = useState('')
+  const [typeFilter, setTypeFilter] = useState<'all' | 'logical' | 'physical'>('all')
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
 
   const save = async () => {
@@ -226,44 +226,58 @@ function ZoneAdmin({ zones, physZones, onDone }: any) {
       </div>
 
       <div className="card">
-        <div className="card-title">Zones existantes ({zones.length + (physZones || []).length})</div>
-        <input
-          className="form-input"
-          placeholder="Filtrer par nom…"
-          value={filter}
-          onChange={e => setFilter(e.target.value)}
-          style={{ marginBottom: 8, fontSize: 12 }}
-        />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+          <div className="card-title" style={{ margin: 0 }}>
+            Zones existantes ({zones.length + (physZones || []).length})
+          </div>
+          <div style={{ display: 'flex', gap: 4 }}>
+            {([['all', 'Tous'], ['logical', 'Logique'], ['physical', 'Physique']] as const).map(([val, lbl]) => (
+              <button key={val} onClick={() => setTypeFilter(val)}
+                style={{ padding: '4px 12px', borderRadius: 20, border: '1px solid var(--border)', cursor: 'pointer',
+                  fontFamily: 'inherit', fontSize: 12, fontWeight: 600,
+                  background: typeFilter === val ? 'var(--blue)' : 'var(--bg-input)',
+                  color: typeFilter === val ? '#fff' : 'var(--text-2)' }}>
+                {lbl}
+              </button>
+            ))}
+          </div>
+        </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 460, overflowY: 'auto' }}>
           {/* Zones logiques/physiques (Zone model) */}
-          {zones.filter((z: any) => !filter || z.name.toLowerCase().includes(filter.toLowerCase())).map((z: any) => (
-            <div key={`z-${z.id}`} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', background: 'var(--bg-input)', borderRadius: 6 }}>
-              <div style={{ width: 12, height: 12, borderRadius: '50%', background: z.color, flexShrink: 0 }} />
-              <span style={{ flex: 1, fontWeight: 500 }}>{z.name}</span>
-              <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 8, fontWeight: 600,
-                background: z.zone_type === 'logical' ? 'rgba(59,130,246,0.15)' : 'rgba(34,197,94,0.15)',
-                color: z.zone_type === 'logical' ? '#3b82f6' : '#22c55e' }}>
-                {z.zone_type === 'logical' ? '◈ Logique' : '⬡ Physique'}
-              </span>
-              <span className="badge badge-info text-xs">{z.trust_level}%</span>
-              <button className="btn btn-ghost btn-sm" onClick={() => { setForm({ name: z.name, color: z.color, description: z.description || '', trust_level: String(z.trust_level), zone_type: z.zone_type, datacenter_id: z.datacenter_id ? String(z.datacenter_id) : '' }); setEditing(z.id) }}>✏</button>
-              <button className="btn btn-ghost btn-sm" style={{ color: 'var(--red)' }} onClick={() => del(z.id, z.name)}>✕</button>
-            </div>
-          ))}
+          {(typeFilter === 'all' || typeFilter === 'logical' || typeFilter === 'physical') &&
+            zones
+              .filter((z: any) => typeFilter === 'all' || z.zone_type === typeFilter)
+              .map((z: any) => (
+                <div key={`z-${z.id}`} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', minHeight: 40, background: 'var(--bg-input)', borderRadius: 6 }}>
+                  <div style={{ width: 12, height: 12, borderRadius: '50%', background: z.color, flexShrink: 0 }} />
+                  <span style={{ flex: 1, fontWeight: 500 }}>{z.name}</span>
+                  <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 8, fontWeight: 600,
+                    background: z.zone_type === 'logical' ? 'rgba(59,130,246,0.15)' : 'rgba(34,197,94,0.15)',
+                    color: z.zone_type === 'logical' ? '#3b82f6' : '#22c55e', whiteSpace: 'nowrap' }}>
+                    {z.zone_type === 'logical' ? '◈ Logique' : '⬡ Physique'}
+                  </span>
+                  <span className="badge badge-info text-xs">{z.trust_level}%</span>
+                  <button className="btn btn-ghost btn-sm" onClick={() => { setForm({ name: z.name, color: z.color, description: z.description || '', trust_level: String(z.trust_level), zone_type: z.zone_type, datacenter_id: z.datacenter_id ? String(z.datacenter_id) : '' }); setEditing(z.id) }}>✏</button>
+                  <button className="btn btn-ghost btn-sm" style={{ color: 'var(--red)' }} onClick={() => del(z.id, z.name)}>✕</button>
+                </div>
+              ))}
           {/* Zones physiques (PhysicalZone model — sites, DC) */}
-          {(physZones || []).filter((p: any) => !filter || p.name.toLowerCase().includes(filter.toLowerCase())).map((p: any) => (
-            <div key={`p-${p.id}`} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', background: 'var(--bg-input)', borderRadius: 6, opacity: 0.85 }}>
-              <div style={{ width: 12, height: 12, borderRadius: 2, background: '#f97316', flexShrink: 0 }} />
-              <span style={{ flex: 1, fontWeight: 500 }}>{p.name}</span>
-              <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 8, fontWeight: 600,
-                background: 'rgba(249,115,22,0.15)', color: '#f97316' }}>
-                🏢 {p.type}
-              </span>
-              {p.location && <span className="text-xs text-dimmed">{p.location}</span>}
-            </div>
-          ))}
-          {zones.length + (physZones || []).length === 0 && (
-            <div className="empty-state" style={{ padding: 20 }}>Aucune zone définie</div>
+          {typeFilter === 'all' &&
+            (physZones || []).map((p: any) => (
+              <div key={`p-${p.id}`} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', minHeight: 40, background: 'var(--bg-input)', borderRadius: 6, opacity: 0.85 }}>
+                <div style={{ width: 12, height: 12, borderRadius: 2, background: '#f97316', flexShrink: 0 }} />
+                <span style={{ flex: 1, fontWeight: 500 }}>{p.name}</span>
+                <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 8, fontWeight: 600,
+                  background: 'rgba(249,115,22,0.15)', color: '#f97316', whiteSpace: 'nowrap' }}>
+                  🏢 {p.type}
+                </span>
+                <span className="text-xs text-dimmed" style={{ minWidth: 80, textAlign: 'right' }}>{p.location || ''}</span>
+                <div style={{ width: 56, flexShrink: 0 }} />{/* spacer aligns with ✏ ✕ */}
+              </div>
+            ))}
+          {zones.filter((z: any) => typeFilter === 'all' || z.zone_type === typeFilter).length +
+           (typeFilter === 'all' ? (physZones || []).length : 0) === 0 && (
+            <div className="empty-state" style={{ padding: 20 }}>Aucune zone</div>
           )}
         </div>
       </div>
