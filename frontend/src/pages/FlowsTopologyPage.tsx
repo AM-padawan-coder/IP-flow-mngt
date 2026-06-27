@@ -103,7 +103,7 @@ export default function FlowsTopologyPage() {
           </div>
           <input
             className="form-input"
-            style={{ width: 220 }}
+            style={{ flex: '1 1 260px', maxWidth: 400, minWidth: 260 }}
             placeholder="Rechercher IP, application, analyste…"
             value={search}
             onChange={e => setSearch(e.target.value)}

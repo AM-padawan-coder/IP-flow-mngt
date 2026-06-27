@@ -536,40 +536,65 @@ const CONTENT: Record<string, JSX.Element> = {
   simulation: (
     <div>
       <h2 style={H2}>Simulation et analyse de risques</h2>
-      <p style={P}>La page <strong>Simulation</strong> permet de tester des hypothèses et d'anticiper l'impact d'un changement réseau avant de l'appliquer.</p>
+      <p style={P}>La page <strong>Simulation</strong> regroupe quatre outils d'analyse préventive du réseau. Aucun de ces outils ne modifie la configuration réelle — tout reste en lecture seule.</p>
 
-      <h3 style={H3}>Onglets disponibles</h3>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
+      <h3 style={H3}>🔬 Simulation What-if — ce qu'elle fait vraiment</h3>
+      <p style={P}>Le What-if répond à une question précise : <em>"Si j'ouvre ce nouveau flux, quels flux existants partagent les mêmes équipements réseau ?"</em></p>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
         {[
-          { tab: '⚡ What-if',         desc: 'Simulez le retrait d\'un équipement et identifiez les flux qui seraient interrompus. Les scénarios rapides proposent également les derniers flux créés.' },
-          { tab: '↺ Boucles',          desc: 'Détecte les boucles L2/L3 dans la topologie actuelle (cycles NetworkX). Chaque boucle affiche les équipements impliqués et sa longueur.' },
-          { tab: '📊 Impact',           desc: 'Analyse l\'impact de la mise hors service d\'un équipement sur les flux validés/déployés. Propose des actions : désactiver route, ACL deny, désactiver port.' },
-          { tab: '⚡ SPOF',            desc: 'Détection des points de défaillance unique (Single Points of Failure) — équipements dont la perte déconnecterait une partie du réseau.' },
+          { step: '1. Validation',   desc: 'Le flux candidat passe les mêmes contrôles que dans "Nouveau flux" : RFC 1918, zones, ports interdits, protocole reconnu.' },
+          { step: '2. Chemin',       desc: 'Si valide, le chemin réseau est calculé (algorithme NetworkX sur la topologie).' },
+          { step: '3. Chevauchement', desc: 'Les équipements traversés (hops) sont comparés à ceux de tous les flux validés/déployés existants. Tout flux partageant au moins un équipement est signalé.' },
+          { step: '4. Niveau de risque', desc: 'Calculé d\'après le nombre de flux en chevauchement : Faible (0), Modéré (1-3), Élevé (4+), Bloqué (flux invalide).' },
         ].map(item => (
-          <div key={item.tab} style={{ padding: '10px 14px', background: 'var(--bg-input)', borderRadius: 6 }}>
-            <div style={{ fontWeight: 700, color: 'var(--blue)', marginBottom: 4 }}>{item.tab}</div>
-            <div style={{ color: 'var(--text-2)', fontSize: 13 }}>{item.desc}</div>
+          <div key={item.step} style={ROW}>
+            <span style={{ minWidth: 170, fontWeight: 600, color: 'var(--blue)' }}>{item.step}</span>
+            <span style={{ color: 'var(--text-2)', fontSize: 12 }}>{item.desc}</span>
           </div>
         ))}
       </div>
 
-      <h3 style={H3}>Détection SPOF</h3>
+      <div style={{ ...CALLOUT, borderColor: 'rgba(234,179,8,0.3)', background: 'rgba(234,179,8,0.07)', marginBottom: 16 }}>
+        ⚠ <strong>Ce que le What-if ne fait PAS</strong> : il ne détecte pas les conflits de règles ACL, ne compare pas les politiques firewall, n'analyse pas la bande passante disponible, et ne vérifie pas si les équipements partagés ont des règles de filtrage compatibles. Un chevauchement d'équipements ne signifie pas que le flux sera bloqué.
+      </div>
+
+      <h3 style={H3}>Scénarios rapides</h3>
+      <p style={P}>Le panneau "Scénarios rapides" propose deux types d'entrées pré-remplies :</p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 20 }}>
+        {[
+          { label: 'Scénarios fixes',      desc: '3 flux de démonstration prédéfinis (LAN→App HTTPS, WiFi→Base SQL, Telnet interdit).' },
+          { label: 'Derniers flux soumis', desc: 'Les 4 derniers flux enregistrés dans l\'historique, proposés en un clic pour tester leur impact.' },
+        ].map(item => (
+          <div key={item.label} style={ROW}>
+            <span style={{ minWidth: 170, fontWeight: 600, color: 'var(--text-1)' }}>{item.label}</span>
+            <span style={{ color: 'var(--text-2)', fontSize: 12 }}>{item.desc}</span>
+          </div>
+        ))}
+      </div>
+
+      <h3 style={H3}>🔁 Détection de boucles</h3>
+      <p style={P}>Analyse le graphe de topologie avec NetworkX pour détecter les cycles. Chaque boucle affiche les équipements impliqués et sa longueur. Un cycle de 2 nœuds (A↔B) est ignoré — seuls les cycles de 3 équipements ou plus sont signalés.</p>
+
+      <h3 style={H3}>💥 Analyse d'impact équipement</h3>
+      <p style={P}>Sélectionnez un équipement : l'outil liste tous les flux (validés, déployés, en attente) dont le chemin calculé passe par cet équipement. Utile pour anticiper l'impact d'une maintenance ou d'une panne.</p>
+      <div style={{ ...CALLOUT, marginBottom: 16 }}>
+        Pour chaque flux impacté, des actions sont suggérées : désactiver la route, ajouter une règle ACL deny, désactiver un port. Ces actions sont indicatives — elles ne sont pas appliquées automatiquement.
+      </div>
+
+      <h3 style={H3}>⚡ Détection SPOF</h3>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         {[
-          'Un SPOF est un équipement dont la suppression déconnecte le graphe réseau.',
-          'L\'algorithme utilise les points d\'articulation de NetworkX sur le graphe de topologie.',
-          'Pour chaque SPOF, le nombre de flux validés/déployés impactés est affiché.',
-          'Un réseau sans SPOF est entièrement redondant — chaque nœud a au moins 2 chemins.',
+          'Un SPOF est un équipement dont la suppression déconnecte le graphe réseau en deux parties ou plus.',
+          'L\'algorithme utilise les points d\'articulation (articulation points) de NetworkX sur le graphe de topologie.',
+          'Pour chaque SPOF détecté, le nombre de flux validés/déployés dont le chemin le traverse est affiché.',
+          'Un réseau sans SPOF est entièrement redondant — chaque nœud a au moins deux chemins indépendants.',
         ].map((point, i) => (
           <div key={i} style={ROW}>
             <span style={{ color: 'var(--blue)' }}>→</span>
             <span style={{ color: 'var(--text-2)' }}>{point}</span>
           </div>
         ))}
-      </div>
-
-      <div style={{ ...CALLOUT, marginTop: 16 }}>
-        <strong>Actions proposées dans l'analyse d'impact</strong> : pour chaque flux interrompu, l'outil propose de supprimer/désactiver la route concernée, d'ajouter une règle ACL deny, ou de désactiver un port sur l'équipement problématique.
       </div>
     </div>
   ),

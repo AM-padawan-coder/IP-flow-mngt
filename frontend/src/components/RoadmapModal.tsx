@@ -32,7 +32,7 @@ const PHASES = [
   { v: 'v4.3', title: 'Connecteurs étendus', status: 'planned', label: '🗓 Planifié', eta: '',
     items: ['CMDB ServiceNow (sync bidirectionnelle équipements)', 'NSX-T live state (pull règles DFW actives en temps réel)', 'Palo Alto Panorama (lecture policies + détection conflits)', 'Syslog / SIEM — envoi événements vers Splunk / Elastic'] },
   { v: 'v5.0', title: 'Services & Dépendances', status: 'planned', label: '🗓 Planifié', eta: '',
-    items: ['Overlay Services : couche applicative sur le graphe réseau', 'Cartographie des dépendances inter-services', 'SLA par service avec alertes de dépassement', 'Criticité métier propagée aux flux et équipements', 'Amélioration graphe : clustering, niveaux de zoom, mini-map'] },
+    items: ['Overlay Services : couche applicative sur le graphe réseau', 'Cartographie des dépendances inter-services', 'SLA par service avec alertes de dépassement', 'Criticité métier propagée aux flux et équipements', 'Amélioration graphe : clustering, niveaux de zoom, mini-map', 'Amélioration simulation What-If : détection de conflits ACL, analyse de bande passante, comparaison de règles firewall'] },
   { v: 'v5.1', title: 'Forward Validation', status: 'planned', label: '🗓 Planifié', eta: '',
     items: ['Simulation avant changement : vérification d\'impact avant déploiement', 'Score de risque calculé par changement proposé', 'Flux impactés identifiés et listés automatiquement', 'Recommandations d\'actions correctives'] },
   { v: 'v5.2', title: 'Path Explorer', status: 'planned', label: '🗓 Planifié', eta: '',
