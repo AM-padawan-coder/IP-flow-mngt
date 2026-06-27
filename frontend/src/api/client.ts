@@ -53,14 +53,19 @@ export const api = {
   importCsvNetworks:  (csv: string)   => req('/topology/import/csv/networks',  { method: 'POST', body: JSON.stringify({ csv }) }),
   importCsvLinks:     (csv: string)   => req('/topology/import/csv/links',     { method: 'POST', body: JSON.stringify({ csv }) }),
 
-  // Flows — delete
-  deleteFlow: (id: number) => req(`/flows/${id}`, { method: 'DELETE' }),
+  // Flows — delete + status
+  deleteFlow:      (id: number)              => req(`/flows/${id}`,         { method: 'DELETE' }),
+  updateFlowStatus:(id: number, status: string) => req(`/flows/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
 
   // Simulation
   whatif:          (data: object) => req('/simulation/whatif',           { method: 'POST', body: JSON.stringify(data) }),
   detectLoops:     ()             => req('/simulation/loops'),
+  detectSpof:      ()             => req('/simulation/spof'),
   equipmentImpact: (name: string) => req(`/simulation/impact/${encodeURIComponent(name)}`),
   listEquipment:   ()             => req('/simulation/equipment-list'),
+
+  // Policies — events
+  listPolicyEvents: (limit?: number) => req(`/policies/events${limit ? `?limit=${limit}` : ''}`),
 
   // Policies — routing
   listRouting:   (equipmentId?: number) => req(`/policies/routing${equipmentId ? `?equipment_id=${equipmentId}` : ''}`),

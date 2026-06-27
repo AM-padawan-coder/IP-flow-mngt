@@ -8,7 +8,7 @@ import networkx as nx
 from database import get_db
 from engine.validator import validate_flow
 from engine.path_finder import find_path, _build_graph
-from models import FlowRequest, Equipment
+from models import FlowRequest, Equipment, TopologyLink
 
 router = APIRouter()
 
@@ -157,6 +157,43 @@ def equipment_impact(equipment_name: str, db: Session = Depends(get_db)):
         "management_ip": eq.management_ip or "",
         "impacted_count": len(impacted),
         "flows": impacted,
+    }
+
+
+@router.get("/spof")
+def detect_spof(db: Session = Depends(get_db)):
+    """Détecte les SPOF (Single Points of Failure) par analyse des points d'articulation du graphe."""
+    equip = db.query(Equipment).filter(Equipment.active == True).all()
+    links = db.query(TopologyLink).all()
+    eq_names = {e.id: e.name for e in equip}
+    eq_meta  = {e.name: {"type": e.type, "vendor": e.vendor} for e in equip}
+
+    G = nx.Graph()
+    for e in equip:
+        G.add_node(e.name)
+    for link in links:
+        a, b = eq_names.get(link.equipment_a_id), eq_names.get(link.equipment_b_id)
+        if a and b:
+            G.add_edge(a, b)
+
+    if G.number_of_nodes() < 2:
+        return {"has_spof": False, "spof_count": 0, "spof_nodes": [], "node_count": G.number_of_nodes(), "edge_count": G.number_of_edges()}
+
+    spof_names = list(nx.articulation_points(G))
+    all_flows = db.query(FlowRequest).filter(FlowRequest.status.in_(["validated", "deployed"])).all()
+
+    spof_nodes = []
+    for name in spof_names:
+        impacted = sum(1 for f in all_flows if name in (f.path_result or ""))
+        spof_nodes.append({"name": name, "impacted_flows": impacted, **eq_meta.get(name, {})})
+    spof_nodes.sort(key=lambda x: -x["impacted_flows"])
+
+    return {
+        "has_spof": len(spof_names) > 0,
+        "spof_count": len(spof_names),
+        "spof_nodes": spof_nodes,
+        "node_count": G.number_of_nodes(),
+        "edge_count": G.number_of_edges(),
     }
 
 

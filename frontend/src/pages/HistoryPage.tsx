@@ -3,6 +3,8 @@ import { api } from '../api/client'
 import FlowDetailModal from '../components/FlowDetailModal'
 import type { FlowSummary } from '../types'
 
+type HistoryTab = 'flows' | 'events'
+
 const STATUS_BADGE: Record<string, string> = {
   validated: 'badge-ok', deployed: 'badge-deployed', rejected: 'badge-error', pending: 'badge-pending',
 }
@@ -20,8 +22,17 @@ const STATUS_BAR_COLOR: Record<string, string> = {
   validated: '#22c55e', deployed: '#3b82f6', rejected: '#ef4444', pending: '#eab308',
 }
 
+const EVENT_ICON: Record<string, string> = {
+  route_created: '🗺', route_deleted: '🗑', acl_created: '🔒', acl_deleted: '🗑',
+}
+const EVENT_COLOR: Record<string, string> = {
+  route_created: '#22c55e', route_deleted: '#ef4444', acl_created: '#3b82f6', acl_deleted: '#ef4444',
+}
+
 export default function HistoryPage({ onSelect }: { onSelect: (id: number) => void }) {
+  const [histTab, setHistTab] = useState<HistoryTab>('flows')
   const [flows, setFlows] = useState<FlowSummary[]>([])
+  const [events, setEvents] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
@@ -29,7 +40,14 @@ export default function HistoryPage({ onSelect }: { onSelect: (id: number) => vo
 
   const load = () => {
     setLoading(true)
-    api.getFlows().then((data) => { setFlows(data as FlowSummary[]); setLoading(false) })
+    Promise.all([
+      api.getFlows(),
+      api.listPolicyEvents(50),
+    ]).then(([f, e]) => {
+      setFlows(f as FlowSummary[])
+      setEvents(e as any[])
+      setLoading(false)
+    })
   }
 
   useEffect(() => { load() }, [])
@@ -54,6 +72,37 @@ export default function HistoryPage({ onSelect }: { onSelect: (id: number) => vo
         <p>Toutes les demandes d'ouverture de flux enregistrées</p>
       </div>
       <div className="page-content">
+
+        {/* Tabs */}
+        <div className="script-tabs mb-4">
+          <button className={`script-tab${histTab === 'flows' ? ' active' : ''}`} onClick={() => setHistTab('flows')}>📋 Flux IP</button>
+          <button className={`script-tab${histTab === 'events' ? ' active' : ''}`} onClick={() => setHistTab('events')}>🔔 Événements politiques réseau</button>
+        </div>
+
+        {histTab === 'events' ? (
+          <div className="card">
+            <div className="card-title">Journal des modifications — Tables de routage & ACL</div>
+            {loading ? <div className="empty-state"><div className="spinner" /></div> : events.length === 0 ? (
+              <div className="empty-state"><div className="empty-state-icon">📭</div><div>Aucun événement enregistré</div></div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {events.map(e => (
+                  <div key={e.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', background: 'var(--bg-input)', borderRadius: 8, borderLeft: `3px solid ${EVENT_COLOR[e.event_type] || '#64748b'}` }}>
+                    <span style={{ fontSize: 18, flexShrink: 0 }}>{EVENT_ICON[e.event_type] || '📋'}</span>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 13, color: 'var(--text-1)', fontWeight: 500 }}>{e.description}</div>
+                      <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>{e.equipment_name}</div>
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--text-3)', whiteSpace: 'nowrap' }}>
+                      {new Date(e.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+        <>
 
         {/* KPI bar */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 14 }}>
@@ -137,15 +186,19 @@ export default function HistoryPage({ onSelect }: { onSelect: (id: number) => vo
             </div>
           )}
         </div>
-      </div>
+
+        </>
+        )} {/* end histTab ternary */}
 
       {selectedId !== null && (
         <FlowDetailModal
           flowId={selectedId}
           onClose={() => setSelectedId(null)}
           onDeleted={() => { setSelectedId(null); load() }}
+          onStatusChanged={load}
         />
       )}
+      </div>{/* end page-content */}
     </>
   )
 }

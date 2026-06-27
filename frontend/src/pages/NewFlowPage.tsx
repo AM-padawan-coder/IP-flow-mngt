@@ -4,6 +4,7 @@ import type { AnalyzeResponse } from '../types'
 import ValidationPanel from '../components/ValidationPanel'
 import PathPanel from '../components/PathPanel'
 import ScriptPanel from '../components/ScriptPanel'
+import TopologyModal from '../components/TopologyModal'
 
 const DEMO_FLOWS = [
   { label: 'LAN → Serveur App (HTTPS)',    src_ip: '10.10.1.50',   dst_ip: '172.16.10.100', port: '443',  protocol: 'tcp', application: 'Application RH (SAP)',    justification: 'Accès utilisateurs RH aux modules SAP' },
@@ -22,6 +23,7 @@ export default function NewFlowPage({ onShowGraph }: { onShowGraph?: (path: stri
   const [submitted, setSubmitted] = useState(false)
   const [submitMsg, setSubmitMsg] = useState('')
   const [error, setError] = useState('')
+  const [topoPath, setTopoPath] = useState<string[] | null>(null)
 
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
 
@@ -130,8 +132,8 @@ export default function NewFlowPage({ onShowGraph }: { onShowGraph?: (path: stri
                     ✓ Soumettre la demande
                   </button>
                 )}
-                {result?.path?.found && onShowGraph && (
-                  <button className="btn btn-ghost" onClick={() => onShowGraph(result.path.hops.map((h: any) => h.equipment))}>
+                {result?.path?.found && (
+                  <button className="btn btn-ghost" onClick={() => setTopoPath(result.path.hops.map((h: any) => h.equipment))}>
                     ⬡ Voir sur le graphe
                   </button>
                 )}
@@ -142,8 +144,8 @@ export default function NewFlowPage({ onShowGraph }: { onShowGraph?: (path: stri
                 </div>
               )}
               {submitted && (
-                <div style={{ background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)', borderRadius: 6, padding: '10px 14px', color: 'var(--green)', fontSize: 13 }}>
-                  ✓ {submitMsg}
+                <div style={{ background: 'rgba(234,179,8,0.1)', border: '1px solid rgba(234,179,8,0.3)', borderRadius: 6, padding: '10px 14px', color: '#eab308', fontSize: 13 }}>
+                  ⏳ {submitMsg} — En attente de validation dans l'Historique.
                 </div>
               )}
             </div>
@@ -170,6 +172,10 @@ export default function NewFlowPage({ onShowGraph }: { onShowGraph?: (path: stri
           </div>
         )}
       </div>
+
+      {topoPath !== null && (
+        <TopologyModal highlightedPath={topoPath} onClose={() => setTopoPath(null)} />
+      )}
     </>
   )
 }

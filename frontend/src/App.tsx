@@ -8,19 +8,21 @@ import TeamsPage from './pages/TeamsPage'
 import AuditPage from './pages/AuditPage'
 import SimulationPage from './pages/SimulationPage'
 import PolicyPage from './pages/PolicyPage'
+import FlowsTopologyPage from './pages/FlowsTopologyPage'
 import HelpModal from './components/HelpModal'
 import RoadmapModal from './components/RoadmapModal'
 
-type Page = 'new' | 'history' | 'simulation' | 'topology' | 'admin' | 'import' | 'teams' | 'audit' | 'policies'
+type Page = 'new' | 'history' | 'simulation' | 'topology' | 'admin' | 'import' | 'teams' | 'audit' | 'policies' | 'flows-topology'
 
 const NAV = [
   { id: 'new',        label: 'Nouveau flux',       icon: '＋', section: 'Flux IP' },
   { id: 'history',    label: 'Historique',          icon: '⏱', section: 'Flux IP' },
   { id: 'simulation', label: 'Simulation',          icon: '🔬', section: 'Flux IP' },
-  { id: 'policies',  label: 'Politiques réseau',   icon: '🔒', section: 'Flux IP' },
-  { id: 'topology',   label: 'Graphe réseau',       icon: '⬡', section: 'Topologie' },
-  { id: 'admin',      label: 'Administration',      icon: '⚙', section: 'Topologie' },
-  { id: 'import',     label: 'Import / Export',     icon: '⬆', section: 'Topologie' },
+  { id: 'topology',        label: 'Graphe réseau',       icon: '⬡', section: 'Topologie' },
+  { id: 'admin',           label: 'Administration',      icon: '⚙', section: 'Topologie' },
+  { id: 'flows-topology',  label: 'Flux',                icon: '↔', section: 'Topologie' },
+  { id: 'policies',        label: 'Politiques réseau',   icon: '🔒', section: 'Topologie' },
+  { id: 'import',          label: 'Import / Export',     icon: '⬆', section: 'Topologie' },
   { id: 'teams',      label: 'Équipes & Sites',     icon: '👥', section: 'Organisation' },
   { id: 'audit',      label: 'Audit',               icon: '◎', section: 'Référentiel' },
 ] as const
@@ -98,7 +100,7 @@ export default function App() {
 
         {/* Footer — version + actions */}
         <div style={{ padding: '10px 14px', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 6 }}>
-          <div className="text-xs text-dimmed" style={{ flex: 1 }}>demo · v2.4.0</div>
+          <div className="text-xs text-dimmed" style={{ flex: 1 }}>demo · v2.5.0</div>
 
           {/* Dark/Light toggle */}
           <button
@@ -142,8 +144,9 @@ export default function App() {
         {page === 'new'        && <NewFlowPage onShowGraph={goToGraph} />}
         {page === 'history'    && <HistoryPage onSelect={() => {}} />}
         {page === 'simulation' && <SimulationPage />}
-        {page === 'policies'   && <PolicyPage />}
-        {page === 'topology'   && <TopologyPage highlightedPath={highlightedPath} />}
+        {page === 'policies'        && <PolicyPage />}
+        {page === 'flows-topology'  && <FlowsTopologyPage />}
+        {page === 'topology'        && <TopologyPage highlightedPath={highlightedPath} />}
         {page === 'admin'      && <AdminPage />}
         {page === 'import'     && <ImportPage />}
         {page === 'teams'      && <TeamsPage />}

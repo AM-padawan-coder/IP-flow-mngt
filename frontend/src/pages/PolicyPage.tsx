@@ -26,6 +26,10 @@ export default function PolicyPage() {
   const [genFlowId, setGenFlowId] = useState<number | ''>('')
   const [genResult, setGenResult] = useState<any>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<{ type: 'route' | 'acl'; id: number } | null>(null)
+  const [routeError, setRouteError] = useState('')
+  const [aclError, setAclError] = useState('')
+  const [routeSaving, setRouteSaving] = useState(false)
+  const [aclSaving, setAclSaving] = useState(false)
 
   useEffect(() => {
     api.listPolicyEquipment().then((d: any) => setEquipment(d))
@@ -42,21 +46,36 @@ export default function PolicyPage() {
   }, [selectedEq])
 
   const addRoute = async () => {
-    if (!routeForm.destination || !selectedEq) return
-    await api.createRoute({ ...routeForm, equipment_id: selectedEq })
-    setShowAddRoute(false)
-    setRouteForm({ ...EMPTY_ROUTE })
-    const r: any = await api.listRouting(selectedEq as number)
-    setRoutes(r)
+    if (!selectedEq) { setRouteError('Sélectionnez un équipement d\'abord.'); return }
+    if (!routeForm.destination) { setRouteError('La destination (CIDR) est obligatoire.'); return }
+    setRouteSaving(true); setRouteError('')
+    try {
+      await api.createRoute({ ...routeForm, equipment_id: selectedEq })
+      setShowAddRoute(false)
+      setRouteForm({ ...EMPTY_ROUTE })
+      const r: any = await api.listRouting(selectedEq as number)
+      setRoutes(r)
+    } catch (e: any) {
+      setRouteError(e.message || 'Erreur lors de la création de la route.')
+    } finally {
+      setRouteSaving(false)
+    }
   }
 
   const addAcl = async () => {
-    if (!selectedEq) return
-    await api.createAcl({ ...aclForm, equipment_id: selectedEq })
-    setShowAddAcl(false)
-    setAclForm({ ...EMPTY_ACL })
-    const a: any = await api.listAcl(selectedEq as number)
-    setAcls(a)
+    if (!selectedEq) { setAclError('Sélectionnez un équipement d\'abord.'); return }
+    setAclSaving(true); setAclError('')
+    try {
+      await api.createAcl({ ...aclForm, equipment_id: selectedEq })
+      setShowAddAcl(false)
+      setAclForm({ ...EMPTY_ACL })
+      const a: any = await api.listAcl(selectedEq as number)
+      setAcls(a)
+    } catch (e: any) {
+      setAclError(e.message || 'Erreur lors de la création de la règle.')
+    } finally {
+      setAclSaving(false)
+    }
   }
 
   const deleteRoute = async (id: number) => {
@@ -162,9 +181,10 @@ export default function PolicyPage() {
                   Commentaire
                   <input style={inputStyle} placeholder="Optionnel" value={routeForm.comment} onChange={e => setRouteForm(f => ({ ...f, comment: e.target.value }))} />
                 </label>
+                {routeError && <div style={{ gridColumn: '1/-1', color: 'var(--red)', fontSize: 12, padding: '6px 10px', background: 'rgba(239,68,68,0.1)', borderRadius: 6 }}>⚠ {routeError}</div>}
                 <div style={{ gridColumn: '1/-1', display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                  <button style={btnGhost} onClick={() => setShowAddRoute(false)}>Annuler</button>
-                  <button style={btnPrimary} onClick={addRoute}>Enregistrer</button>
+                  <button style={btnGhost} onClick={() => { setShowAddRoute(false); setRouteError('') }}>Annuler</button>
+                  <button style={{ ...btnPrimary, opacity: routeSaving ? 0.7 : 1 }} onClick={addRoute} disabled={routeSaving}>{routeSaving ? 'Enregistrement…' : 'Enregistrer'}</button>
                 </div>
               </div>
             )}
@@ -279,9 +299,10 @@ export default function PolicyPage() {
                   Commentaire
                   <input style={inputStyle} placeholder="Optionnel" value={aclForm.comment} onChange={e => setAclForm(f => ({ ...f, comment: e.target.value }))} />
                 </label>
+                {aclError && <div style={{ gridColumn: '1/-1', color: 'var(--red)', fontSize: 12, padding: '6px 10px', background: 'rgba(239,68,68,0.1)', borderRadius: 6 }}>⚠ {aclError}</div>}
                 <div style={{ gridColumn: '1/-1', display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                  <button style={btnGhost} onClick={() => setShowAddAcl(false)}>Annuler</button>
-                  <button style={btnPrimary} onClick={addAcl}>Enregistrer</button>
+                  <button style={btnGhost} onClick={() => { setShowAddAcl(false); setAclError('') }}>Annuler</button>
+                  <button style={{ ...btnPrimary, opacity: aclSaving ? 0.7 : 1 }} onClick={addAcl} disabled={aclSaving}>{aclSaving ? 'Enregistrement…' : 'Enregistrer'}</button>
                 </div>
               </div>
             )}

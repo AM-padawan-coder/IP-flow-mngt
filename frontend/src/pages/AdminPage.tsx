@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api/client'
 import type { Zone, Equipment, Network } from '../types'
+import EquipmentDetailModal from '../components/EquipmentDetailModal'
 
 type Tab = 'equipment' | 'zones' | 'networks' | 'links'
 
@@ -62,6 +63,7 @@ function EquipmentAdmin({ equipment, zones: _z, teams, physZones, onDone }: any)
   const blank = { name: '', type: 'firewall', vendor: 'stormshield', model: '', management_ip: '', description: '', team_id: '', physical_zone_id: '' }
   const [form, setForm] = useState(blank)
   const [editing, setEditing] = useState<number | null>(null)
+  const [detailEq, setDetailEq] = useState<any | null>(null)
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
 
   const save = async () => {
@@ -82,6 +84,7 @@ function EquipmentAdmin({ equipment, zones: _z, teams, physZones, onDone }: any)
   }
 
   return (
+    <>
     <div className="grid-2 gap-4">
       <div className="card">
         <div className="card-title">{editing ? 'Modifier équipement' : 'Nouvel équipement'}</div>
@@ -137,6 +140,7 @@ function EquipmentAdmin({ equipment, zones: _z, teams, physZones, onDone }: any)
               <span className={`vendor-badge vendor-${e.vendor}`}>{e.vendor}</span>
               <span style={{ flex: 1, fontWeight: 500 }}>{e.name}</span>
               <span className="text-xs text-dimmed">{e.model}</span>
+              <button className="btn btn-ghost btn-sm" title="Voir politiques (routing + ACL)" onClick={() => setDetailEq(e)}>📋</button>
               <button className="btn btn-ghost btn-sm" onClick={() => edit(e)}>✏</button>
               <button className="btn btn-ghost btn-sm" style={{ color: 'var(--red)' }} onClick={() => del(e.id, e.name)}>✕</button>
             </div>
@@ -144,6 +148,8 @@ function EquipmentAdmin({ equipment, zones: _z, teams, physZones, onDone }: any)
         </div>
       </div>
     </div>
+    {detailEq && <EquipmentDetailModal equipment={detailEq} onClose={() => setDetailEq(null)} />}
+    </>
   )
 }
 

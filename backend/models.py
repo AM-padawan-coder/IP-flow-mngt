@@ -127,6 +127,18 @@ class AclRule(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
+class PolicyEvent(Base):
+    __tablename__ = "policy_events"
+    id = Column(Integer, primary_key=True, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    event_type = Column(String)   # route_created, route_deleted, acl_created, acl_deleted
+    equipment_id = Column(Integer, nullable=True)
+    equipment_name = Column(String)
+    description = Column(String)
+    entity_id = Column(Integer, nullable=True)
+    analyst = Column(String, default="demo-user")
+
+
 class FlowRequest(Base):
     __tablename__ = "flow_requests"
     id = Column(Integer, primary_key=True, index=True)

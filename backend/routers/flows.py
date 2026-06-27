@@ -12,6 +12,10 @@ from engine.script_generator import generate_scripts
 router = APIRouter()
 
 
+class StatusUpdate(BaseModel):
+    status: str  # pending, validated, deployed, rejected
+
+
 class FlowIn(BaseModel):
     src_ip: str
     dst_ip: str
@@ -69,7 +73,7 @@ def submit_flow(data: FlowIn, db: Session = Depends(get_db)):
                 path_hops=path.get("hops", []),
             )
 
-    status = "validated" if validation["valid"] else "rejected"
+    status = "pending"
     flow = FlowRequest(
         src_ip=data.src_ip,
         dst_ip=data.dst_ip,
@@ -135,6 +139,19 @@ def get_flow(flow_id: int, db: Session = Depends(get_db)):
         "path": json.loads(flow.path_result or "{}"),
         "scripts": json.loads(flow.scripts_result or "{}"),
     }
+
+
+@router.patch("/{flow_id}/status")
+def update_flow_status(flow_id: int, data: StatusUpdate, db: Session = Depends(get_db)):
+    flow = db.query(FlowRequest).filter(FlowRequest.id == flow_id).first()
+    if not flow:
+        raise HTTPException(status_code=404, detail="Flux non trouvé")
+    allowed = {"pending", "validated", "deployed", "rejected"}
+    if data.status not in allowed:
+        raise HTTPException(status_code=400, detail=f"Statut invalide. Valeurs : {allowed}")
+    flow.status = data.status
+    db.commit()
+    return {"id": flow_id, "status": data.status}
 
 
 @router.delete("/{flow_id}", status_code=204)

@@ -15,14 +15,18 @@ const PHASES = [
     items: ['Vue détail par flux (validation, chemin, scripts)', 'Filtres par statut (Validé / Refusé / En attente / Déployé)', 'Suppression de flux avec confirmation', 'KPIs statuts en en-tête (compteurs colorés)'] },
   { v: 'v2.4', title: 'Tables de routage & ACL', status: 'done', label: '✓ Livré', eta: '',
     items: ['Tables de routage par équipement (CRUD statique/OSPF/BGP)', 'Règles ACL par équipement (permit/deny, direction in/out)', 'Génération automatique de règles ACL depuis un flux validé', 'Traçabilité flux → règles ACL générées'] },
-  { v: 'v3.1', title: 'Parcours de validation', status: 'planned', label: '🗓 Planifié', eta: '',
+  { v: 'v2.4.1', title: 'Correctifs & améliorations flux', status: 'done', label: '✓ Livré', eta: '',
+    items: ['Correctif bouton Enregistrer routes + feedback erreur', 'Politiques réseau déplacées dans Topologie', 'Journal des événements politiques réseau dans Historique', 'Vue Flux dans Topologie avec export Excel (CSV)', 'Correctif visuel Import/Export (overflow)', 'Graphe ⬡ affiché en modal inline (sans quitter le formulaire)'] },
+  { v: 'v2.5', title: 'Workflow & Simulation avancée', status: 'done', label: '✓ Livré', eta: '',
+    items: ['Soumission flux → statut En attente (workflow manuel)', 'Valider / Déployer / Refuser depuis l\'Historique', 'Scénarios rapides = derniers flux créés', 'Détail équipement : routing + ACL depuis Administration', 'Détection SPOF (points d\'articulation du graphe)', 'Analyse d\'impact : actions proposées (ACL deny, routes)'] },
+  { v: 'v3.0', title: 'Parcours de validation', status: 'planned', label: '🗓 Planifié', eta: '',
     items: ['Workflow multi-niveaux : Demandeur → Validateur → Admin', 'Rôles & permissions différenciés', 'Notifications email + webhook par changement de statut', 'Commentaires & justifications sur chaque demande', 'SLA, rappels automatiques, flux expirés'] },
   { v: 'v4.0', title: 'Connecteur IPAM Infoblox', status: 'soon', label: '🔜 Prochain', eta: '',
     items: ['Pull CIDR / allocation IPs via REST Infoblox', 'Mock IPAM service Render (démo sans licence)', 'Sync bidirectionnelle réseaux validés → IPAM'] },
   { v: 'v4.1', title: 'VRF · ACL · Services + Snapshots', status: 'planned', label: '🗓 Planifié', eta: '',
     items: ['Gestion des VRF (routage multi-instances, détection fuites)', 'Visualisation ACL par interface + détection shadowing', 'Objets de service réutilisables (groupes ports/protos)', 'Snapshots topologie + comparaison entre états', 'Simulation NAT dans le calcul de chemin'] },
   { v: 'v4.2', title: 'Graphe réseau avancé', status: 'planned', label: '🗓 Planifié', eta: '',
-    items: ['Vue hiérarchique (zones comme groupes visuels)', 'Mini-map de navigation pour grands graphes', 'Filtres dynamiques (zone, équipe, vendor)', 'Topology diff coloré (ajouts/suppressions)', 'Heatmap des liens selon densité de flux'] },
+    items: ['Vue hiérarchique (zones comme groupes visuels)', 'Mini-map de navigation pour grands graphes', 'Filtres dynamiques (zone, équipe, vendor)', 'Topology diff coloré (ajouts/suppressions)', 'Sélection lien/nœud + infobulle détaillée au hover'] },
   { v: 'v4.3', title: 'Connecteurs étendus', status: 'planned', label: '🗓 Planifié', eta: '',
     items: ['CMDB ServiceNow (sync bidirectionnelle équipements)', 'NSX-T live state (pull règles DFW actives en temps réel)', 'Palo Alto Panorama (lecture policies + détection conflits)', 'Syslog / SIEM — envoi événements vers Splunk / Elastic'] },
   { v: 'v5.0', title: 'Intelligence & Langage naturel', status: 'vision', label: '🔭 Vision', eta: '',
@@ -38,7 +42,7 @@ const STATUS_STYLE: Record<string, { dot: string; badge: string; badgeText: stri
 }
 
 export default function RoadmapModal({ onClose }: Props) {
-  const [open, setOpen] = useState<string[]>(['v2.3', 'v2.4', 'v3.1'])
+  const [open, setOpen] = useState<string[]>(['v2.4.1', 'v2.5', 'v3.0'])
 
   const toggle = (v: string) =>
     setOpen(o => o.includes(v) ? o.filter(x => x !== v) : [...o, v])

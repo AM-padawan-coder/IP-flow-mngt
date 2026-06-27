@@ -7,9 +7,12 @@ interface Props {
 const SECTIONS = [
   { id: 'intro',      icon: '🏠', label: 'Introduction' },
   { id: 'flux',       icon: '＋', label: 'Saisir un flux' },
+  { id: 'historique', icon: '📋', label: 'Historique' },
   { id: 'validation', icon: '✅', label: 'Validation' },
   { id: 'chemin',     icon: '⬡',  label: 'Chemin réseau' },
   { id: 'scripts',    icon: '📄', label: 'Scripts générés' },
+  { id: 'simulation', icon: '🔬', label: 'Simulation' },
+  { id: 'policies',   icon: '🔒', label: 'Politiques réseau' },
   { id: 'topo',       icon: '⚙',  label: 'Administration' },
   { id: 'import',     icon: '⬆',  label: 'Import / Export' },
   { id: 'equipes',    icon: '👥', label: 'Équipes & Sites' },
@@ -107,8 +110,8 @@ const CONTENT: Record<string, JSX.Element> = {
       <h3 style={H3}>Boutons d'action</h3>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
         <div style={BTN_DOC}><span style={BTN_LABEL}>▶ Analyser</span> Lance la validation sans enregistrer. Idéal pour tester un flux avant soumission.</div>
-        <div style={BTN_DOC}><span style={BTN_LABEL}>✓ Soumettre</span> Enregistre la demande dans l'historique (statut : Validé ou Refusé).</div>
-        <div style={BTN_DOC}><span style={BTN_LABEL}>⬡ Voir sur le graphe</span> Navigue vers le graphe en mettant en évidence le chemin du flux.</div>
+        <div style={BTN_DOC}><span style={BTN_LABEL}>✓ Soumettre</span> Enregistre la demande dans l'historique au statut <strong>En attente</strong>. Un validateur doit ensuite l'approuver depuis l'Historique.</div>
+        <div style={BTN_DOC}><span style={BTN_LABEL}>⬡ Voir sur le graphe</span> Affiche le graphe réseau en modal avec le chemin mis en évidence — sans quitter le formulaire.</div>
       </div>
 
       <div style={CALLOUT}>
@@ -427,6 +430,131 @@ const CONTENT: Record<string, JSX.Element> = {
     </div>
   ),
 
+  historique: (
+    <div>
+      <h2 style={H2}>Historique des flux</h2>
+      <p style={P}>La page <strong>Historique</strong> centralise tous les flux soumis et le journal des événements sur les politiques réseau (routes et ACL).</p>
+
+      <h3 style={H3}>Onglets</h3>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
+        {[
+          { tab: 'Flux IP',                        desc: 'Liste de toutes les demandes soumises avec KPIs (total, en attente, validés, déployés, refusés).' },
+          { tab: 'Événements politiques réseau',   desc: 'Journal des créations et suppressions de routes et de règles ACL, avec horodatage et équipement.' },
+        ].map(item => (
+          <div key={item.tab} style={{ padding: '10px 14px', background: 'var(--bg-input)', borderRadius: 6 }}>
+            <div style={{ fontWeight: 700, color: 'var(--blue)', marginBottom: 4 }}>{item.tab}</div>
+            <div style={{ color: 'var(--text-2)', fontSize: 13 }}>{item.desc}</div>
+          </div>
+        ))}
+      </div>
+
+      <h3 style={H3}>Workflow de validation</h3>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
+        {[
+          { step: '1. Soumission',  desc: 'L\'analyste soumet le flux depuis Nouveau flux → statut En attente.' },
+          { step: '2. Revue',       desc: 'Un validateur clique sur la ligne dans l\'Historique pour ouvrir le détail.' },
+          { step: '3. Décision',    desc: 'Boutons disponibles : Valider (vert), Déployer (bleu), Refuser (rouge), Remettre en attente.' },
+          { step: '4. Traçabilité', desc: 'Chaque changement de statut est horodaté et visible dans le détail du flux.' },
+        ].map(item => (
+          <div key={item.step} style={ROW}>
+            <span style={{ minWidth: 120, fontWeight: 600, color: 'var(--blue)' }}>{item.step}</span>
+            <span style={{ color: 'var(--text-2)' }}>{item.desc}</span>
+          </div>
+        ))}
+      </div>
+
+      <div style={CALLOUT}>
+        <strong>Vue Flux dans Topologie</strong> : l'onglet <em>Topologie &gt; Flux</em> propose la même liste avec filtres avancés (statut, équipement, texte) et un export CSV compatible Excel (matrice de flux).
+      </div>
+    </div>
+  ),
+
+  simulation: (
+    <div>
+      <h2 style={H2}>Simulation et analyse de risques</h2>
+      <p style={P}>La page <strong>Simulation</strong> permet de tester des hypothèses et d'anticiper l'impact d'un changement réseau avant de l'appliquer.</p>
+
+      <h3 style={H3}>Onglets disponibles</h3>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
+        {[
+          { tab: '⚡ What-if',         desc: 'Simulez le retrait d\'un équipement et identifiez les flux qui seraient interrompus. Les scénarios rapides proposent également les derniers flux créés.' },
+          { tab: '↺ Boucles',          desc: 'Détecte les boucles L2/L3 dans la topologie actuelle (cycles NetworkX). Chaque boucle affiche les équipements impliqués et sa longueur.' },
+          { tab: '📊 Impact',           desc: 'Analyse l\'impact de la mise hors service d\'un équipement sur les flux validés/déployés. Propose des actions : désactiver route, ACL deny, désactiver port.' },
+          { tab: '⚡ SPOF',            desc: 'Détection des points de défaillance unique (Single Points of Failure) — équipements dont la perte déconnecterait une partie du réseau.' },
+        ].map(item => (
+          <div key={item.tab} style={{ padding: '10px 14px', background: 'var(--bg-input)', borderRadius: 6 }}>
+            <div style={{ fontWeight: 700, color: 'var(--blue)', marginBottom: 4 }}>{item.tab}</div>
+            <div style={{ color: 'var(--text-2)', fontSize: 13 }}>{item.desc}</div>
+          </div>
+        ))}
+      </div>
+
+      <h3 style={H3}>Détection SPOF</h3>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {[
+          'Un SPOF est un équipement dont la suppression déconnecte le graphe réseau.',
+          'L\'algorithme utilise les points d\'articulation de NetworkX sur le graphe de topologie.',
+          'Pour chaque SPOF, le nombre de flux validés/déployés impactés est affiché.',
+          'Un réseau sans SPOF est entièrement redondant — chaque nœud a au moins 2 chemins.',
+        ].map((point, i) => (
+          <div key={i} style={ROW}>
+            <span style={{ color: 'var(--blue)' }}>→</span>
+            <span style={{ color: 'var(--text-2)' }}>{point}</span>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ ...CALLOUT, marginTop: 16 }}>
+        <strong>Actions proposées dans l'analyse d'impact</strong> : pour chaque flux interrompu, l'outil propose de supprimer/désactiver la route concernée, d'ajouter une règle ACL deny, ou de désactiver un port sur l'équipement problématique.
+      </div>
+    </div>
+  ),
+
+  policies: (
+    <div>
+      <h2 style={H2}>Politiques réseau (Routes & ACL)</h2>
+      <p style={P}>La section <strong>Politiques réseau</strong> (accessible depuis Topologie) permet de gérer les tables de routage et les règles ACL par équipement.</p>
+
+      <h3 style={H3}>Tables de routage</h3>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 20 }}>
+        {[
+          { field: 'Destination CIDR', desc: 'Réseau cible (ex: 10.20.0.0/24) — champ obligatoire' },
+          { field: 'Passerelle',       desc: 'Next-hop IP (ex: 192.168.1.1)' },
+          { field: 'Interface',        desc: 'Interface de sortie (ex: eth0, ge-0/0/1)' },
+          { field: 'Métrique',         desc: 'Priorité de la route — plus la valeur est faible, plus la route est préférée' },
+          { field: 'Type',             desc: 'static, ospf, bgp, connected' },
+          { field: 'Commentaire',      desc: 'Contexte de la route pour la traçabilité' },
+        ].map(item => (
+          <div key={item.field} style={ROW}>
+            <span style={{ minWidth: 150, fontWeight: 600, color: 'var(--text-1)' }}>{item.field}</span>
+            <span style={{ color: 'var(--text-2)' }}>{item.desc}</span>
+          </div>
+        ))}
+      </div>
+
+      <h3 style={H3}>Règles ACL</h3>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 20 }}>
+        {[
+          { field: 'Action',     desc: 'permit ou deny' },
+          { field: 'Direction',  desc: 'in (entrant) ou out (sortant) sur l\'interface' },
+          { field: 'Priorité',   desc: 'Ordre d\'évaluation — valeur basse = évalué en premier' },
+          { field: 'IP source',  desc: 'IP ou CIDR source, ou "any"' },
+          { field: 'IP dest.',   desc: 'IP ou CIDR destination, ou "any"' },
+          { field: 'Port/Proto', desc: 'Port et protocole ciblés, ou "any"' },
+        ].map(item => (
+          <div key={item.field} style={ROW}>
+            <span style={{ minWidth: 100, fontWeight: 600, color: 'var(--text-1)' }}>{item.field}</span>
+            <span style={{ color: 'var(--text-2)' }}>{item.desc}</span>
+          </div>
+        ))}
+      </div>
+
+      <div style={CALLOUT}>
+        <strong>Génération automatique</strong> : depuis le détail d'un flux validé, le bouton <em>Générer règles ACL</em> crée automatiquement les règles nécessaires sur chaque équipement du chemin. Les modifications sont tracées dans l'onglet <em>Historique &gt; Événements politiques réseau</em>.
+      </div>
+    </div>
+  ),
+
   faq: (
     <div>
       <h2 style={H2}>Foire aux questions</h2>
@@ -460,6 +588,22 @@ const CONTENT: Record<string, JSX.Element> = {
             q: "Peut-on utiliser cet outil avec une vraie base de données en production ?",
             a: "Oui. Modifiez SQLALCHEMY_DATABASE_URL dans backend/database.py pour pointer vers un serveur PostgreSQL. Le reste du code est identique.",
           },
+          {
+            q: "Mon flux soumis est en statut 'En attente' — que se passe-t-il ?",
+            a: "Depuis la v2.5.0, tous les flux soumis passent d'abord par un statut En attente. Un validateur doit ouvrir le flux dans l'Historique et cliquer Valider, Déployer ou Refuser. Ce workflow garantit une double validation avant production.",
+          },
+          {
+            q: "Comment voir les ACL et routes d'un équipement spécifique ?",
+            a: "Depuis Administration ou le Graphe réseau, cliquez sur l'icône 📋 sur la carte de l'équipement. Un modal s'ouvre avec deux onglets : Table de routage et Règles ACL. Pour modifier, allez dans Topologie > Politiques réseau.",
+          },
+          {
+            q: "Comment exporter la liste des flux vers Excel ?",
+            a: "Dans Topologie > Flux, utilisez le bouton vert '⬇ Exporter Excel (CSV)'. Le fichier CSV est encodé UTF-8 avec BOM et séparateur point-virgule, directement compatible avec Excel français.",
+          },
+          {
+            q: "Qu'est-ce qu'un SPOF dans le contexte du réseau ?",
+            a: "Un SPOF (Single Point of Failure) est un équipement dont la panne suffit à couper la connectivité entre deux parties du réseau. Détectez-les dans Simulation > SPOF. Un réseau sans SPOF dispose de redondance totale.",
+          },
         ].map((item, i) => (
           <details key={i} style={{ background: 'var(--bg-input)', borderRadius: 6, border: '1px solid var(--border)', overflow: 'hidden' }}>
             <summary style={{ padding: '12px 14px', cursor: 'pointer', fontWeight: 600, color: 'var(--text-1)', fontSize: 13, listStyle: 'none', display: 'flex', gap: 8 }}>
@@ -491,7 +635,7 @@ export default function HelpModal({ onClose }: Props) {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px', borderBottom: '1px solid var(--border)', background: 'var(--bg-card)' }}>
           <div>
             <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--text-1)' }}>Guide d'utilisation — IP Flow Manager</div>
-            <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>v2.1.0 · Documentation en français</div>
+            <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>v2.5.0 · Documentation en français</div>
           </div>
           <button onClick={onClose} style={{ background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text-2)', cursor: 'pointer', padding: '6px 14px', fontSize: 13, fontFamily: 'inherit' }}>
             ✕ Fermer

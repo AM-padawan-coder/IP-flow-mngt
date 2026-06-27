@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from typing import Optional
 from sqlalchemy.orm import Session
 from database import get_db
-from models import Equipment, RoutingEntry, AclRule, FlowRequest
+from models import Equipment, RoutingEntry, AclRule, FlowRequest, PolicyEvent
 
 router = APIRouter()
 
@@ -63,6 +63,9 @@ def create_route(data: RouteIn, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Équipement non trouvé")
     entry = RoutingEntry(**data.model_dump())
     db.add(entry)
+    db.flush()
+    db.add(PolicyEvent(event_type="route_created", equipment_id=eq.id, equipment_name=eq.name,
+                       description=f"Route {data.destination} via {data.gateway or data.interface or '?'} créée", entity_id=entry.id))
     db.commit()
     db.refresh(entry)
     return _route_out(entry)
@@ -85,6 +88,10 @@ def delete_route(entry_id: int, db: Session = Depends(get_db)):
     entry = db.query(RoutingEntry).filter(RoutingEntry.id == entry_id).first()
     if not entry:
         raise HTTPException(status_code=404, detail="Entrée non trouvée")
+    eq = db.query(Equipment).filter(Equipment.id == entry.equipment_id).first()
+    db.add(PolicyEvent(event_type="route_deleted", equipment_id=entry.equipment_id,
+                       equipment_name=eq.name if eq else "?",
+                       description=f"Route {entry.destination} supprimée", entity_id=entry_id))
     db.delete(entry)
     db.commit()
 
@@ -116,6 +123,9 @@ def create_acl(data: AclIn, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Équipement non trouvé")
     rule = AclRule(**data.model_dump())
     db.add(rule)
+    db.flush()
+    db.add(PolicyEvent(event_type="acl_created", equipment_id=eq.id, equipment_name=eq.name,
+                       description=f"ACL {data.action.upper()} {data.src_ip}→{data.dst_ip}:{data.port}/{data.protocol} ({data.direction}) créée", entity_id=rule.id))
     db.commit()
     db.refresh(rule)
     return _acl_out(rule)
@@ -138,6 +148,10 @@ def delete_acl(rule_id: int, db: Session = Depends(get_db)):
     rule = db.query(AclRule).filter(AclRule.id == rule_id).first()
     if not rule:
         raise HTTPException(status_code=404, detail="Règle non trouvée")
+    eq = db.query(Equipment).filter(Equipment.id == rule.equipment_id).first()
+    db.add(PolicyEvent(event_type="acl_deleted", equipment_id=rule.equipment_id,
+                       equipment_name=eq.name if eq else "?",
+                       description=f"ACL {rule.action.upper()} {rule.src_ip}→{rule.dst_ip}:{rule.port} supprimée", entity_id=rule_id))
     db.delete(rule)
     db.commit()
 
@@ -200,6 +214,17 @@ def generate_from_flow(flow_id: int, db: Session = Depends(get_db)):
         "port": flow.port,
         "protocol": flow.protocol,
     }
+
+
+@router.get("/events")
+def list_policy_events(limit: int = 50, db: Session = Depends(get_db)):
+    """Journal des modifications de politiques réseau (routes + ACL)."""
+    events = db.query(PolicyEvent).order_by(PolicyEvent.created_at.desc()).limit(limit).all()
+    return [{
+        "id": e.id, "created_at": e.created_at.isoformat(),
+        "event_type": e.event_type, "equipment_name": e.equipment_name,
+        "description": e.description, "entity_id": e.entity_id,
+    } for e in events]
 
 
 @router.get("/equipment")

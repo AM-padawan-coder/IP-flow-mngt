@@ -5,6 +5,7 @@ interface Props {
   flowId: number
   onClose: () => void
   onDeleted: () => void
+  onStatusChanged?: () => void
 }
 
 const STATUS_COLOR: Record<string, string> = {
@@ -14,11 +15,12 @@ const STATUS_LABEL: Record<string, string> = {
   validated: 'Validé', deployed: 'Déployé', rejected: 'Refusé', pending: 'En attente',
 }
 
-export default function FlowDetailModal({ flowId, onClose, onDeleted }: Props) {
+export default function FlowDetailModal({ flowId, onClose, onDeleted, onStatusChanged }: Props) {
   const [flow, setFlow] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [updatingStatus, setUpdatingStatus] = useState(false)
   const [openSection, setOpenSection] = useState<string[]>(['validation', 'path'])
 
   useEffect(() => {
@@ -32,6 +34,14 @@ export default function FlowDetailModal({ flowId, onClose, onDeleted }: Props) {
     setDeleting(true)
     await api.deleteFlow(flowId)
     onDeleted()
+  }
+
+  const handleStatus = async (status: string) => {
+    setUpdatingStatus(true)
+    await api.updateFlowStatus(flowId, status)
+    setFlow((f: any) => ({ ...f, status }))
+    setUpdatingStatus(false)
+    onStatusChanged?.()
   }
 
   const statusColor = flow ? (STATUS_COLOR[flow.status] || '#64748b') : '#64748b'
@@ -148,27 +158,50 @@ export default function FlowDetailModal({ flowId, onClose, onDeleted }: Props) {
         )}
 
         {/* Footer */}
-        <div style={{ padding: '12px 20px', borderTop: '1px solid var(--border)', background: 'var(--bg-card)', display: 'flex', justifyContent: 'flex-end', gap: 8, flexShrink: 0 }}>
-          {confirmDelete ? (
-            <>
-              <span style={{ fontSize: 12, color: 'var(--text-2)', alignSelf: 'center', marginRight: 4 }}>Confirmer la suppression ?</span>
-              <button onClick={() => setConfirmDelete(false)} style={{ background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text-2)', cursor: 'pointer', padding: '6px 14px', fontSize: 12, fontFamily: 'inherit' }}>
-                Annuler
-              </button>
-              <button onClick={handleDelete} disabled={deleting} style={{ background: '#ef4444', border: 'none', borderRadius: 6, color: '#fff', cursor: deleting ? 'wait' : 'pointer', padding: '6px 14px', fontSize: 12, fontFamily: 'inherit', fontWeight: 600 }}>
-                {deleting ? 'Suppression…' : 'Supprimer définitivement'}
-              </button>
-            </>
-          ) : (
-            <>
-              <button onClick={onClose} style={{ background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text-2)', cursor: 'pointer', padding: '6px 14px', fontSize: 12, fontFamily: 'inherit' }}>
-                Fermer
-              </button>
-              <button onClick={() => setConfirmDelete(true)} style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.4)', borderRadius: 6, color: '#ef4444', cursor: 'pointer', padding: '6px 14px', fontSize: 12, fontFamily: 'inherit' }}>
-                🗑 Supprimer ce flux
-              </button>
-            </>
+        <div style={{ padding: '12px 20px', borderTop: '1px solid var(--border)', background: 'var(--bg-card)', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, flexWrap: 'wrap' }}>
+          {/* Status actions */}
+          {flow && !confirmDelete && (
+            <div style={{ display: 'flex', gap: 6, flex: 1 }}>
+              {flow.status !== 'validated' && (
+                <button onClick={() => handleStatus('validated')} disabled={updatingStatus} style={{ padding: '5px 12px', borderRadius: 6, fontSize: 12, fontFamily: 'inherit', cursor: 'pointer', fontWeight: 600, background: 'rgba(34,197,94,0.15)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.35)' }}>
+                  ✓ Valider
+                </button>
+              )}
+              {flow.status !== 'deployed' && (
+                <button onClick={() => handleStatus('deployed')} disabled={updatingStatus} style={{ padding: '5px 12px', borderRadius: 6, fontSize: 12, fontFamily: 'inherit', cursor: 'pointer', fontWeight: 600, background: 'rgba(59,130,246,0.15)', color: '#3b82f6', border: '1px solid rgba(59,130,246,0.35)' }}>
+                  🚀 Déployer
+                </button>
+              )}
+              {flow.status !== 'rejected' && (
+                <button onClick={() => handleStatus('rejected')} disabled={updatingStatus} style={{ padding: '5px 12px', borderRadius: 6, fontSize: 12, fontFamily: 'inherit', cursor: 'pointer', fontWeight: 600, background: 'rgba(239,68,68,0.12)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.35)' }}>
+                  ✕ Refuser
+                </button>
+              )}
+              {flow.status !== 'pending' && (
+                <button onClick={() => handleStatus('pending')} disabled={updatingStatus} style={{ padding: '5px 12px', borderRadius: 6, fontSize: 12, fontFamily: 'inherit', cursor: 'pointer', background: 'var(--bg-input)', color: 'var(--text-3)', border: '1px solid var(--border)' }}>
+                  ↺ En attente
+                </button>
+              )}
+            </div>
           )}
+          <div style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
+            {confirmDelete ? (
+              <>
+                <span style={{ fontSize: 12, color: 'var(--text-2)', alignSelf: 'center' }}>Confirmer la suppression ?</span>
+                <button onClick={() => setConfirmDelete(false)} style={{ background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text-2)', cursor: 'pointer', padding: '6px 14px', fontSize: 12, fontFamily: 'inherit' }}>Annuler</button>
+                <button onClick={handleDelete} disabled={deleting} style={{ background: '#ef4444', border: 'none', borderRadius: 6, color: '#fff', cursor: deleting ? 'wait' : 'pointer', padding: '6px 14px', fontSize: 12, fontFamily: 'inherit', fontWeight: 600 }}>
+                  {deleting ? 'Suppression…' : 'Supprimer définitivement'}
+                </button>
+              </>
+            ) : (
+              <>
+                <button onClick={onClose} style={{ background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text-2)', cursor: 'pointer', padding: '6px 14px', fontSize: 12, fontFamily: 'inherit' }}>Fermer</button>
+                <button onClick={() => setConfirmDelete(true)} style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.4)', borderRadius: 6, color: '#ef4444', cursor: 'pointer', padding: '6px 14px', fontSize: 12, fontFamily: 'inherit' }}>
+                  🗑 Supprimer
+                </button>
+              </>
+            )}
+          </div>
         </div>
       </div>
     </div>

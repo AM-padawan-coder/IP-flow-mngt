@@ -62,7 +62,7 @@ export default function ImportPage() {
   }
 
   const exportJson = () => {
-    window.open('http://localhost:8000/topology/export/json', '_blank')
+    window.open('https://backend-web-service-python.onrender.com/topology/export/json', '_blank')
   }
 
   const loadTemplate = () => {
@@ -85,7 +85,7 @@ export default function ImportPage() {
       </div>
       <div className="page-content">
 
-        <div className="grid-2 gap-4">
+        <div className="grid-2 gap-4" style={{ alignItems: 'start' }}>
           {/* Modes */}
           <div>
             <div className="card mb-4">

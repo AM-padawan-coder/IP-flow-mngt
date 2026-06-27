@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { api } from '../api/client'
 
-type Tab = 'whatif' | 'loops' | 'impact'
+type Tab = 'whatif' | 'loops' | 'impact' | 'spof'
 
 const RISK_STYLE: Record<string, { color: string; bg: string; label: string; icon: string }> = {
   low:     { color: '#22c55e', bg: 'rgba(34,197,94,0.1)',   label: 'Risque faible',   icon: '✓' },
@@ -28,10 +28,12 @@ export default function SimulationPage() {
           <button className={`script-tab${tab === 'whatif'  ? ' active' : ''}`} onClick={() => setTab('whatif')}>🔬 Simulation What-if</button>
           <button className={`script-tab${tab === 'loops'   ? ' active' : ''}`} onClick={() => setTab('loops')}>🔁 Détection de boucles</button>
           <button className={`script-tab${tab === 'impact'  ? ' active' : ''}`} onClick={() => setTab('impact')}>💥 Analyse d'impact</button>
+          <button className={`script-tab${tab === 'spof'    ? ' active' : ''}`} onClick={() => setTab('spof')}>⚡ SPOF</button>
         </div>
         {tab === 'whatif' && <WhatIfPanel />}
         {tab === 'loops'  && <LoopsPanel />}
         {tab === 'impact' && <ImpactPanel />}
+        {tab === 'spof'   && <SpofPanel />}
       </div>
     </>
   )
@@ -43,7 +45,12 @@ function WhatIfPanel() {
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<any>(null)
   const [error, setError] = useState('')
+  const [recentFlows, setRecentFlows] = useState<any[]>([])
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
+
+  useEffect(() => {
+    api.getFlows().then((r: any) => setRecentFlows((r as any[]).slice(0, 4)))
+  }, [])
 
   const DEMOS = [
     { label: 'LAN → App HTTPS', src_ip: '10.10.1.50', dst_ip: '172.16.10.100', port: '443', protocol: 'tcp', application: 'SAP', justification: '' },
@@ -70,13 +77,26 @@ function WhatIfPanel() {
     <div>
       <div className="card mb-4">
         <div className="card-title">⚡ Scénarios rapides</div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {DEMOS.map(d => (
             <button key={d.label} className="btn btn-ghost btn-sm"
               onClick={() => { const { label, ...f } = d; void label; setForm(f); setResult(null) }}>
               {d.label}
             </button>
           ))}
+          {recentFlows.length > 0 && (
+            <>
+              <span style={{ borderLeft: '1px solid var(--border)', margin: '0 4px' }} />
+              {recentFlows.map(f => (
+                <button key={f.id} className="btn btn-ghost btn-sm"
+                  onClick={() => { setForm({ src_ip: f.src_ip, dst_ip: f.dst_ip, port: f.port, protocol: f.protocol, application: f.application || '', justification: '' }); setResult(null) }}
+                  title={`Flux #${f.id} — ${f.application || ''}`}
+                >
+                  #{f.id} {f.src_ip}→{f.dst_ip}:{f.port}
+                </button>
+              ))}
+            </>
+          )}
         </div>
       </div>
 
@@ -206,6 +226,72 @@ function WhatIfPanel() {
               <div style={{ fontSize: 13, opacity: 0.8, marginTop: 2 }}>Ce flux ne partage aucun équipement avec des flux validés existants.</div>
             </div>
           </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── SPOF detection ───────────────────────────────────────────────────────────
+function SpofPanel() {
+  const [loading, setLoading] = useState(false)
+  const [result, setResult] = useState<any>(null)
+
+  const analyze = async () => {
+    setLoading(true)
+    try { const r = await api.detectSpof(); setResult(r) }
+    finally { setLoading(false) }
+  }
+
+  return (
+    <div style={{ maxWidth: 760 }}>
+      <div className="card mb-4">
+        <div className="card-title">⚡ Détection de SPOF (Single Points of Failure)</div>
+        <p style={{ fontSize: 13, color: 'var(--text-2)', marginBottom: 16, lineHeight: 1.6 }}>
+          Identifie les équipements dont la panne rendrait le réseau non-connexe (points d'articulation du graphe de topologie). Un SPOF avec des flux actifs est une vulnérabilité critique à adresser en priorité.
+        </p>
+        <button className="btn btn-primary" onClick={analyze} disabled={loading}>
+          {loading ? <><span className="spinner" style={{ width: 14, height: 14 }} /> Analyse en cours…</> : '▶ Analyser la topologie'}
+        </button>
+      </div>
+
+      {result && (
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderRadius: 8, marginBottom: 16,
+            background: result.has_spof ? 'rgba(239,68,68,0.1)' : 'rgba(34,197,94,0.08)',
+            border: `1px solid ${result.has_spof ? 'rgba(239,68,68,0.3)' : 'rgba(34,197,94,0.2)'}` }}>
+            <span style={{ fontSize: 28 }}>{result.has_spof ? '⚠' : '✓'}</span>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 15, color: result.has_spof ? 'var(--red)' : 'var(--green)' }}>
+                {result.has_spof ? `${result.spof_count} SPOF détecté(s)` : 'Aucun SPOF — topologie résiliente'}
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 2 }}>
+                Topologie analysée : {result.node_count} équipements · {result.edge_count} liens
+              </div>
+            </div>
+          </div>
+
+          {result.spof_nodes?.map((node: any, i: number) => {
+            const critical = node.impacted_flows > 0
+            return (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 16px', background: critical ? 'rgba(239,68,68,0.08)' : 'var(--bg-card)', border: `1px solid ${critical ? 'rgba(239,68,68,0.25)' : 'var(--border)'}`, borderRadius: 8, marginBottom: 8 }}>
+                <div style={{ width: 40, height: 40, borderRadius: '50%', background: critical ? 'rgba(239,68,68,0.2)' : 'var(--bg-input)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>
+                  {critical ? '🔴' : '🟡'}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-1)', fontFamily: 'monospace' }}>{node.name}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>{node.type} · {node.vendor}</div>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: 24, fontWeight: 700, color: critical ? 'var(--red)' : 'var(--text-2)', lineHeight: 1 }}>{node.impacted_flows}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>flux actifs</div>
+                </div>
+                <div style={{ padding: '4px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, background: critical ? 'rgba(239,68,68,0.15)' : 'rgba(234,179,8,0.15)', color: critical ? 'var(--red)' : '#eab308' }}>
+                  {critical ? 'CRITIQUE' : 'Attention'}
+                </div>
+              </div>
+            )
+          })}
         </div>
       )}
     </div>
@@ -351,29 +437,53 @@ function ImpactPanel() {
               </div>
             </div>
           ) : (
-            <div className="card">
-              <div className="card-title">Flux interrompus si {result.equipment} tombe ({result.impacted_count})</div>
-              <div className="table-wrap">
-                <table>
-                  <thead>
-                    <tr><th>#</th><th>Source</th><th>Destination</th><th>Port/Proto</th><th>Application</th><th>Statut</th><th>Date</th></tr>
-                  </thead>
-                  <tbody>
-                    {result.flows.map((f: any) => (
-                      <tr key={f.id}>
-                        <td className="mono">{f.id}</td>
-                        <td className="mono">{f.src_ip}</td>
-                        <td className="mono">{f.dst_ip}</td>
-                        <td className="mono">{f.port}/{f.protocol}</td>
-                        <td>{f.application}</td>
-                        <td><span style={{ background: (STATUS_COLORS[f.status] ?? '#8b93a8') + '20', color: STATUS_COLORS[f.status] ?? '#8b93a8', padding: '2px 8px', borderRadius: 100, fontSize: 11, fontWeight: 600 }}>{f.status}</span></td>
-                        <td style={{ fontSize: 12, color: 'var(--text-2)' }}>{new Date(f.created_at).toLocaleDateString('fr-FR')}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+            <>
+              <div className="card mb-4">
+                <div className="card-title">Flux interrompus si {result.equipment} tombe ({result.impacted_count})</div>
+                <div className="table-wrap">
+                  <table>
+                    <thead><tr><th>#</th><th>Source</th><th>Destination</th><th>Port/Proto</th><th>Application</th><th>Statut</th><th>Date</th></tr></thead>
+                    <tbody>
+                      {result.flows.map((f: any) => (
+                        <tr key={f.id}>
+                          <td className="mono">{f.id}</td>
+                          <td className="mono">{f.src_ip}</td>
+                          <td className="mono">{f.dst_ip}</td>
+                          <td className="mono">{f.port}/{f.protocol}</td>
+                          <td>{f.application}</td>
+                          <td><span style={{ background: (STATUS_COLORS[f.status] ?? '#8b93a8') + '20', color: STATUS_COLORS[f.status] ?? '#8b93a8', padding: '2px 8px', borderRadius: 100, fontSize: 11, fontWeight: 600 }}>{f.status}</span></td>
+                          <td style={{ fontSize: 12, color: 'var(--text-2)' }}>{new Date(f.created_at).toLocaleDateString('fr-FR')}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            </div>
+
+              {/* Proposed actions */}
+              <div className="card" style={{ background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.2)' }}>
+                <div className="card-title" style={{ color: '#c4b5fd' }}>🛠 Actions proposées</div>
+                <p style={{ fontSize: 13, color: 'var(--text-2)', marginBottom: 16, lineHeight: 1.6 }}>
+                  Actions envisageables pour limiter l'impact ou préparer la maintenance de <strong>{result.equipment}</strong>.
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {[
+                    { icon: '🔒', action: 'Bloquer le trafic via une règle ACL DENY', desc: `Ajouter une règle ACL DENY any→any sur ${result.equipment} pour bloquer le trafic avant maintenance`, page: 'policies' },
+                    { icon: '🗺', action: 'Vérifier les routes passant par cet équipement', desc: `Consulter la table de routage de ${result.equipment} pour identifier les routes alternatives possibles`, page: 'policies' },
+                    { icon: '🔁', action: 'Analyser les boucles induites par la suppression', desc: 'Lancer la détection de boucles pour vérifier si la suppression crée une boucle L2/L3', page: 'loops' },
+                    { icon: '📋', action: `Notifier les propriétaires des ${result.impacted_count} flux`, desc: 'Exporter la liste des flux impactés pour notification des équipes responsables', page: null },
+                  ].map((item, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '10px 14px', background: 'var(--bg-input)', borderRadius: 8 }}>
+                      <span style={{ fontSize: 20, flexShrink: 0 }}>{item.icon}</span>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-1)' }}>{item.action}</div>
+                        <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>{item.desc}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
           )}
         </div>
       )}
