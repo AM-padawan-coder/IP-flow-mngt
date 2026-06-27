@@ -60,7 +60,7 @@ const PHASES: Phase[] = [
   { v: 'v2.7.1', title: 'Zones — toggle Physique / Logique', status: 'done', label: '✓ Livré', eta: '', subOf: 'v2.7',
     items: ['Toggle Physique / Logique / Aucune sur le graphe topologie', 'Conteneurs zone physique et logique affichés séparément selon le mode actif', 'Animation de fondu lors du changement de mode'] },
 
-  { v: 'v2.8', title: 'Sauvegarde & Restauration', status: 'done', label: '✓ Livré', eta: '',
+  { v: 'v2.8', title: 'Sauvegarde & Restauration, VRF, moteur de conformité', status: 'done', label: '✓ Livré', eta: '',
     items: [
       'Sauvegarde complète hebdomadaire : copie binaire SQLite (dimanche 03h00 UTC)',
       'Sauvegarde incrémentale quotidienne : export JSON par domaine (02h00 UTC)',
