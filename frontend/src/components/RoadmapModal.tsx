@@ -47,7 +47,7 @@ const PHASES = [
       'Roadmap enrichie : v3.1–v3.4 Simulation/Audit/Impact, v5.0–v7.6 Services/IA/Digital Twin, v2.7–v2.10 court terme',
       'Guide d\'utilisation : sections Overlays v2.6 et Simulation réécrites',
     ] },
-  { v: 'v2.7', title: 'Import flux JSON, Modal Builder & Validation', status: 'soon', label: '🔜 Prochain', eta: '',
+  { v: 'v2.7', title: 'Import flux JSON, Modal Builder & Validation', status: 'done', label: '✓ Livré', eta: '',
     items: ['Import JSON multi-flux : format structuré (source, destination, zones, ports, protocoles)', 'Modal Builder avec palette de champs glisser-déposer', 'Constructeur visuel avec sections SOURCE / DESTINATION / RÈGLE', 'Aperçu JSON temps réel synchronisé avec le constructeur', 'Validation 3 niveaux : syntaxique (bloquant) → règles métier (avertissements) → doublons existants', 'Workflow 4 étapes : Saisie → Aperçu → Validation → Import', 'Affichage erreurs par champ et par flux ; clic sur erreur → focus champ'] },
   { v: 'v2.8', title: 'Sauvegarde & Restauration', status: 'planned', label: '🗓 Planifié', eta: '',
     items: ['Sauvegarde automatisée : incrémentale (quotidienne) et complète (hebdomadaire)', 'Vérification d\'intégrité et restauration de la base de données', 'Séparation des sauvegardes par domaine : métier, audits, simulation'] },
