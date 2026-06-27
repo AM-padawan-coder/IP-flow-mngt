@@ -122,6 +122,16 @@ const PHASES: Phase[] = [
     items: ['Explication des règles appliquées en langage lisible', 'Analyse de conflits entre règles ACL sur un même équipement', 'Détection du shadowing : règles masquées par des règles plus permissives'] },
   { v: 'v3.4', title: 'Impact analysis', status: 'planned', label: '🗓 Planifié', eta: '',
     items: ['Impacts : liste des flux, services et équipements affectés par un changement', 'Blast radius score', 'Simulation diff avant/après : comparaison de l\'état réseau', 'Heatmap des flux impactés sur le graphe'] },
+  { v: 'v3.5', title: 'Conformité — enrichissement du moteur', status: 'inprog', label: '⚙ En cours', eta: '',
+    items: [
+      'Amélioration du moteur de conformité introduit en v2.8.2 (OSCAL 1.1.2, LocalEngineProvider)',
+      'Nouvelles règles de contrôle : chiffrement inter-zones (CRY-002), isolation DMZ (SEG-002), accès administration hors-bande (ADM-002)',
+      'Extension des profils existants : NIS2, ANSSI Guide d\'hygiène, CIS v8 — couverture élargie',
+      'Scoring de conformité agrégé par profil (% de contrôles satisfaits / en échec / non évalués)',
+      'Vue synthèse par framework dans la page Conformité : progression par domaine de contrôle',
+      'Amélioration des messages de violation : contexte réseau et recommandation de remédiation inclus',
+    ] },
+
   { v: 'v4.0', title: 'Connecteur IPAM Infoblox', status: 'soon', label: '🔜 Prochain', eta: '',
     items: ['Pull CIDR / allocation IPs via REST Infoblox', 'Mock IPAM service Render (démo sans licence)', 'Sync bidirectionnelle réseaux validés → IPAM'] },
   { v: 'v4.1', title: 'VRF · ACL · Services + Snapshots', status: 'planned', label: '🗓 Planifié', eta: '',
