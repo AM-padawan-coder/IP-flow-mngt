@@ -1,5 +1,26 @@
 # Changelog — IP Flow Manager
 
+## [2.8.4] — 2026-06-27
+
+### Navigation & organisation
+- **"Équipes & Sites"** renommé en **"Équipes"** dans la barre latérale
+- **"Conformité"** déplacé de la section Administration vers **"Référentiel"** (après Audit)
+
+### Configuration — refonte des zones
+- L'onglet **"Zones"** devient **"Zones logiques"** : formulaire épuré (suppression du sélecteur de type), liste ne contenant plus que les zones de segmentation réseau
+- Nouvel onglet **"Zones physiques"** : CRUD dédié aux sites / datacenters / salles / baies, présentation uniforme avec l'onglet Zones logiques
+- Nouvel onglet **"VRF"** : création, modification, suppression de VRF (nom, couleur, RD, RT Import/Export, description) ; affectation et retrait d'équipements par VRF via un accordéon dépliable
+
+### Topologie — onglets zones
+- Onglet **"Zones (6)"** renommé **"Zones logiques (6)"**
+- Nouvel onglet **"Zones physiques (7)"** : vue en cartes des sites physiques (type, localisation, description)
+- Badge "Confiance X%" forcé sur une seule ligne (plus de retour à la ligne dans les cartes étroites)
+
+### Graphe réseau — panneau VRF
+- Suppression du trait horizontal parasite après le dernier élément de la liste VRF active
+
+---
+
 ## [2.8.3] — 2026-06-27
 
 ### Conformité — branchement du moteur réel

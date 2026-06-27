@@ -4,7 +4,7 @@ import TopologyGraph, { CRITICALITY_COLOR, ROUTE_COLOR, TYPE_COLORS } from '../c
 import type { FlowOverlay, RouteOverlay, VRFOverlay } from '../components/TopologyGraph'
 import type { Equipment, Network, Zone } from '../types'
 
-type Tab = 'graph' | 'equipment' | 'networks' | 'zones' | 'links'
+type Tab = 'graph' | 'equipment' | 'networks' | 'zones' | 'physzones' | 'links'
 
 interface Link {
   id: number
@@ -93,6 +93,7 @@ export default function TopologyPage({ highlightedPath = [] }: Props) {
   const [networks,  setNetworks]  = useState<Network[]>([])
   const [zones,     setZones]     = useState<Zone[]>([])
   const [links,     setLinks]     = useState<Link[]>([])
+  const [physZones, setPhysZones] = useState<any[]>([])
   const [loading,   setLoading]   = useState(true)
 
   // Zone mode (physical / logical / none) — persisted
@@ -131,6 +132,7 @@ export default function TopologyPage({ highlightedPath = [] }: Props) {
       api.getNetworks().then(d => setNetworks(d as Network[])),
       api.getZones().then(d => setZones(d as Zone[])),
       api.getLinks().then(d => setLinks(d as Link[])),
+      api.getPhysicalZones().then(d => setPhysZones(d as any[])),
     ]).finally(() => setLoading(false))
   }
   useEffect(() => { load() }, [])
@@ -189,11 +191,12 @@ export default function TopologyPage({ highlightedPath = [] }: Props) {
   const vrfNodes       = showVRF ? new Set(overlayVRF.flatMap(v => v.equipment_names)).size : 0
 
   const TABS = [
-    { id: 'graph',     label: 'Graphe réseau' },
-    { id: 'equipment', label: `Équipements (${equipment.length})` },
-    { id: 'networks',  label: `Réseaux (${networks.length})` },
-    { id: 'zones',     label: `Zones (${zones.length})` },
-    { id: 'links',     label: `Liens (${links.length})` },
+    { id: 'graph',      label: 'Graphe réseau' },
+    { id: 'equipment',  label: `Équipements (${equipment.length})` },
+    { id: 'networks',   label: `Réseaux (${networks.length})` },
+    { id: 'zones',      label: `Zones logiques (${zones.length})` },
+    { id: 'physzones',  label: `Zones physiques (${physZones.length})` },
+    { id: 'links',      label: `Liens (${links.length})` },
   ] as const
 
   const INPUT: React.CSSProperties = {
@@ -340,8 +343,8 @@ export default function TopologyPage({ highlightedPath = [] }: Props) {
                   {showVRF && overlayVRF.length > 0 && (
                     <div className="card" style={{ padding: '10px 12px' }}>
                       <div style={{ fontSize: 10, fontWeight: 700, color: '#a855f7', letterSpacing: '0.8px', textTransform: 'uppercase', marginBottom: 8 }}>VRF actives</div>
-                      {overlayVRF.map(v => (
-                        <div key={v.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', borderBottom: '1px solid var(--border)' }}>
+                      {overlayVRF.map((v, idx) => (
+                        <div key={v.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', borderBottom: idx < overlayVRF.length - 1 ? '1px solid var(--border)' : 'none' }}>
                           <div style={{ width: 8, height: 8, borderRadius: '50%', background: v.color, flexShrink: 0 }} />
                           <span style={{ fontSize: 11, color: 'var(--text-1)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.name}</span>
                           <span style={{ fontSize: 10, color: 'var(--text-3)' }}>{v.equipment_names.length} éq.</span>
@@ -453,10 +456,11 @@ export default function TopologyPage({ highlightedPath = [] }: Props) {
               </div>
             )}
 
-            {tab === 'equipment' && <EquipmentTable equipment={equipment} onRefresh={load} />}
-            {tab === 'networks'  && <NetworkTable networks={networks}     onRefresh={load} />}
-            {tab === 'zones'     && <ZoneTable zones={zones}             onRefresh={load} />}
-            {tab === 'links'     && <LinkTable links={links}             onRefresh={load} />}
+            {tab === 'equipment'  && <EquipmentTable equipment={equipment}   onRefresh={load} />}
+            {tab === 'networks'   && <NetworkTable networks={networks}       onRefresh={load} />}
+            {tab === 'zones'      && <ZoneTable zones={zones}               onRefresh={load} />}
+            {tab === 'physzones'  && <PhysZoneTable physZones={physZones}   onRefresh={load} />}
+            {tab === 'links'      && <LinkTable links={links}               onRefresh={load} />}
           </>
         )}
       </div>
@@ -530,7 +534,7 @@ function ZoneTable({ zones, onRefresh }: { zones: Zone[]; onRefresh: () => void 
           <div className="flex items-center gap-2 mb-2">
             <div style={{ width: 10, height: 10, borderRadius: '50%', background: z.color }} />
             <span style={{ fontWeight: 700 }}>{z.name}</span>
-            <span className="badge badge-info" style={{ marginLeft: 'auto', fontSize: 10 }}>Confiance {z.trust_level}%</span>
+            <span className="badge badge-info" style={{ marginLeft: 'auto', fontSize: 10, whiteSpace: 'nowrap' }}>Confiance {z.trust_level}%</span>
           </div>
           <div className="text-sm text-muted mb-2">{z.description}</div>
           {z.networks.map(n => (
@@ -542,6 +546,34 @@ function ZoneTable({ zones, onRefresh }: { zones: Zone[]; onRefresh: () => void 
           ))}
         </div>
       ))}
+    </div>
+  )
+}
+
+function PhysZoneTable({ physZones, onRefresh }: { physZones: any[]; onRefresh: () => void }) {
+  const TYPE_LABEL: Record<string, string> = { datacenter: 'Datacenter', salle: 'Salle', baie: 'Baie', local: 'Local' }
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 12 }}>
+      {physZones.map(p => (
+        <div key={p.id} className="card" style={{ borderLeft: '3px solid #f97316' }}>
+          <div className="flex items-center gap-2 mb-2">
+            <div style={{ width: 10, height: 10, borderRadius: 2, background: '#f97316' }} />
+            <span style={{ fontWeight: 700 }}>{p.name}</span>
+            <span style={{ marginLeft: 'auto', fontSize: 10, padding: '2px 6px', borderRadius: 8, background: 'rgba(249,115,22,0.15)', color: '#f97316', fontWeight: 600, whiteSpace: 'nowrap' }}>
+              ⬡ {TYPE_LABEL[p.type] || p.type}
+            </span>
+          </div>
+          {p.description && <div className="text-sm text-muted mb-1">{p.description}</div>}
+          {p.location && (
+            <div style={{ fontSize: 11, color: 'var(--text-3)', display: 'flex', gap: 6, alignItems: 'center' }}>
+              <span>📍</span><span>{p.location}</span>
+            </div>
+          )}
+        </div>
+      ))}
+      {physZones.length === 0 && (
+        <div className="empty-state" style={{ gridColumn: '1/-1', padding: 32 }}>Aucune zone physique configurée</div>
+      )}
     </div>
   )
 }

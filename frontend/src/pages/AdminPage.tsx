@@ -3,7 +3,7 @@ import { api } from '../api/client'
 import type { Zone, Equipment, Network } from '../types'
 import EquipmentDetailModal from '../components/EquipmentDetailModal'
 
-type Tab = 'equipment' | 'zones' | 'networks' | 'links'
+type Tab = 'equipment' | 'zones' | 'physzones' | 'networks' | 'links' | 'vrf'
 
 export default function AdminPage() {
   const [tab, setTab] = useState<Tab>('equipment')
@@ -13,16 +13,19 @@ export default function AdminPage() {
   const [links, setLinks] = useState<any[]>([])
   const [teams, setTeams] = useState<any[]>([])
   const [physZones, setPhysZones] = useState<any[]>([])
+  const [vrfs, setVrfs] = useState<any[]>([])
   const [msg, setMsg] = useState('')
 
   const load = async () => {
-    const [z, e, n, l, t, p] = await Promise.all([
+    const [z, e, n, l, t, p, v] = await Promise.all([
       api.getZones(), api.getEquipment(), api.getNetworks(),
       api.getLinks(), api.getTeams(), api.getPhysicalZones(),
+      api.getOverlayVRF(),
     ])
     setZones(z as Zone[]); setEquipment(e as Equipment[])
     setNetworks(n as Network[]); setLinks(l as any[])
     setTeams(t as any[]); setPhysZones(p as any[])
+    setVrfs(v as any[])
   }
 
   useEffect(() => { load() }, [])
@@ -31,9 +34,11 @@ export default function AdminPage() {
 
   const TABS = [
     { id: 'equipment', label: 'Équipements' },
-    { id: 'zones',     label: 'Zones' },
+    { id: 'zones',     label: 'Zones logiques' },
+    { id: 'physzones', label: 'Zones physiques' },
     { id: 'networks',  label: 'Réseaux' },
     { id: 'links',     label: 'Liens topo' },
+    { id: 'vrf',       label: 'VRF' },
   ] as const
 
   return (
@@ -50,9 +55,11 @@ export default function AdminPage() {
         </div>
 
         {tab === 'equipment' && <EquipmentAdmin equipment={equipment} zones={zones} teams={teams} physZones={physZones} onDone={async (m) => { await load(); notify(m) }} />}
-        {tab === 'zones'     && <ZoneAdmin zones={zones} physZones={physZones} onDone={async (m) => { await load(); notify(m) }} />}
+        {tab === 'zones'     && <LogicalZoneAdmin zones={zones} physZones={physZones} onDone={async (m) => { await load(); notify(m) }} />}
+        {tab === 'physzones' && <PhysZoneAdmin physZones={physZones} onDone={async (m) => { await load(); notify(m) }} />}
         {tab === 'networks'  && <NetworkAdmin networks={networks} zones={zones} onDone={async (m) => { await load(); notify(m) }} />}
         {tab === 'links'     && <LinkAdmin links={links} equipment={equipment} onDone={async (m) => { await load(); notify(m) }} />}
+        {tab === 'vrf'       && <VrfAdmin vrfs={vrfs} equipment={equipment} onDone={async (m) => { await load(); notify(m) }} />}
       </div>
     </>
   )
@@ -162,29 +169,18 @@ function EquipmentAdmin({ equipment, zones, teams, physZones, onDone }: any) {
   )
 }
 
-// ── Zone admin ──────────────────────────────────────────────────────────────
-function ZoneAdmin({ zones, physZones, onDone }: any) {
-  const blank = { name: '', color: '#3b82f6', description: '', trust_level: '50', zone_type: 'logical', datacenter_id: '' }
-  const physBlank = { name: '', type: 'datacenter', location: '', description: '', parent_id: '' }
+// ── Logical zone admin ──────────────────────────────────────────────────────
+function LogicalZoneAdmin({ zones, physZones, onDone }: any) {
+  const blank = { name: '', color: '#3b82f6', description: '', trust_level: '50', datacenter_id: '' }
   const [form, setForm] = useState(blank)
-  const [physForm, setPhysForm] = useState(physBlank)
   const [editing, setEditing] = useState<number | null>(null)
-  const [editKind, setEditKind] = useState<'zone' | 'phys'>('zone')
-  const [typeFilter, setTypeFilter] = useState<'all' | 'logical' | 'physical'>('all')
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
-  const setP = (k: string, v: string) => setPhysForm(f => ({ ...f, [k]: v }))
-
-  const resetForm = () => { setForm(blank); setPhysForm(physBlank); setEditing(null); setEditKind('zone') }
 
   const save = async () => {
-    if (editKind === 'phys' && editing) {
-      const payload = { ...physForm, parent_id: physForm.parent_id ? Number(physForm.parent_id) : null }
-      await api.updatePhysicalZone(editing, payload)
-      resetForm(); onDone(`Zone physique ${physForm.name} mise à jour`); return
-    }
-    const payload = { ...form, trust_level: Number(form.trust_level), datacenter_id: form.datacenter_id ? Number(form.datacenter_id) : null }
+    const payload = { ...form, trust_level: Number(form.trust_level), zone_type: 'logical', datacenter_id: form.datacenter_id ? Number(form.datacenter_id) : null }
     if (editing) { await api.updateZone(editing, payload) } else { await api.createZone(payload) }
-    resetForm(); onDone(editing ? `Zone ${form.name} mise à jour` : `Zone ${form.name} créée`)
+    setForm(blank); setEditing(null)
+    onDone(editing ? `Zone ${form.name} mise à jour` : `Zone ${form.name} créée`)
   }
 
   const del = async (id: number, name: string) => {
@@ -192,79 +188,27 @@ function ZoneAdmin({ zones, physZones, onDone }: any) {
     await api.deleteZone(id); onDone(`Zone ${name} supprimée`)
   }
 
-  const delPhys = async (id: number, name: string) => {
-    if (!confirm(`Supprimer la zone physique ${name} ?`)) return
-    await api.deletePhysicalZone(id); onDone(`Zone physique ${name} supprimée`)
-  }
-
-  const editPhys = (p: any) => {
-    setEditKind('phys')
-    setPhysForm({ name: p.name, type: p.type || 'datacenter', location: p.location || '', description: p.description || '', parent_id: p.parent_id ? String(p.parent_id) : '' })
-    setEditing(p.id)
-  }
-
-  const PHYS_TYPES = [['datacenter', 'Datacenter'], ['salle', 'Salle'], ['baie', 'Baie'], ['local', 'Local']] as const
+  const logicalZones = zones.filter((z: any) => z.zone_type === 'logical' || !z.zone_type)
 
   return (
     <div className="grid-2 gap-4">
       <div className="card">
-        <div className="card-title">
-          {editKind === 'phys' ? 'Modifier zone physique' : editing ? 'Modifier zone' : 'Nouvelle zone'}
-        </div>
-        {editKind === 'phys' ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <div className="form-group"><label className="form-label">Nom *</label><input className="form-input" value={physForm.name} onChange={e => setP('name', e.target.value)} /></div>
-            <div className="grid-2">
-              <div className="form-group">
-                <label className="form-label">Type</label>
-                <select className="form-select" value={physForm.type} onChange={e => setP('type', e.target.value)}>
-                  {PHYS_TYPES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                </select>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Zone parente</label>
-                <select className="form-select" value={physForm.parent_id} onChange={e => setP('parent_id', e.target.value)}>
-                  <option value="">— Aucune —</option>
-                  {(physZones || []).filter((x: any) => x.id !== editing).map((x: any) => (
-                    <option key={x.id} value={x.id}>{x.name} ({x.type})</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            <div className="form-group"><label className="form-label">Localisation</label><input className="form-input" value={physForm.location} onChange={e => setP('location', e.target.value)} /></div>
-            <div className="form-group"><label className="form-label">Description</label><input className="form-input" value={physForm.description} onChange={e => setP('description', e.target.value)} /></div>
-            <div className="flex gap-2 mt-2">
-              <button className="btn btn-primary" onClick={save} disabled={!physForm.name}>Mettre à jour</button>
-              <button className="btn btn-ghost" onClick={resetForm}>Annuler</button>
-            </div>
-          </div>
-        ) : (
+        <div className="card-title">{editing ? 'Modifier zone logique' : 'Nouvelle zone logique'}</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div className="form-group"><label className="form-label">Nom *</label><input className="form-input" value={form.name} onChange={e => set('name', e.target.value)} /></div>
           <div className="form-group"><label className="form-label">Description</label><input className="form-input" value={form.description} onChange={e => set('description', e.target.value)} /></div>
-          <div className="grid-2">
-            <div className="form-group">
-              <label className="form-label">Couleur</label>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <input type="color" value={form.color} onChange={e => set('color', e.target.value)} style={{ width: 40, height: 36, border: 'none', background: 'none', cursor: 'pointer' }} />
-                <input className="form-input" value={form.color} onChange={e => set('color', e.target.value)} style={{ flex: 1 }} />
-              </div>
-            </div>
-            <div className="form-group">
-              <label className="form-label">Type</label>
-              <select className="form-select" value={form.zone_type} onChange={e => set('zone_type', e.target.value)}>
-                <option value="logical">Logique</option>
-                <option value="physical">Physique</option>
-              </select>
+          <div className="form-group">
+            <label className="form-label">Couleur</label>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <input type="color" value={form.color} onChange={e => set('color', e.target.value)} style={{ width: 40, height: 36, border: 'none', background: 'none', cursor: 'pointer' }} />
+              <input className="form-input" value={form.color} onChange={e => set('color', e.target.value)} style={{ flex: 1 }} />
             </div>
           </div>
           <div className="form-group">
             <label className="form-label">Data Center (zone physique)</label>
             <select className="form-select" value={form.datacenter_id} onChange={e => set('datacenter_id', e.target.value)}>
               <option value="">— Aucun —</option>
-              {(physZones || []).map((p: any) => (
-                <option key={p.id} value={p.id}>{p.name} ({p.type})</option>
-              ))}
+              {(physZones || []).map((p: any) => <option key={p.id} value={p.id}>{p.name} ({p.type})</option>)}
             </select>
           </div>
           <div className="form-group">
@@ -273,67 +217,212 @@ function ZoneAdmin({ zones, physZones, onDone }: any) {
           </div>
           <div className="flex gap-2 mt-2">
             <button className="btn btn-primary" onClick={save} disabled={!form.name}>{editing ? 'Mettre à jour' : 'Créer'}</button>
-            {editing && <button className="btn btn-ghost" onClick={resetForm}>Annuler</button>}
+            {editing && <button className="btn btn-ghost" onClick={() => { setForm(blank); setEditing(null) }}>Annuler</button>}
           </div>
         </div>
-        )}
       </div>
 
       <div className="card">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-          <div className="card-title" style={{ margin: 0 }}>
-            Zones existantes ({zones.length + (physZones || []).length})
+        <div className="card-title">Zones logiques ({logicalZones.length})</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 460, overflowY: 'auto' }}>
+          {logicalZones.map((z: any) => (
+            <div key={z.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', minHeight: 40, background: 'var(--bg-input)', borderRadius: 6 }}>
+              <div style={{ width: 12, height: 12, borderRadius: '50%', background: z.color, flexShrink: 0 }} />
+              <span style={{ flex: 1, fontWeight: 500 }}>{z.name}</span>
+              <span className="badge badge-info text-xs" style={{ whiteSpace: 'nowrap' }}>{z.trust_level}%</span>
+              <button className="btn btn-ghost btn-sm" onClick={() => { setForm({ name: z.name, color: z.color, description: z.description || '', trust_level: String(z.trust_level), datacenter_id: z.datacenter_id ? String(z.datacenter_id) : '' }); setEditing(z.id) }}>✏</button>
+              <button className="btn btn-ghost btn-sm" style={{ color: 'var(--red)' }} onClick={() => del(z.id, z.name)}>✕</button>
+            </div>
+          ))}
+          {logicalZones.length === 0 && <div className="empty-state" style={{ padding: 20 }}>Aucune zone logique</div>}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Physical zone admin ──────────────────────────────────────────────────────
+function PhysZoneAdmin({ physZones, onDone }: any) {
+  const blank = { name: '', type: 'datacenter', location: '', description: '', parent_id: '' }
+  const [form, setForm] = useState(blank)
+  const [editing, setEditing] = useState<number | null>(null)
+  const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
+
+  const save = async () => {
+    const payload = { ...form, parent_id: form.parent_id ? Number(form.parent_id) : null }
+    if (editing) { await api.updatePhysicalZone(editing, payload) } else { await api.createPhysicalZone(payload) }
+    setForm(blank); setEditing(null)
+    onDone(editing ? `Zone physique ${form.name} mise à jour` : `Zone physique ${form.name} créée`)
+  }
+
+  const del = async (id: number, name: string) => {
+    if (!confirm(`Supprimer la zone physique ${name} ?`)) return
+    await api.deletePhysicalZone(id); onDone(`Zone physique ${name} supprimée`)
+  }
+
+  const PHYS_TYPES = [['datacenter', 'Datacenter'], ['salle', 'Salle'], ['baie', 'Baie'], ['local', 'Local']] as const
+  const TYPE_LABEL: Record<string, string> = { datacenter: 'Datacenter', salle: 'Salle', baie: 'Baie', local: 'Local' }
+
+  return (
+    <div className="grid-2 gap-4">
+      <div className="card">
+        <div className="card-title">{editing ? 'Modifier zone physique' : 'Nouvelle zone physique'}</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div className="form-group"><label className="form-label">Nom *</label><input className="form-input" value={form.name} onChange={e => set('name', e.target.value)} /></div>
+          <div className="grid-2">
+            <div className="form-group">
+              <label className="form-label">Type</label>
+              <select className="form-select" value={form.type} onChange={e => set('type', e.target.value)}>
+                {PHYS_TYPES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+              </select>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Zone parente</label>
+              <select className="form-select" value={form.parent_id} onChange={e => set('parent_id', e.target.value)}>
+                <option value="">— Aucune —</option>
+                {(physZones || []).filter((x: any) => x.id !== editing).map((x: any) => (
+                  <option key={x.id} value={x.id}>{x.name} ({x.type})</option>
+                ))}
+              </select>
+            </div>
           </div>
-          <div style={{ display: 'flex', gap: 4 }}>
-            {([['all', 'Tous'], ['logical', 'Logique'], ['physical', 'Physique']] as const).map(([val, lbl]) => (
-              <button key={val} onClick={() => setTypeFilter(val)}
-                style={{ padding: '4px 12px', borderRadius: 20, border: '1px solid var(--border)', cursor: 'pointer',
-                  fontFamily: 'inherit', fontSize: 12, fontWeight: 600,
-                  background: typeFilter === val ? 'var(--blue)' : 'var(--bg-input)',
-                  color: typeFilter === val ? '#fff' : 'var(--text-2)' }}>
-                {lbl}
-              </button>
-            ))}
+          <div className="form-group"><label className="form-label">Localisation</label><input className="form-input" value={form.location} onChange={e => set('location', e.target.value)} /></div>
+          <div className="form-group"><label className="form-label">Description</label><input className="form-input" value={form.description} onChange={e => set('description', e.target.value)} /></div>
+          <div className="flex gap-2 mt-2">
+            <button className="btn btn-primary" onClick={save} disabled={!form.name}>{editing ? 'Mettre à jour' : 'Créer'}</button>
+            {editing && <button className="btn btn-ghost" onClick={() => { setForm(blank); setEditing(null) }}>Annuler</button>}
           </div>
         </div>
+      </div>
+
+      <div className="card">
+        <div className="card-title">Zones physiques ({(physZones || []).length})</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 460, overflowY: 'auto' }}>
-          {/* Zones logiques (Zone model) — masquées sous le filtre "physique" */}
-          {typeFilter !== 'physical' &&
-            zones
-              .filter((z: any) => typeFilter === 'all' || z.zone_type === typeFilter)
-              .map((z: any) => (
-                <div key={`z-${z.id}`} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', minHeight: 40, background: 'var(--bg-input)', borderRadius: 6 }}>
-                  <div style={{ width: 12, height: 12, borderRadius: '50%', background: z.color, flexShrink: 0 }} />
-                  <span style={{ flex: 1, fontWeight: 500 }}>{z.name}</span>
-                  <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 8, fontWeight: 600,
-                    background: z.zone_type === 'logical' ? 'rgba(59,130,246,0.15)' : 'rgba(34,197,94,0.15)',
-                    color: z.zone_type === 'logical' ? '#3b82f6' : '#22c55e', whiteSpace: 'nowrap' }}>
-                    {z.zone_type === 'logical' ? '◈ Logique' : '⬡ Physique'}
-                  </span>
-                  <span className="badge badge-info text-xs">{z.trust_level}%</span>
-                  <button className="btn btn-ghost btn-sm" onClick={() => { setEditKind('zone'); setForm({ name: z.name, color: z.color, description: z.description || '', trust_level: String(z.trust_level), zone_type: z.zone_type, datacenter_id: z.datacenter_id ? String(z.datacenter_id) : '' }); setEditing(z.id) }}>✏</button>
-                  <button className="btn btn-ghost btn-sm" style={{ color: 'var(--red)' }} onClick={() => del(z.id, z.name)}>✕</button>
+          {(physZones || []).map((p: any) => (
+            <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', minHeight: 40, background: 'var(--bg-input)', borderRadius: 6 }}>
+              <div style={{ width: 12, height: 12, borderRadius: 2, background: '#f97316', flexShrink: 0 }} />
+              <span style={{ flex: 1, fontWeight: 500 }}>{p.name}</span>
+              <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 8, fontWeight: 600, background: 'rgba(249,115,22,0.15)', color: '#f97316', whiteSpace: 'nowrap' }}>
+                ⬡ {TYPE_LABEL[p.type] || p.type}
+              </span>
+              {p.location && <span className="text-xs text-dimmed" style={{ whiteSpace: 'nowrap' }}>{p.location}</span>}
+              <button className="btn btn-ghost btn-sm" onClick={() => { set('name', p.name); set('type', p.type || 'datacenter'); set('location', p.location || ''); set('description', p.description || ''); set('parent_id', p.parent_id ? String(p.parent_id) : ''); setEditing(p.id) }}>✏</button>
+              <button className="btn btn-ghost btn-sm" style={{ color: 'var(--red)' }} onClick={() => del(p.id, p.name)}>✕</button>
+            </div>
+          ))}
+          {(physZones || []).length === 0 && <div className="empty-state" style={{ padding: 20 }}>Aucune zone physique</div>}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── VRF admin ────────────────────────────────────────────────────────────────
+function VrfAdmin({ vrfs, equipment, onDone }: any) {
+  const blank = { name: '', color: '#a855f7', rd: '', rt_import: '', rt_export: '', description: '' }
+  const [form, setForm] = useState(blank)
+  const [editing, setEditing] = useState<number | null>(null)
+  const [expanded, setExpanded] = useState<number | null>(null)
+  const [addingEq, setAddingEq] = useState<Record<number, string>>({})
+  const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
+
+  const save = async () => {
+    const payload = { name: form.name, color: form.color, rd: form.rd || null, rt_import: form.rt_import || null, rt_export: form.rt_export || null, description: form.description || null }
+    if (editing) { await api.updateVRF(editing, payload) } else { await api.createVRF(payload) }
+    setForm(blank); setEditing(null)
+    onDone(editing ? `VRF ${form.name} mise à jour` : `VRF ${form.name} créée`)
+  }
+
+  const del = async (id: number, name: string) => {
+    if (!confirm(`Supprimer la VRF ${name} ?`)) return
+    await api.deleteVRF(id); onDone(`VRF ${name} supprimée`)
+  }
+
+  const addEq = async (vrfId: number) => {
+    const eqId = addingEq[vrfId]
+    if (!eqId) return
+    await api.addVRFEquipment(vrfId, Number(eqId))
+    setAddingEq(prev => ({ ...prev, [vrfId]: '' }))
+    onDone('Équipement ajouté à la VRF')
+  }
+
+  const removeEq = async (vrfId: number, eqName: string) => {
+    const eq = (equipment as any[]).find((e: any) => e.name === eqName)
+    if (!eq) return
+    await api.removeVRFEquipment(vrfId, eq.id)
+    onDone('Équipement retiré de la VRF')
+  }
+
+  return (
+    <div className="grid-2 gap-4">
+      <div className="card">
+        <div className="card-title">{editing ? 'Modifier VRF' : 'Nouvelle VRF'}</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div className="form-group"><label className="form-label">Nom *</label><input className="form-input" value={form.name} onChange={e => set('name', e.target.value)} /></div>
+          <div className="form-group">
+            <label className="form-label">Couleur</label>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <input type="color" value={form.color} onChange={e => set('color', e.target.value)} style={{ width: 40, height: 36, border: 'none', background: 'none', cursor: 'pointer' }} />
+              <input className="form-input" value={form.color} onChange={e => set('color', e.target.value)} style={{ flex: 1 }} />
+            </div>
+          </div>
+          <div className="grid-2">
+            <div className="form-group"><label className="form-label">Route Distinguisher</label><input className="form-input mono" placeholder="65000:10" value={form.rd} onChange={e => set('rd', e.target.value)} /></div>
+            <div className="form-group"><label className="form-label">RT Import</label><input className="form-input mono" placeholder="65000:100" value={form.rt_import} onChange={e => set('rt_import', e.target.value)} /></div>
+          </div>
+          <div className="form-group"><label className="form-label">RT Export</label><input className="form-input mono" placeholder="65000:100" value={form.rt_export} onChange={e => set('rt_export', e.target.value)} /></div>
+          <div className="form-group"><label className="form-label">Description</label><input className="form-input" value={form.description} onChange={e => set('description', e.target.value)} /></div>
+          <div className="flex gap-2 mt-2">
+            <button className="btn btn-primary" onClick={save} disabled={!form.name}>{editing ? 'Mettre à jour' : 'Créer'}</button>
+            {editing && <button className="btn btn-ghost" onClick={() => { setForm(blank); setEditing(null) }}>Annuler</button>}
+          </div>
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="card-title">VRF configurées ({vrfs.length})</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 500, overflowY: 'auto' }}>
+          {vrfs.map((v: any) => {
+            const isOpen = expanded === v.id
+            const currentEqNames: string[] = v.equipment_names || []
+            const available = (equipment as any[]).filter((e: any) => !currentEqNames.includes(e.name))
+            return (
+              <div key={v.id} style={{ background: 'var(--bg-input)', borderRadius: 6, border: `1px solid ${v.color}30`, overflow: 'hidden' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', cursor: 'pointer' }} onClick={() => setExpanded(isOpen ? null : v.id)}>
+                  <div style={{ width: 12, height: 12, borderRadius: '50%', background: v.color, flexShrink: 0 }} />
+                  <span style={{ flex: 1, fontWeight: 500 }}>{v.name}</span>
+                  {v.rd && <span className="text-xs text-dimmed mono">{v.rd}</span>}
+                  <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 8, background: `${v.color}22`, color: v.color, fontWeight: 600, whiteSpace: 'nowrap' }}>{currentEqNames.length} éq.</span>
+                  <button className="btn btn-ghost btn-sm" onClick={e => { e.stopPropagation(); setForm({ name: v.name, color: v.color, rd: v.rd || '', rt_import: v.rt_import || '', rt_export: v.rt_export || '', description: v.description || '' }); setEditing(v.id) }}>✏</button>
+                  <button className="btn btn-ghost btn-sm" style={{ color: 'var(--red)' }} onClick={e => { e.stopPropagation(); del(v.id, v.name) }}>✕</button>
+                  <span style={{ fontSize: 10, color: 'var(--text-3)' }}>{isOpen ? '▲' : '▼'}</span>
                 </div>
-              ))}
-          {/* Zones physiques (PhysicalZone model — sites, DC) — visibles sous "tous" et "physique" */}
-          {typeFilter !== 'logical' &&
-            (physZones || []).map((p: any) => (
-              <div key={`p-${p.id}`} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', minHeight: 40, background: 'var(--bg-input)', borderRadius: 6 }}>
-                <div style={{ width: 12, height: 12, borderRadius: 2, background: '#f97316', flexShrink: 0 }} />
-                <span style={{ flex: 1, fontWeight: 500 }}>{p.name}</span>
-                <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 8, fontWeight: 600,
-                  background: 'rgba(249,115,22,0.15)', color: '#f97316', whiteSpace: 'nowrap' }}>
-                  ⬡ Physique
-                </span>
-                <span style={{ fontSize: 10, color: 'var(--text-3)', whiteSpace: 'nowrap' }}>{p.type}</span>
-                <button className="btn btn-ghost btn-sm" onClick={() => editPhys(p)}>✏</button>
-                <button className="btn btn-ghost btn-sm" style={{ color: 'var(--red)' }} onClick={() => delPhys(p.id, p.name)}>✕</button>
+                {isOpen && (
+                  <div style={{ borderTop: '1px solid var(--border)', padding: '8px 10px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: available.length > 0 ? 8 : 0 }}>
+                      {currentEqNames.length === 0 && <div className="text-xs text-dimmed">Aucun équipement dans cette VRF</div>}
+                      {currentEqNames.map((name: string) => (
+                        <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 6px', background: 'var(--bg)', borderRadius: 4 }}>
+                          <span style={{ fontSize: 11, flex: 1 }}>{name}</span>
+                          <button className="btn btn-ghost btn-sm" style={{ color: 'var(--red)', fontSize: 10 }} onClick={() => removeEq(v.id, name)}>✕</button>
+                        </div>
+                      ))}
+                    </div>
+                    {available.length > 0 && (
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <select className="form-select" style={{ flex: 1, fontSize: 11, padding: '4px 6px' }} value={addingEq[v.id] || ''} onChange={e => setAddingEq(prev => ({ ...prev, [v.id]: e.target.value }))}>
+                          <option value="">+ Ajouter un équipement…</option>
+                          {available.map((e: any) => <option key={e.id} value={e.id}>{e.name}</option>)}
+                        </select>
+                        <button className="btn btn-primary btn-sm" onClick={() => addEq(v.id)} disabled={!addingEq[v.id]} style={{ fontSize: 11 }}>Ajouter</button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
-            ))}
-          {(typeFilter !== 'physical' ? zones.filter((z: any) => typeFilter === 'all' || z.zone_type === typeFilter).length : 0) +
-           (typeFilter !== 'logical' ? (physZones || []).length : 0) === 0 && (
-            <div className="empty-state" style={{ padding: 20 }}>Aucune zone</div>
-          )}
+            )
+          })}
+          {vrfs.length === 0 && <div className="empty-state" style={{ padding: 20 }}>Aucune VRF configurée</div>}
         </div>
       </div>
     </div>

@@ -23,12 +23,12 @@ const NAV = [
   { id: 'topology',        label: 'Graphe réseau',       icon: '⬡', section: 'Topologie' },
   { id: 'admin',           label: 'Configuration',       icon: '⚙', section: 'Topologie' },
   { id: 'backups',         label: 'Sauvegardes',         icon: '💾', section: 'Administration' },
-  { id: 'compliance',      label: 'Conformité',          icon: '🛡', section: 'Administration' },
   { id: 'flows-topology',  label: 'Flux',                icon: '↔', section: 'Topologie' },
   { id: 'policies',        label: 'Politiques réseau',   icon: '🔒', section: 'Topologie' },
   { id: 'import',          label: 'Import / Export',     icon: '⬆', section: 'Topologie' },
-  { id: 'teams',      label: 'Équipes & Sites',     icon: '👥', section: 'Organisation' },
+  { id: 'teams',      label: 'Équipes',             icon: '👥', section: 'Organisation' },
   { id: 'audit',      label: 'Audit',               icon: '◎', section: 'Référentiel' },
+  { id: 'compliance', label: 'Conformité',          icon: '🛡', section: 'Référentiel' },
 ] as const
 
 function getInitialTheme(): 'dark' | 'light' {
@@ -104,7 +104,7 @@ export default function App() {
 
         {/* Footer — version + actions */}
         <div style={{ padding: '10px 14px', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 6 }}>
-          <div className="text-xs text-dimmed" style={{ flex: 1 }}>demo · v2.8.3</div>
+          <div className="text-xs text-dimmed" style={{ flex: 1 }}>demo · v2.8.4</div>
 
           {/* Dark/Light toggle */}
           <button
