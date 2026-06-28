@@ -117,12 +117,13 @@ export default function PolicyPage() {
       </div>
       <div className="page-content">
 
-        {/* Equipment selector + tab */}
+        {/* Equipment selector + tabs */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
           <select
+            className="form-select"
             value={selectedEq}
             onChange={e => setSelectedEq(e.target.value ? Number(e.target.value) : '')}
-            style={{ ...inputStyle, minWidth: 220 }}
+            style={{ width: 'auto', minWidth: 220 }}
           >
             <option value="">— Choisir un équipement —</option>
             {equipment.map(eq => (
@@ -130,9 +131,15 @@ export default function PolicyPage() {
             ))}
           </select>
 
-          <div style={{ display: 'flex', gap: 4 }}>
-            {([['routing', '🗺 Tables de routage'], ['acl', '🔒 ACL']] as [Tab, string][]).map(([t, l]) => (
-              <button key={t} onClick={() => setTab(t)} style={{ padding: '6px 14px', borderRadius: 6, fontSize: 12, fontFamily: 'inherit', cursor: 'pointer', fontWeight: tab === t ? 700 : 400, background: tab === t ? 'var(--blue)' : 'var(--bg-input)', color: tab === t ? '#fff' : 'var(--text-2)', border: tab === t ? '1px solid var(--blue)' : '1px solid var(--border)' }}>{l}</button>
+          <div className="script-tabs" style={{ marginBottom: 0 }}>
+            {([
+              ['routing', 'ti ti-directions', 'Tables de routage'],
+              ['acl',     'ti ti-shield-lock', 'ACL'],
+            ] as [Tab, string, string][]).map(([t, icon, label]) => (
+              <button key={t} className={`script-tab${tab === t ? ' active' : ''}`} onClick={() => setTab(t)}>
+                <i className={icon} style={{ marginRight: 5, verticalAlign: 'middle' }} aria-hidden="true" />
+                {label}
+              </button>
             ))}
           </div>
         </div>
@@ -140,7 +147,7 @@ export default function PolicyPage() {
         {!selectedEq ? (
           <div className="card">
             <div className="empty-state">
-              <div className="empty-state-icon">🔌</div>
+              <div className="empty-state-icon"><i className="ti ti-plug-connected-x" style={{ fontSize: 28 }} /></div>
               <div>Sélectionnez un équipement pour voir ses politiques</div>
             </div>
           </div>
@@ -191,7 +198,7 @@ export default function PolicyPage() {
 
             {routes.length === 0 ? (
               <div className="empty-state" style={{ padding: '30px 0' }}>
-                <div className="empty-state-icon">🗺</div>
+                <div className="empty-state-icon"><i className="ti ti-directions" style={{ fontSize: 28 }} /></div>
                 <div>Aucune route configurée</div>
               </div>
             ) : (
@@ -214,7 +221,7 @@ export default function PolicyPage() {
                               <button style={btnGhost} onClick={() => setDeleteConfirm(null)}>✕</button>
                             </div>
                           ) : (
-                            <button style={btnDanger} onClick={() => setDeleteConfirm({ type: 'route', id: r.id })}>🗑</button>
+                            <button style={btnDanger} onClick={() => setDeleteConfirm({ type: 'route', id: r.id })}><i className="ti ti-trash" aria-hidden="true" /></button>
                           )}
                         </td>
                       </tr>
@@ -245,7 +252,7 @@ export default function PolicyPage() {
                   style={{ ...btnPrimary, background: genFlowId ? '#8b5cf6' : 'var(--bg-input)', color: genFlowId ? '#fff' : 'var(--text-3)', border: genFlowId ? 'none' : '1px solid var(--border)', cursor: genFlowId ? 'pointer' : 'default' }}
                   onClick={generateFromFlow}
                   disabled={!genFlowId || generating}
-                >{generating ? '⏳' : '⚡ Générer'}</button>
+                >{generating ? <><i className="ti ti-loader-2" style={{ marginRight: 4 }} />Génération…</> : <><i className="ti ti-bolt" style={{ marginRight: 4 }} />Générer</>}</button>
                 <button style={btnPrimary} onClick={() => setShowAddAcl(!showAddAcl)}>+ Ajouter une règle</button>
               </div>
             </div>
@@ -309,7 +316,7 @@ export default function PolicyPage() {
 
             {acls.length === 0 ? (
               <div className="empty-state" style={{ padding: '30px 0' }}>
-                <div className="empty-state-icon">🔒</div>
+                <div className="empty-state-icon"><i className="ti ti-shield-lock" style={{ fontSize: 28 }} /></div>
                 <div>Aucune règle ACL configurée</div>
               </div>
             ) : (
@@ -339,7 +346,7 @@ export default function PolicyPage() {
                               <button style={btnGhost} onClick={() => setDeleteConfirm(null)}>✕</button>
                             </div>
                           ) : (
-                            <button style={btnDanger} onClick={() => setDeleteConfirm({ type: 'acl', id: r.id })}>🗑</button>
+                            <button style={btnDanger} onClick={() => setDeleteConfirm({ type: 'acl', id: r.id })}><i className="ti ti-trash" aria-hidden="true" /></button>
                           )}
                         </td>
                       </tr>
