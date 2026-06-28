@@ -17,9 +17,9 @@ Après persistance locale, l'entrée est diffusée à tous les *sinks* activés.
 Aujourd'hui seul le stockage local est actif ; les sinks suivants sont fournis
 désactivés et servent de point d'extension :
   - SignatureSink         (v3.6) — signature cryptographique des journaux
-  - SyslogSink            (v4)   — envoi Syslog
-  - SiemSink              (v5)   — intégration SIEM (Splunk / Elastic / QRadar / Sentinel)
-  - AnomalyDetectionSink  (v6)   — détection d'anomalies
+  - SyslogSink            (v3.6) — envoi Syslog
+  - SiemSink              (v3.6) — intégration SIEM (Elastic)
+  - AnomalyDetectionSink  (vX)   — détection d'anomalies
 """
 import hashlib
 import json
@@ -109,21 +109,21 @@ class SignatureSink(AuditSink):
 class SyslogSink(AuditSink):
     name = "syslog"
     label = "Envoi Syslog"
-    roadmap = "v4"
+    roadmap = "v3.6"
     enabled = False
 
 
 class SiemSink(AuditSink):
     name = "siem"
-    label = "Intégration SIEM (Splunk / Elastic / QRadar / Sentinel)"
-    roadmap = "v5"
+    label = "Intégration SIEM (Elastic)"
+    roadmap = "v3.6"
     enabled = False
 
 
 class AnomalyDetectionSink(AuditSink):
     name = "anomaly_detection"
     label = "Détection d'anomalies"
-    roadmap = "v6"
+    roadmap = "vX"
     enabled = False
 
 

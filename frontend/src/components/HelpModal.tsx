@@ -744,7 +744,7 @@ const CONTENT: Record<string, JSX.Element> = {
       </div>
 
       <div style={CALLOUT}>
-        <strong>Intégrations à venir</strong> : signature cryptographique des journaux (v3.6), envoi Syslog (v4), connecteurs SIEM — Splunk / Elastic / QRadar / Sentinel (v5) et détection d'anomalies (v6). L'architecture de <em>sinks</em> est déjà en place côté backend.
+        <strong>Intégrations à venir</strong> : signature cryptographique des journaux, envoi Syslog et connecteur SIEM (Elastic) prévus en v3.6 ; détection d'anomalies à planifier. L'architecture de <em>sinks</em> est déjà en place côté backend.
       </div>
     </div>
   ),

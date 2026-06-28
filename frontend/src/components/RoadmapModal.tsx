@@ -206,7 +206,7 @@ const PHASES: Phase[] = [
       'Export horodaté CSV / JSON (logs_AAAAMMJJ_HHMMSS) respectant les filtres actifs',
       'Empreinte d\'intégrité chaînée (sha256) — journal tamper-evident',
       'Conservation paramétrable (30 / 90 / 120 / 180 / 365 jours / illimité) avec purge automatique',
-      'Architecture de sinks extensible : Signature crypto (v3.6), Syslog (v4), SIEM (v5), détection d\'anomalies (v6)',
+      'Architecture de sinks extensible : Signature crypto / Syslog / SIEM Elastic (v3.6), détection d\'anomalies (à planifier)',
       'Barre de navigation : scroll vertical pour accéder au menu sur petits écrans',
     ] },
   { v: 'v2.11', title: 'Import avancé & configuration', status: 'planned', label: '🗓 Planifié', eta: '',

@@ -5,7 +5,7 @@
 ### Logs & Traçabilité
 
 - **Backend — modèle `AuditLog`** : journal d'audit append-only (timestamp, user, action, object_type/id/name, catégorie, statut, détails, états avant/après, IP, session, source) + empreinte d'intégrité `sha256` chaînée (tamper-evidence) ; table `app_settings` pour la rétention
-- **Backend — service `audit.record_audit()`** : point d'entrée centralisé, défensif (ne casse jamais l'appelant), avec architecture de *sinks* extensible (Signature crypto v3.6, Syslog v4, SIEM v5, détection d'anomalies v6 — désactivés)
+- **Backend — service `audit.record_audit()`** : point d'entrée centralisé, défensif (ne casse jamais l'appelant), avec architecture de *sinks* extensible (Signature crypto / Syslog / SIEM Elastic prévus en v3.6, détection d'anomalies à planifier — désactivés)
 - **Backend — router `/audit-logs`** : liste paginée + filtres (recherche, action, type, statut, catégorie, utilisateur, environnement, période), stats/facettes, vue détail, export CSV/JSON horodaté, rétention GET/PUT, liste des intégrations
 - **Backend — traçage automatique** : flux (création/validation/refus/suppression), applications (CRUD + import), environnements (CRUD), routes & ACL (création/suppression + génération depuis flux)
 - **Backend — seed** : 20 entrées d'audit de démonstration idempotentes couvrant toutes les catégories/actions ; purge automatique selon la rétention au démarrage
