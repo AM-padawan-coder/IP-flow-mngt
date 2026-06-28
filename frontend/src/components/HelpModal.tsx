@@ -5,23 +5,23 @@ interface Props {
 }
 
 const SECTIONS = [
-  { id: 'intro',      icon: '🏠', label: 'Introduction' },
-  { id: 'flux',       icon: '＋', label: 'Saisir un flux' },
-  { id: 'historique', icon: '📋', label: 'Historique' },
-  { id: 'validation', icon: '✅', label: 'Validation' },
-  { id: 'chemin',     icon: '⬡',  label: 'Chemin réseau' },
-  { id: 'scripts',    icon: '📄', label: 'Scripts générés' },
-  { id: 'overlays',   icon: '⬡',  label: 'Overlays graphe' },
-  { id: 'simulation', icon: 'ti', iconClass: 'ti ti-adjustments-horizontal', label: 'Simulation' },
-  { id: 'policies',   icon: 'ti', iconClass: 'ti ti-shield',                label: 'Politiques réseau' },
-  { id: 'topo',       icon: '⚙',  label: 'Configuration' },
-  { id: 'import',     icon: '⬆',  label: 'Import / Export' },
-  { id: 'equipes',    icon: 'ti', iconClass: 'ti ti-users',                 label: 'Équipes' },
-  { id: 'audit',      icon: '◎',  label: 'Audit' },
-  { id: 'sauvegardes',icon: 'ti', iconClass: 'ti ti-database',              label: 'Sauvegardes' },
-  { id: 'conformite', icon: 'ti', iconClass: 'ti ti-checkbox',              label: 'Conformité' },
-  { id: 'schemas',    icon: '◈',  label: 'Schémas & Workflows' },
-  { id: 'faq',        icon: '❓', label: 'FAQ' },
+  { id: 'intro',       iconClass: 'ti ti-home',                    label: 'Introduction' },
+  { id: 'flux',        iconClass: 'ti ti-plus',                    label: 'Saisir un flux' },
+  { id: 'historique',  iconClass: 'ti ti-clipboard-list',          label: 'Historique' },
+  { id: 'validation',  iconClass: 'ti ti-circle-check',            label: 'Validation' },
+  { id: 'chemin',      iconClass: 'ti ti-route',                   label: 'Chemin réseau' },
+  { id: 'scripts',     iconClass: 'ti ti-file-code',               label: 'Scripts générés' },
+  { id: 'overlays',    iconClass: 'ti ti-layers-intersect',        label: 'Overlays graphe' },
+  { id: 'simulation',  iconClass: 'ti ti-adjustments-horizontal',  label: 'Simulation' },
+  { id: 'policies',    iconClass: 'ti ti-shield',                  label: 'Politiques réseau' },
+  { id: 'topo',        iconClass: 'ti ti-settings',                label: 'Configuration' },
+  { id: 'import',      iconClass: 'ti ti-upload',                  label: 'Import / Export' },
+  { id: 'equipes',     iconClass: 'ti ti-users',                   label: 'Équipes' },
+  { id: 'audit',       iconClass: 'ti ti-eye',                     label: 'Audit' },
+  { id: 'sauvegardes', iconClass: 'ti ti-database',                label: 'Sauvegardes' },
+  { id: 'conformite',  iconClass: 'ti ti-checkbox',                label: 'Conformité' },
+  { id: 'schemas',     iconClass: 'ti ti-sitemap',                 label: 'Schémas & Workflows' },
+  { id: 'faq',         iconClass: 'ti ti-help-circle',             label: 'FAQ' },
 ]
 
 // ── Style constants (declared before CONTENT to avoid temporal dead zone) ─────
@@ -1029,9 +1029,7 @@ export default function HelpModal({ onClose }: Props) {
             {SECTIONS.map(s => (
               <button key={s.id} onClick={() => setSection(s.id)} style={{ display: 'flex', alignItems: 'center', gap: 9, width: '100%', padding: '8px 10px', borderRadius: 6, border: 'none', background: section === s.id ? 'rgba(59,130,246,0.15)' : 'transparent', color: section === s.id ? 'var(--blue)' : 'var(--text-2)', fontWeight: section === s.id ? 600 : 400, fontSize: 13, cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit' }}>
                 <span style={{ width: 18, textAlign: 'center', fontSize: 15 }}>
-                  {s.icon === 'ti' && 'iconClass' in s
-                    ? <i className={(s as any).iconClass} aria-hidden="true" />
-                    : s.icon}
+                  <i className={s.iconClass} aria-hidden="true" />
                 </span>
                 {s.label}
               </button>
