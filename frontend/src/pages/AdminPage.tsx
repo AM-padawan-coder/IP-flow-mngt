@@ -3,7 +3,7 @@ import { api } from '../api/client'
 import type { Zone, Equipment, Network } from '../types'
 import EquipmentDetailModal from '../components/EquipmentDetailModal'
 
-type Tab = 'equipment' | 'zones' | 'physzones' | 'networks' | 'links' | 'vrf' | 'applications'
+type Tab = 'equipment' | 'zones' | 'physzones' | 'networks' | 'links' | 'vrf' | 'applications' | 'environments'
 
 export default function AdminPage() {
   const [tab, setTab] = useState<Tab>('equipment')
@@ -15,18 +15,20 @@ export default function AdminPage() {
   const [physZones, setPhysZones] = useState<any[]>([])
   const [vrfs, setVrfs] = useState<any[]>([])
   const [applications, setApplications] = useState<any[]>([])
+  const [environments, setEnvironments] = useState<any[]>([])
   const [msg, setMsg] = useState('')
 
   const load = async () => {
-    const [z, e, n, l, t, p, v, apps] = await Promise.all([
+    const [z, e, n, l, t, p, v, apps, envs] = await Promise.all([
       api.getZones(), api.getEquipment(), api.getNetworks(),
       api.getLinks(), api.getTeams(), api.getPhysicalZones(),
-      api.getOverlayVRF(), api.getApplications(),
+      api.getOverlayVRF(), api.getApplications(), api.getEnvironments(),
     ])
     setZones(z as Zone[]); setEquipment(e as Equipment[])
     setNetworks(n as Network[]); setLinks(l as any[])
     setTeams(t as any[]); setPhysZones(p as any[])
     setVrfs(v as any[]); setApplications(apps as any[])
+    setEnvironments(envs as any[])
   }
 
   useEffect(() => { load() }, [])
@@ -41,6 +43,7 @@ export default function AdminPage() {
     { id: 'links',        label: 'Liens topo' },
     { id: 'vrf',          label: 'VRF' },
     { id: 'applications', label: 'Applications' },
+    { id: 'environments', label: 'Environnements' },
   ] as const
 
   return (
@@ -62,7 +65,8 @@ export default function AdminPage() {
         {tab === 'networks'  && <NetworkAdmin networks={networks} zones={zones} onDone={async (m) => { await load(); notify(m) }} />}
         {tab === 'links'     && <LinkAdmin links={links} equipment={equipment} onDone={async (m) => { await load(); notify(m) }} />}
         {tab === 'vrf'          && <VrfAdmin vrfs={vrfs} equipment={equipment} onDone={async (m) => { await load(); notify(m) }} />}
-        {tab === 'applications' && <ApplicationAdmin applications={applications} zones={zones} teams={teams} onDone={async (m) => { await load(); notify(m) }} />}
+        {tab === 'applications' && <ApplicationAdmin applications={applications} zones={zones} teams={teams} environments={environments} onDone={async (m) => { await load(); notify(m) }} />}
+        {tab === 'environments' && <EnvironmentAdmin environments={environments} onDone={async (m) => { await load(); notify(m) }} />}
       </div>
     </>
   )
@@ -529,7 +533,7 @@ const CRIT_COLORS: Record<string, string> = { Critique:'#ef4444', Elevée:'#f973
 
 interface AppIPRow { ip_address: string; zone_id: string }
 
-function ApplicationAdmin({ applications, zones, teams, onDone }: any) {
+function ApplicationAdmin({ applications, zones, teams, environments, onDone }: any) {
   const blankForm = { name:'', code:'', description:'', app_type:'Web', domain:'Production', criticality:'Moyenne', environment:'PROD', team_id:'' }
   const [form, setForm] = useState(blankForm)
   const [editing, setEditing] = useState<number | null>(null)
@@ -607,7 +611,10 @@ function ApplicationAdmin({ applications, zones, teams, onDone }: any) {
             <div className="form-group">
               <label className="form-label">Environnement</label>
               <select className="form-select" value={form.environment} onChange={e => set('environment', e.target.value)}>
-                {APP_ENVS.map(env => <option key={env}>{env}</option>)}
+                {(environments && environments.length > 0
+                  ? environments.map((env: any) => env.name)
+                  : APP_ENVS
+                ).map((env: string) => <option key={env}>{env}</option>)}
               </select>
             </div>
           </div>
@@ -736,6 +743,82 @@ function LinkAdmin({ links, equipment, onDone }: any) {
               <button className="btn btn-ghost btn-sm" style={{ color: 'var(--red)' }} onClick={() => del(l.id)}>✕</button>
             </div>
           ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Environment admin ────────────────────────────────────────────────────────
+function EnvironmentAdmin({ environments, onDone }: any) {
+  const blank = { name: '', description: '', color: '#64748b' }
+  const [form, setForm] = useState(blank)
+  const [editing, setEditing] = useState<number | null>(null)
+  const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
+
+  const save = async () => {
+    if (editing) {
+      await api.updateEnvironment(editing, form)
+    } else {
+      await api.createEnvironment(form)
+    }
+    setForm(blank); setEditing(null)
+    onDone(editing ? `Environnement ${form.name} mis à jour` : `Environnement ${form.name} créé`)
+  }
+
+  const del = async (id: number, name: string) => {
+    if (!confirm(`Supprimer l'environnement ${name} ?`)) return
+    await api.deleteEnvironment(id); onDone(`Environnement ${name} supprimé`)
+  }
+
+  const startEdit = (e: any) => {
+    setForm({ name: e.name, description: e.description || '', color: e.color || '#64748b' })
+    setEditing(e.id)
+  }
+
+  return (
+    <div className="grid-2 gap-4">
+      <div className="card">
+        <div className="card-title">{editing ? 'Modifier environnement' : 'Nouvel environnement'}</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div className="form-group">
+            <label className="form-label">Nom *</label>
+            <input className="form-input" value={form.name} onChange={e => set('name', e.target.value)} placeholder="ex: Production" />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Description</label>
+            <input className="form-input" value={form.description} onChange={e => set('description', e.target.value)} placeholder="ex: Environnement de production" />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Couleur</label>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <input type="color" value={form.color} onChange={e => set('color', e.target.value)} style={{ width: 40, height: 36, border: 'none', background: 'none', cursor: 'pointer' }} />
+              <input className="form-input" value={form.color} onChange={e => set('color', e.target.value)} style={{ flex: 1, fontFamily: 'monospace' }} />
+              <span style={{ padding: '3px 10px', borderRadius: 10, background: `${form.color}22`, color: form.color, fontSize: 12, fontWeight: 700, border: `1px solid ${form.color}44`, whiteSpace: 'nowrap' }}>
+                {form.name || 'Aperçu'}
+              </span>
+            </div>
+          </div>
+          <div className="flex gap-2 mt-2">
+            <button className="btn btn-primary" onClick={save} disabled={!form.name}>{editing ? 'Mettre à jour' : 'Créer'}</button>
+            {editing && <button className="btn btn-ghost" onClick={() => { setForm(blank); setEditing(null) }}>Annuler</button>}
+          </div>
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="card-title">Environnements ({environments.length})</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 460, overflowY: 'auto' }}>
+          {environments.map((e: any) => (
+            <div key={e.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', background: 'var(--bg-input)', borderRadius: 6 }}>
+              <div style={{ width: 16, height: 16, borderRadius: 4, background: e.color || '#64748b', flexShrink: 0 }} />
+              <span style={{ fontWeight: 600, flex: 1 }}>{e.name}</span>
+              <span className="text-xs text-muted" style={{ flex: 2 }}>{e.description || ''}</span>
+              <button className="btn btn-ghost btn-sm" onClick={() => startEdit(e)}>✏</button>
+              <button className="btn btn-ghost btn-sm" style={{ color: 'var(--red)' }} onClick={() => del(e.id, e.name)}>✕</button>
+            </div>
+          ))}
+          {environments.length === 0 && <div className="empty-state" style={{ padding: 20 }}>Aucun environnement configuré</div>}
         </div>
       </div>
     </div>

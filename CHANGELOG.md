@@ -1,5 +1,13 @@
 # Changelog — IP Flow Manager
 
+## v2.9.1 — Topologie apps / environnements dynamiques (2026-06-28)
+
+- **TopologyPage — Applications** : vue liste verticale (tableau) remplace les cards CSS grid ; colonnes Nom/Code, Type, Criticité, Environnement, Domaine, Équipe, IPs
+- **TopologyPage — Filtres pills** : les `<select>` de l'onglet Applications sont remplacés par des pill-buttons toggleables (type, criticité, environnement dynamique)
+- **Graphe réseau — Overlay Applications** : nouveau toggle "Applications" dans le panneau Overlays ; badges colorés (10×10 px, lettre du code) affichés au-dessus des nœuds selon la criticité ; endpoint backend `GET /topology/apps-overlay` ; filtre multi-select et compteurs dans les panneaux latéraux
+- **AdminPage — Onglet Environnements** : modèle `Environment` (id, name, description, color), CRUD backend `/environments`, seed 3 envs (Intégration, Préproduction, Production) ; formulaire admin avec color picker + badge aperçu ; dropdown Environnement dans ApplicationAdmin chargé depuis l'API
+- **AdminPage — Dropdowns modernisés** : `ModernSelect` pill-group pour les champs à peu d'options (criticité, type), couleurs dynamiques depuis les environnements configurés
+
 ## [2.9.0] — 2026-06-28
 
 ### Gestion des Applications

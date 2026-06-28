@@ -36,6 +36,7 @@ from routers import overlay as overlay_router
 from routers import backup as backup_router
 from routers import compliance as compliance_router
 from routers import applications as applications_router
+from routers import environments as environments_router
 app.include_router(flows.router,               prefix="/flows",        tags=["Flux IP"])
 app.include_router(topology.router,            prefix="/topology",     tags=["Topologie"])
 app.include_router(teams_router.router,        prefix="/org",          tags=["Organisation"])
@@ -45,6 +46,7 @@ app.include_router(overlay_router.router,      prefix="/overlay",      tags=["Ov
 app.include_router(backup_router.router,       prefix="/backups",      tags=["Sauvegardes"])
 app.include_router(compliance_router.router,   prefix="/compliance",   tags=["Conformité"])
 app.include_router(applications_router.router, prefix="/applications", tags=["Applications"])
+app.include_router(environments_router.router, prefix="/environments", tags=["Environnements"])
 
 
 def _run_migrations():

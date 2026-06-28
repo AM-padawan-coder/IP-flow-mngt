@@ -5,7 +5,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from database import get_db
-from models import Zone, Equipment, Network, EquipmentInterface, TopologyLink, Team, PhysicalZone
+from models import Zone, Equipment, Network, EquipmentInterface, TopologyLink, Team, PhysicalZone, Application, ApplicationIP
 
 router = APIRouter()
 
@@ -295,6 +295,32 @@ def topology_graph(db: Session = Depends(get_db)):
                 "type": lnk.link_type, "description": lnk.description or "",
             })
     return {"nodes": nodes, "edges": edges}
+
+
+# ── Apps overlay ──────────────────────────────────────────────────────────────
+
+@router.get("/apps-overlay")
+def apps_overlay(db: Session = Depends(get_db)):
+    apps = db.query(Application).all()
+    result = []
+    for app in apps:
+        app_ips = db.query(ApplicationIP).filter(ApplicationIP.application_id == app.id).all()
+        equipment_names: list[str] = []
+        for app_ip in app_ips:
+            iface = db.query(EquipmentInterface).filter(EquipmentInterface.ip_address == app_ip.ip_address).first()
+            if iface:
+                eq = db.query(Equipment).filter(Equipment.id == iface.equipment_id).first()
+                if eq and eq.name not in equipment_names:
+                    equipment_names.append(eq.name)
+        result.append({
+            "id": app.id,
+            "name": app.name,
+            "code": app.code or "",
+            "criticality": app.criticality or "Moyenne",
+            "environment": app.environment or "PROD",
+            "equipment_names": equipment_names,
+        })
+    return result
 
 
 # ── Import ─────────────────────────────────────────────────────────────────

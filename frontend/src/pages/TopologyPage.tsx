@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo, useRef } from 'react'
 import { api } from '../api/client'
-import TopologyGraph, { CRITICALITY_COLOR, ROUTE_COLOR, TYPE_COLORS } from '../components/TopologyGraph'
-import type { FlowOverlay, RouteOverlay, VRFOverlay } from '../components/TopologyGraph'
+import TopologyGraph, { CRITICALITY_COLOR, ROUTE_COLOR, TYPE_COLORS, CRIT_APP_COLOR } from '../components/TopologyGraph'
+import type { FlowOverlay, RouteOverlay, VRFOverlay, AppOverlay } from '../components/TopologyGraph'
 import type { Equipment, Network, Zone } from '../types'
 
 type Tab = 'graph' | 'equipment' | 'networks' | 'zones' | 'physzones' | 'links' | 'apps'
@@ -110,12 +110,18 @@ export default function TopologyPage({ highlightedPath = [] }: Props) {
   const [showFlows,  setShowFlows]  = useState(false)
   const [showRoutes, setShowRoutes] = useState(false)
   const [showVRF,    setShowVRF]    = useState(false)
+  const [showApps,   setShowApps]   = useState(false)
 
   // Overlay data
   const [overlayFlows,  setOverlayFlows]  = useState<FlowOverlay[]>([])
   const [overlayRoutes, setOverlayRoutes] = useState<RouteOverlay[]>([])
   const [overlayVRF,    setOverlayVRF]    = useState<VRFOverlay[]>([])
+  const [overlayApps,   setOverlayApps]   = useState<AppOverlay[]>([])
+  const [selectedAppIds, setSelectedAppIds] = useState<Set<number>>(new Set())
   const [loadingOverlay, setLoadingOverlay] = useState<string | null>(null)
+
+  // Environments (for dynamic badge colors)
+  const [environments, setEnvironments] = useState<any[]>([])
 
   // VRF multi-select filter (all selected by default once data loads)
   const [selectedVRFIds, setSelectedVRFIds] = useState<Set<number>>(new Set())
@@ -143,6 +149,7 @@ export default function TopologyPage({ highlightedPath = [] }: Props) {
       api.getLinks().then(d => setLinks(d as Link[])),
       api.getPhysicalZones().then(d => setPhysZones(d as any[])),
       api.getApplications().then(d => setApps(d as any[])).catch(() => {}),
+      api.getEnvironments().then(d => setEnvironments(d as any[])).catch(() => {}),
     ]).finally(() => setLoading(false))
   }
   useEffect(() => { load() }, [])
@@ -170,6 +177,16 @@ export default function TopologyPage({ highlightedPath = [] }: Props) {
       }).catch(() => {}).finally(() => setLoadingOverlay(null))
     }
   }, [showVRF])
+  useEffect(() => {
+    if (showApps && overlayApps.length === 0) {
+      setLoadingOverlay('apps')
+      api.getAppsOverlay().then((d: any) => {
+        const alist = d as AppOverlay[]
+        setOverlayApps(alist)
+        setSelectedAppIds(new Set(alist.map(a => a.id)))
+      }).catch(() => {}).finally(() => setLoadingOverlay(null))
+    }
+  }, [showApps])
 
   const applyFilters = () => {
     setFActive({ app: fApp, proto: fProto, crit: fCrit, status: fStatus, src: fSrc, dst: fDst, port: fPort })
@@ -211,10 +228,17 @@ export default function TopologyPage({ highlightedPath = [] }: Props) {
   const optDsts   = useMemo(() => [...new Set(overlayFlows.map(f => f.dst_ip).filter(Boolean) as string[])].sort(), [overlayFlows])
   const optPorts  = useMemo(() => [...new Set(overlayFlows.map(f => f.port).filter(Boolean) as string[])].sort(), [overlayFlows])
 
+  // Apps filtered by selected IDs
+  const filteredApps = useMemo(() => {
+    if (selectedAppIds.size === 0) return overlayApps
+    return overlayApps.filter(a => selectedAppIds.has(a.id))
+  }, [overlayApps, selectedAppIds])
+
   // Counts for right panel
   const visibleNodes   = graph.nodes.length
   const visibleEdges   = graph.edges.length
   const vrfNodes       = showVRF ? new Set(filteredVRF.flatMap(v => v.equipment_names)).size : 0
+  const visibleApps    = showApps ? new Set(filteredApps.flatMap(a => a.equipment_names)).size : 0
 
   const TABS = [
     { id: 'graph',      label: 'Graphe réseau' },
@@ -299,6 +323,11 @@ export default function TopologyPage({ highlightedPath = [] }: Props) {
                       on={showVRF}    onChange={() => setShowVRF(v => !v)}
                       label="VRF"     count={overlayVRF.length || undefined}
                       color="#a855f7"
+                    />
+                    <Toggle
+                      on={showApps}   onChange={() => setShowApps(v => !v)}
+                      label="Applications" count={overlayApps.length || undefined}
+                      color="#f59e0b"
                     />
                     {loadingOverlay && (
                       <div style={{ marginTop: 8, fontSize: 11, color: 'var(--text-3)', display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -398,6 +427,39 @@ export default function TopologyPage({ highlightedPath = [] }: Props) {
                     </div>
                   )}
 
+                  {/* Apps multi-select filter (visible when Apps overlay is on) */}
+                  {showApps && overlayApps.length > 0 && (
+                    <div className="card" style={{ padding: '10px 12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: '#f59e0b', letterSpacing: '0.8px', textTransform: 'uppercase' }}>Applications actives</div>
+                        <button
+                          style={{ fontSize: 9, padding: '1px 5px', borderRadius: 4, border: '1px solid var(--border)', background: 'var(--bg-input)', color: 'var(--text-3)', cursor: 'pointer', fontFamily: 'inherit' }}
+                          onClick={() => setSelectedAppIds(selectedAppIds.size === overlayApps.length ? new Set() : new Set(overlayApps.map(a => a.id)))}
+                        >
+                          {selectedAppIds.size === overlayApps.length ? 'Tout décocher' : 'Tout cocher'}
+                        </button>
+                      </div>
+                      {overlayApps.map((a, idx) => {
+                        const checked = selectedAppIds.has(a.id)
+                        const color = CRIT_APP_COLOR[a.criticality] || '#64748b'
+                        return (
+                          <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', borderBottom: idx < overlayApps.length - 1 ? '1px solid var(--border)' : 'none', cursor: 'pointer' }}
+                            onClick={() => {
+                              const next = new Set(selectedAppIds)
+                              if (checked) next.delete(a.id); else next.add(a.id)
+                              setSelectedAppIds(next)
+                            }}
+                          >
+                            <div style={{ width: 14, height: 14, borderRadius: 3, border: `2px solid ${color}`, background: checked ? color : 'transparent', flexShrink: 0, transition: 'background 0.15s' }} />
+                            <div style={{ width: 8, height: 8, borderRadius: 2, background: color, flexShrink: 0 }} />
+                            <span style={{ fontSize: 11, color: checked ? 'var(--text-1)' : 'var(--text-3)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.code || a.name}</span>
+                            <span style={{ fontSize: 10, color: 'var(--text-3)' }}>{a.equipment_names.length} éq.</span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+
                   {/* Route type multi-select filter (visible when Routes overlay is on) */}
                   {showRoutes && overlayRoutes.length > 0 && (
                     <div className="card" style={{ padding: '10px 12px' }}>
@@ -459,6 +521,7 @@ export default function TopologyPage({ highlightedPath = [] }: Props) {
                     routesOverlay={filteredRoutes}
                     vrfOverlay={filteredVRF}
                     zoneMode={zoneMode}
+                    overlayApps={showApps ? filteredApps : []}
                   />
                 </div>
 
@@ -475,6 +538,8 @@ export default function TopologyPage({ highlightedPath = [] }: Props) {
                       showRoutes ? ['Routes', filteredRoutes.length,  '#3b82f6'] : null,
                       showVRF    ? ['VRF',    filteredVRF.length,     '#a855f7'] : null,
                       showVRF    ? ['Nœuds VRF', vrfNodes,            '#a855f7'] : null,
+                      showApps   ? ['Apps',   filteredApps.length,    '#f59e0b'] : null,
+                      showApps   ? ['Éq. avec apps', visibleApps,     '#f59e0b'] : null,
                     ].filter(Boolean).map((row) => { const [lbl, cnt, color] = row as [string, number, string]; return (
                       <div key={lbl} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '3px 0', borderBottom: '1px solid var(--border)' }}>
                         <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{lbl}</span>
@@ -541,7 +606,7 @@ export default function TopologyPage({ highlightedPath = [] }: Props) {
             {tab === 'zones'      && <ZoneTable zones={zones}               onRefresh={load} />}
             {tab === 'physzones'  && <PhysZoneTable physZones={physZones}   onRefresh={load} />}
             {tab === 'links'      && <LinkTable links={links}               onRefresh={load} />}
-            {tab === 'apps'       && <ApplicationTable apps={apps}          onRefresh={load} />}
+            {tab === 'apps'       && <ApplicationTable apps={apps} environments={environments} onRefresh={load} />}
           </>
         )}
       </div>
@@ -687,17 +752,63 @@ function LinkTable({ links, onRefresh }: { links: Link[]; onRefresh: () => void 
 }
 
 // ── Applications table ────────────────────────────────────────────────────────
-const CRIT_APP_COLOR: Record<string, string> = {
-  Critique: '#ef4444', Elevée: '#f97316', Moyenne: '#3b82f6', Faible: '#64748b',
-}
-const ENV_BADGE_COLOR: Record<string, string> = {
-  PROD: '#22c55e', PREPROD1: '#eab308', PREPROD2: '#f97316', DEV: '#64748b',
+
+// CRIT_APP_COLOR is exported from TopologyGraph, re-use the import
+// ENV colors come from the environments prop (dynamic)
+
+function PillGroup({ label, options, value, onChange, colorMap }: {
+  label: string; options: string[]; value: string; onChange: (v: string) => void
+  colorMap?: Record<string, string>
+}) {
+  const PILL_BASE: React.CSSProperties = {
+    fontSize: 11, padding: '3px 10px', borderRadius: 12, border: '1px solid var(--border)',
+    cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s', whiteSpace: 'nowrap',
+  }
+  return (
+    <div style={{ marginBottom: 10 }}>
+      <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-3)', letterSpacing: '0.5px', textTransform: 'uppercase', marginBottom: 5 }}>{label}</div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+        {[{ val: '', lbl: 'Tous' }, ...options.map(o => ({ val: o, lbl: o }))].map(({ val, lbl }) => {
+          const active = value === val
+          const color = val && colorMap ? colorMap[val] : undefined
+          return (
+            <button
+              key={val}
+              onClick={() => onChange(val)}
+              style={{
+                ...PILL_BASE,
+                background: active ? (color ? `${color}22` : 'rgba(59,130,246,0.15)') : 'transparent',
+                borderColor: active ? (color || '#3b82f6') : 'var(--border)',
+                color: active ? (color || '#3b82f6') : 'var(--text-3)',
+                fontWeight: active ? 700 : 400,
+              }}
+            >{lbl}</button>
+          )
+        })}
+      </div>
+    </div>
+  )
 }
 
-function ApplicationTable({ apps, onRefresh }: { apps: any[]; onRefresh: () => void }) {
+function ApplicationTable({ apps, environments, onRefresh }: { apps: any[]; environments: any[]; onRefresh: () => void }) {
   const [filterType, setFilterType] = useState('')
   const [filterCrit, setFilterCrit] = useState('')
   const [filterEnv,  setFilterEnv]  = useState('')
+
+  // Build dynamic env color map from environments
+  const envColorMap: Record<string, string> = useMemo(() => {
+    const m: Record<string, string> = {}
+    environments.forEach((e: any) => { m[e.name] = e.color || '#64748b' })
+    // Fallback legacy values
+    if (!m['PROD'])    m['PROD']    = '#22c55e'
+    if (!m['PREPROD1']) m['PREPROD1'] = '#eab308'
+    if (!m['PREPROD2']) m['PREPROD2'] = '#f97316'
+    if (!m['DEV'])     m['DEV']     = '#64748b'
+    return m
+  }, [environments])
+
+  const allTypes = useMemo(() => [...new Set(apps.map(a => a.app_type).filter(Boolean))].sort(), [apps])
+  const allEnvs  = useMemo(() => [...new Set(apps.map(a => a.environment).filter(Boolean))].sort(), [apps])
 
   const filtered = apps.filter(a =>
     (!filterType || a.app_type === filterType) &&
@@ -705,80 +816,68 @@ function ApplicationTable({ apps, onRefresh }: { apps: any[]; onRefresh: () => v
     (!filterEnv  || a.environment === filterEnv)
   )
 
-  const INPUT: React.CSSProperties = {
-    background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 4,
-    padding: '4px 8px', fontSize: 11, color: 'var(--text-1)', fontFamily: 'inherit',
-    outline: 'none', cursor: 'pointer',
-  }
-
   return (
-    <div>
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)', marginRight: 8 }}>
-          Applications ({filtered.length})
-        </div>
-        <select style={INPUT} value={filterType} onChange={e => setFilterType(e.target.value)}>
-          <option value="">Tous types</option>
-          {[...new Set(apps.map(a => a.app_type).filter(Boolean))].sort().map(t => <option key={t}>{t}</option>)}
-        </select>
-        <select style={INPUT} value={filterCrit} onChange={e => setFilterCrit(e.target.value)}>
-          <option value="">Toutes criticités</option>
-          {['Critique','Elevée','Moyenne','Faible'].map(c => <option key={c}>{c}</option>)}
-        </select>
-        <select style={INPUT} value={filterEnv} onChange={e => setFilterEnv(e.target.value)}>
-          <option value="">Tous env.</option>
-          {['PROD','PREPROD1','PREPROD2','DEV'].map(e => <option key={e}>{e}</option>)}
-        </select>
-        <button className="btn btn-ghost btn-sm" style={{ marginLeft: 'auto' }} onClick={onRefresh}>↺ Rafraîchir</button>
+    <div className="card">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <div className="card-title" style={{ marginBottom: 0 }}>Applications ({filtered.length})</div>
+        <button className="btn btn-ghost btn-sm" onClick={onRefresh}>↺ Rafraîchir</button>
       </div>
+
+      {/* Pill filters */}
+      <PillGroup label="Type" options={allTypes} value={filterType} onChange={setFilterType} />
+      <PillGroup label="Criticité" options={['Critique','Elevée','Moyenne','Faible']} value={filterCrit} onChange={setFilterCrit}
+        colorMap={{ Critique: '#ef4444', Elevée: '#f97316', Moyenne: '#3b82f6', Faible: '#64748b' }} />
+      <PillGroup label="Environnement" options={allEnvs} value={filterEnv} onChange={setFilterEnv} colorMap={envColorMap} />
 
       {filtered.length === 0 && (
         <div className="empty-state" style={{ padding: 40 }}>Aucune application trouvée</div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 12 }}>
-        {filtered.map((app: any) => {
-          const critColor = CRIT_APP_COLOR[app.criticality] || '#64748b'
-          const envColor  = ENV_BADGE_COLOR[app.environment] || '#64748b'
-          const ips: any[] = app.ips || []
-          return (
-            <div key={app.id} className="card" style={{ borderLeft: `3px solid ${critColor}`, padding: '12px 14px' }}>
-              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-1)' }}>{app.name}</div>
-                  {app.code && <div style={{ fontSize: 11, color: 'var(--text-3)', fontFamily: 'monospace' }}>{app.code}</div>}
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end', flexShrink: 0 }}>
-                  <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 8, background: `${critColor}22`, color: critColor, fontWeight: 700 }}>{app.criticality}</span>
-                  <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 8, background: `${envColor}22`, color: envColor, fontWeight: 600 }}>{app.environment}</span>
-                </div>
-              </div>
-              {app.description && (
-                <div style={{ fontSize: 11, color: 'var(--text-3)', marginBottom: 6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{app.description}</div>
-              )}
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
-                <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 8, background: 'rgba(59,130,246,0.12)', color: '#3b82f6', fontWeight: 600 }}>{app.app_type}</span>
-                {app.domain && <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 8, background: 'var(--bg-input)', color: 'var(--text-3)' }}>{app.domain}</span>}
-              </div>
-              {ips.length > 0 && (
-                <div style={{ marginBottom: 4 }}>
-                  <div style={{ fontSize: 10, color: 'var(--text-3)', fontWeight: 600, marginBottom: 3 }}>IPs ({ips.length})</div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                    {ips.slice(0, 5).map((ip: any, i: number) => (
-                      <span key={i} style={{ fontSize: 10, fontFamily: 'monospace', padding: '1px 5px', background: 'var(--bg-input)', borderRadius: 4, color: 'var(--text-2)' }}>{ip.ip_address}</span>
-                    ))}
-                    {ips.length > 5 && <span style={{ fontSize: 10, color: 'var(--text-3)' }}>+{ips.length - 5}</span>}
-                  </div>
-                </div>
-              )}
-              {app.team_name && (
-                <div style={{ fontSize: 10, color: 'var(--text-3)', marginTop: 4 }}>
-                  Équipe : <span style={{ color: 'var(--text-2)' }}>{app.team_name}</span>
-                </div>
-              )}
-            </div>
-          )
-        })}
+      <div className="table-wrap" style={{ marginTop: 8 }}>
+        <table>
+          <thead>
+            <tr>
+              <th>Nom / Code</th>
+              <th>Type</th>
+              <th>Criticité</th>
+              <th>Environnement</th>
+              <th>Domaine</th>
+              <th>Équipe</th>
+              <th>IPs</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map((app: any) => {
+              const critColor = CRIT_APP_COLOR[app.criticality] || '#64748b'
+              const envColor  = envColorMap[app.environment] || '#64748b'
+              const ips: any[] = app.ips || []
+              return (
+                <tr key={app.id}>
+                  <td>
+                    <div style={{ fontWeight: 600, fontSize: 13 }}>{app.name}</div>
+                    {app.code && <div style={{ fontSize: 10, fontFamily: 'monospace', color: 'var(--text-3)' }}>{app.code}</div>}
+                  </td>
+                  <td>
+                    <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 8, background: 'rgba(59,130,246,0.12)', color: '#3b82f6', fontWeight: 600 }}>{app.app_type}</span>
+                  </td>
+                  <td>
+                    <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 8, background: `${critColor}22`, color: critColor, fontWeight: 700 }}>{app.criticality}</span>
+                  </td>
+                  <td>
+                    <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 8, background: `${envColor}22`, color: envColor, fontWeight: 600 }}>{app.environment}</span>
+                  </td>
+                  <td className="text-muted">{app.domain || '—'}</td>
+                  <td className="text-muted">{app.team_name || '—'}</td>
+                  <td>
+                    {ips.length > 0 ? (
+                      <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 8, background: 'var(--bg-input)', color: 'var(--text-2)', fontWeight: 600 }}>{ips.length}</span>
+                    ) : <span className="text-muted">—</span>}
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
       </div>
     </div>
   )

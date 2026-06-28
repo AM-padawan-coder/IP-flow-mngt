@@ -124,4 +124,13 @@ export const api = {
   updateApplication:  (id: number, data: object) => req(`/applications/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteApplication:  (id: number) => req(`/applications/${id}`, { method: 'DELETE' }),
   importApplications: (data: object) => req('/applications/import', { method: 'POST', body: JSON.stringify(data) }),
+
+  // Environments (v2.9.1)
+  getEnvironments:    () => req('/environments'),
+  createEnvironment:  (data: object) => req('/environments', { method: 'POST', body: JSON.stringify(data) }),
+  updateEnvironment:  (id: number, data: object) => req(`/environments/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteEnvironment:  (id: number) => req(`/environments/${id}`, { method: 'DELETE' }),
+
+  // Apps overlay (v2.9.1)
+  getAppsOverlay:     () => req('/topology/apps-overlay'),
 }

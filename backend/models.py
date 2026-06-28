@@ -205,3 +205,11 @@ class ApplicationIP(Base):
     ip_address = Column(String, nullable=False)
     zone_id = Column(Integer, ForeignKey("zones.id"), nullable=True)
     application = relationship("Application", back_populates="ips")
+
+
+class Environment(Base):
+    __tablename__ = 'environments'
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    description = Column(String, default='')
+    color = Column(String, default='#64748b')

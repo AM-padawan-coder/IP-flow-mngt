@@ -24,6 +24,7 @@ export interface VRFOverlay {
   id: number; name: string; rd?: string; rt_import?: string; rt_export?: string
   color: string; equipment_names: string[]; equipment_count?: number; description?: string
 }
+export type AppOverlay = { id: number; name: string; code: string; criticality: string; environment: string; equipment_names: string[] }
 
 type OverlayTip =
   | { kind: 'flow';  item: FlowOverlay;  x: number; y: number }
@@ -42,6 +43,7 @@ interface Props {
   routesOverlay?: RouteOverlay[]
   vrfOverlay?: VRFOverlay[]
   zoneMode?: 'none' | 'physical' | 'logical'
+  overlayApps?: AppOverlay[]
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -68,6 +70,9 @@ const VENDOR_LETTER: Record<string, string> = {
 }
 export const CRITICALITY_COLOR: Record<string, string> = {
   critique: '#ef4444', haute: '#f97316', moyenne: '#eab308', basse: '#22c55e',
+}
+export const CRIT_APP_COLOR: Record<string, string> = {
+  Critique: '#ef4444', Elevée: '#f97316', Moyenne: '#3b82f6', Faible: '#64748b',
 }
 export const ROUTE_COLOR: Record<string, string> = {
   bgp: '#8b5cf6', ospf: '#3b82f6', isis: '#06b6d4', connected: '#22c55e', static: '#f97316',
@@ -122,6 +127,7 @@ export default function TopologyGraph({
   showFlows = false, showRoutes = false, showVRF = false,
   flowsOverlay = [], routesOverlay = [], vrfOverlay = [],
   zoneMode = 'none',
+  overlayApps = [],
 }: Props) {
   const canvasRef    = useRef<HTMLCanvasElement>(null)
   const nodesRef     = useRef<GraphNode[]>([])
@@ -407,13 +413,47 @@ export default function TopologyGraph({
       ctx.restore()
     }
 
+    // ── App overlay badges ────────────────────────────────────────────────────
+    if (overlayApps.length > 0) {
+      // Build map: node name → list of apps
+      const nodeApps = new Map<string, AppOverlay[]>()
+      for (const app of overlayApps) {
+        for (const eqName of app.equipment_names) {
+          const existing = nodeApps.get(eqName) || []
+          existing.push(app)
+          nodeApps.set(eqName, existing)
+        }
+      }
+      for (const n of ns) {
+        const apps = nodeApps.get(n.name)
+        if (!apps || apps.length === 0) continue
+        const BADGE = 12
+        const SPACING = 14
+        const totalW = apps.length * BADGE + (apps.length - 1) * (SPACING - BADGE)
+        const startX = n.x - totalW / 2
+        const badgeY = n.y - NODE_R - 20
+        apps.forEach((app, idx) => {
+          const bx = startX + idx * SPACING
+          const color = CRIT_APP_COLOR[app.criticality] || '#64748b'
+          ctx.save()
+          rndRect(ctx, bx, badgeY, BADGE, BADGE, 3)
+          ctx.fillStyle = color; ctx.globalAlpha = 0.9; ctx.fill()
+          ctx.font = 'bold 8px Inter, monospace'
+          ctx.fillStyle = '#fff'; ctx.globalAlpha = 1
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+          ctx.fillText((app.code || app.name)[0].toUpperCase(), bx + BADGE / 2, badgeY + BADGE / 2)
+          ctx.restore()
+        })
+      }
+    }
+
     // Bottom hint
     ctx.save()
     ctx.font = '10px Inter, sans-serif'; ctx.fillStyle = 'rgba(139,147,168,0.4)'
     ctx.textAlign = 'right'; ctx.textBaseline = 'bottom'
     ctx.fillText('Glisser pour déplacer · Cliquer pour détails', W - 10, H - 6)
     ctx.restore()
-  }, [edges, highlightedPath, selectedNode, showFlows, showRoutes, showVRF, flowsOverlay, routesOverlay, vrfOverlay, zoneMode])
+  }, [edges, highlightedPath, selectedNode, showFlows, showRoutes, showVRF, flowsOverlay, routesOverlay, vrfOverlay, zoneMode, overlayApps])
 
   // Always keep a ref to the latest draw (for rAF)
   const drawRef = useRef(draw)

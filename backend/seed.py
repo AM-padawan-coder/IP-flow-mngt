@@ -1,7 +1,7 @@
 """Données de démonstration réalistes pour l'outil de gestion de flux IP."""
 import json
 from datetime import datetime, timedelta
-from models import Zone, Equipment, Network, EquipmentInterface, TopologyLink, ValidationRule, FlowRequest, Team, PhysicalZone, VRF, VRFEquipment, Application, ApplicationIP
+from models import Zone, Equipment, Network, EquipmentInterface, TopologyLink, ValidationRule, FlowRequest, Team, PhysicalZone, VRF, VRFEquipment, Application, ApplicationIP, Environment
 
 
 def seed_database(db):
@@ -216,4 +216,16 @@ def seed_database(db):
             db.add(ApplicationIP(application_id=app.id, ip_address=ip_addr, zone_id=zone_id))
 
     db.commit()
-    print("[seed] Base initialisée avec données de démo v2.9 (overlays: flux, routes, VRF; applications)")
+
+    # ─── Environnements (v2.9.1) ──────────────────────────────────────────────
+    if db.query(Environment).count() == 0:
+        envs = [
+            Environment(name='Intégration',  description="Environnement de tests d'intégration", color='#64748b'),
+            Environment(name='Préproduction', description='Environnement de recette / validation', color='#eab308'),
+            Environment(name='Production',    description='Environnement de production',           color='#22c55e'),
+        ]
+        for env in envs:
+            db.add(env)
+        db.commit()
+
+    print("[seed] Base initialisée avec données de démo v2.9.1 (overlays: flux, routes, VRF; applications; environnements)")
