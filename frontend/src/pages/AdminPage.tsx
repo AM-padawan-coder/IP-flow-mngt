@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { api } from '../api/client'
 import type { Zone, Equipment, Network } from '../types'
 import EquipmentDetailModal from '../components/EquipmentDetailModal'
 
-type Tab = 'equipment' | 'zones' | 'physzones' | 'networks' | 'links' | 'vrf'
+type Tab = 'equipment' | 'zones' | 'physzones' | 'networks' | 'links' | 'vrf' | 'applications'
 
 export default function AdminPage() {
   const [tab, setTab] = useState<Tab>('equipment')
@@ -14,18 +14,19 @@ export default function AdminPage() {
   const [teams, setTeams] = useState<any[]>([])
   const [physZones, setPhysZones] = useState<any[]>([])
   const [vrfs, setVrfs] = useState<any[]>([])
+  const [applications, setApplications] = useState<any[]>([])
   const [msg, setMsg] = useState('')
 
   const load = async () => {
-    const [z, e, n, l, t, p, v] = await Promise.all([
+    const [z, e, n, l, t, p, v, apps] = await Promise.all([
       api.getZones(), api.getEquipment(), api.getNetworks(),
       api.getLinks(), api.getTeams(), api.getPhysicalZones(),
-      api.getOverlayVRF(),
+      api.getOverlayVRF(), api.getApplications(),
     ])
     setZones(z as Zone[]); setEquipment(e as Equipment[])
     setNetworks(n as Network[]); setLinks(l as any[])
     setTeams(t as any[]); setPhysZones(p as any[])
-    setVrfs(v as any[])
+    setVrfs(v as any[]); setApplications(apps as any[])
   }
 
   useEffect(() => { load() }, [])
@@ -33,12 +34,13 @@ export default function AdminPage() {
   const notify = (m: string) => { setMsg(m); setTimeout(() => setMsg(''), 3000) }
 
   const TABS = [
-    { id: 'equipment', label: 'Équipements' },
-    { id: 'zones',     label: 'Zones logiques' },
-    { id: 'physzones', label: 'Zones physiques' },
-    { id: 'networks',  label: 'Réseaux' },
-    { id: 'links',     label: 'Liens topo' },
-    { id: 'vrf',       label: 'VRF' },
+    { id: 'equipment',    label: 'Équipements' },
+    { id: 'zones',        label: 'Zones logiques' },
+    { id: 'physzones',    label: 'Zones physiques' },
+    { id: 'networks',     label: 'Réseaux' },
+    { id: 'links',        label: 'Liens topo' },
+    { id: 'vrf',          label: 'VRF' },
+    { id: 'applications', label: 'Applications' },
   ] as const
 
   return (
@@ -59,7 +61,8 @@ export default function AdminPage() {
         {tab === 'physzones' && <PhysZoneAdmin physZones={physZones} onDone={async (m) => { await load(); notify(m) }} />}
         {tab === 'networks'  && <NetworkAdmin networks={networks} zones={zones} onDone={async (m) => { await load(); notify(m) }} />}
         {tab === 'links'     && <LinkAdmin links={links} equipment={equipment} onDone={async (m) => { await load(); notify(m) }} />}
-        {tab === 'vrf'       && <VrfAdmin vrfs={vrfs} equipment={equipment} onDone={async (m) => { await load(); notify(m) }} />}
+        {tab === 'vrf'          && <VrfAdmin vrfs={vrfs} equipment={equipment} onDone={async (m) => { await load(); notify(m) }} />}
+        {tab === 'applications' && <ApplicationAdmin applications={applications} zones={zones} teams={teams} onDone={async (m) => { await load(); notify(m) }} />}
       </div>
     </>
   )
@@ -511,6 +514,160 @@ function NetworkAdmin({ networks, zones, onDone }: any) {
               <button className="btn btn-ghost btn-sm" style={{ color: 'var(--red)' }} onClick={() => del(n.id, n.name)}>✕</button>
             </div>
           ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Application admin ────────────────────────────────────────────────────────
+const APP_TYPES = ['Web','API','ERP','Base de données','Middleware','Télécom','Virtualisation','Infrastructure','Sécurité','Supervision','ITSM'] as const
+const APP_DOMAINS = ['Production','Communication','Sécurité','Support'] as const
+const APP_CRITS = ['Faible','Moyenne','Elevée','Critique'] as const
+const APP_ENVS = ['DEV','PREPROD1','PREPROD2','PROD'] as const
+const CRIT_COLORS: Record<string, string> = { Critique:'#ef4444', Elevée:'#f97316', Moyenne:'#3b82f6', Faible:'#64748b' }
+
+interface AppIPRow { ip_address: string; zone_id: string }
+
+function ApplicationAdmin({ applications, zones, teams, onDone }: any) {
+  const blankForm = { name:'', code:'', description:'', app_type:'Web', domain:'Production', criticality:'Moyenne', environment:'PROD', team_id:'' }
+  const [form, setForm] = useState(blankForm)
+  const [editing, setEditing] = useState<number | null>(null)
+  const [ips, setIps] = useState<AppIPRow[]>([])
+  const [newIp, setNewIp] = useState({ ip_address:'', zone_id:'' })
+  const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
+
+  const reset = () => { setForm(blankForm); setEditing(null); setIps([]) }
+
+  const save = async () => {
+    const payload = {
+      ...form,
+      team_id: form.team_id ? Number(form.team_id) : null,
+      ips: ips.map(ip => ({ ip_address: ip.ip_address, zone_id: ip.zone_id ? Number(ip.zone_id) : null })),
+    }
+    if (editing) {
+      await api.updateApplication(editing, payload)
+    } else {
+      await api.createApplication(payload)
+    }
+    reset()
+    onDone(editing ? `${form.name} mis à jour` : `${form.name} créée`)
+  }
+
+  const del = async (id: number, name: string) => {
+    if (!confirm(`Supprimer l'application ${name} ?`)) return
+    await api.deleteApplication(id); onDone(`${name} supprimée`)
+  }
+
+  const startEdit = (app: any) => {
+    setForm({ name:app.name, code:app.code||'', description:app.description||'', app_type:app.app_type, domain:app.domain, criticality:app.criticality, environment:app.environment, team_id: app.team_id ? String(app.team_id) : '' })
+    setIps((app.ips||[]).map((ip: any) => ({ ip_address: ip.ip_address, zone_id: ip.zone_id ? String(ip.zone_id) : '' })))
+    setEditing(app.id)
+  }
+
+  const addIp = () => {
+    if (!newIp.ip_address.trim()) return
+    setIps(prev => [...prev, { ...newIp }])
+    setNewIp({ ip_address:'', zone_id:'' })
+  }
+  const removeIp = (idx: number) => setIps(prev => prev.filter((_, i) => i !== idx))
+
+  const INPUT: React.CSSProperties = { width:'100%', background:'var(--bg-input)', border:'1px solid var(--border)', borderRadius:4, padding:'5px 8px', fontSize:11, color:'var(--text-1)', fontFamily:'inherit', outline:'none', boxSizing:'border-box' as const }
+  const SELECT: React.CSSProperties = { ...INPUT, cursor:'pointer' }
+
+  return (
+    <div className="grid-2 gap-4">
+      <div className="card">
+        <div className="card-title">{editing ? 'Modifier application' : 'Nouvelle application'}</div>
+        <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+          <div className="form-group"><label className="form-label">Nom *</label><input className="form-input" value={form.name} onChange={e => set('name', e.target.value)} /></div>
+          <div className="form-group"><label className="form-label">Code</label><input className="form-input" value={form.code} onChange={e => set('code', e.target.value)} placeholder="ex: SAP-ERP" /></div>
+          <div className="form-group"><label className="form-label">Description</label><input className="form-input" value={form.description} onChange={e => set('description', e.target.value)} /></div>
+          <div className="grid-2">
+            <div className="form-group">
+              <label className="form-label">Type</label>
+              <select className="form-select" value={form.app_type} onChange={e => set('app_type', e.target.value)}>
+                {APP_TYPES.map(t => <option key={t}>{t}</option>)}
+              </select>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Domaine</label>
+              <select className="form-select" value={form.domain} onChange={e => set('domain', e.target.value)}>
+                {APP_DOMAINS.map(d => <option key={d}>{d}</option>)}
+              </select>
+            </div>
+          </div>
+          <div className="grid-2">
+            <div className="form-group">
+              <label className="form-label">Criticité</label>
+              <select className="form-select" value={form.criticality} onChange={e => set('criticality', e.target.value)}>
+                {APP_CRITS.map(c => <option key={c}>{c}</option>)}
+              </select>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Environnement</label>
+              <select className="form-select" value={form.environment} onChange={e => set('environment', e.target.value)}>
+                {APP_ENVS.map(env => <option key={env}>{env}</option>)}
+              </select>
+            </div>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Équipe</label>
+            <select className="form-select" value={form.team_id} onChange={e => set('team_id', e.target.value)}>
+              <option value="">— Aucune —</option>
+              {teams.map((t: any) => <option key={t.id} value={t.id}>{t.name}</option>)}
+            </select>
+          </div>
+
+          {/* IPs section */}
+          <div style={{ borderTop:'1px solid var(--border)', paddingTop:12 }}>
+            <div style={{ fontSize:11, fontWeight:700, color:'var(--text-3)', letterSpacing:'0.6px', textTransform:'uppercase', marginBottom:8 }}>Adresses IP</div>
+            {ips.map((ip, idx) => (
+              <div key={idx} style={{ display:'flex', alignItems:'center', gap:6, marginBottom:5, padding:'5px 8px', background:'var(--bg-input)', borderRadius:4 }}>
+                <span style={{ fontFamily:'monospace', fontSize:12, flex:1 }}>{ip.ip_address}</span>
+                {ip.zone_id && <span style={{ fontSize:10, color:'var(--text-3)' }}>{(zones as any[]).find((z: any) => String(z.id) === ip.zone_id)?.name || ''}</span>}
+                <button className="btn btn-ghost btn-sm" style={{ color:'var(--red)' }} onClick={() => removeIp(idx)}>✕</button>
+              </div>
+            ))}
+            {ips.length === 0 && <div className="text-xs text-dimmed" style={{ marginBottom:8 }}>Aucune IP ajoutée</div>}
+            <div style={{ display:'flex', gap:6 }}>
+              <input style={{ ...INPUT, flex:1 }} placeholder="10.0.0.1" value={newIp.ip_address} onChange={e => setNewIp(p => ({ ...p, ip_address: e.target.value }))} />
+              <select style={{ ...SELECT, flex:1 }} value={newIp.zone_id} onChange={e => setNewIp(p => ({ ...p, zone_id: e.target.value }))}>
+                <option value="">Zone opt.</option>
+                {(zones as any[]).filter((z: any) => z.zone_type === 'logical').map((z: any) => <option key={z.id} value={z.id}>{z.name}</option>)}
+              </select>
+              <button className="btn btn-primary btn-sm" onClick={addIp} disabled={!newIp.ip_address.trim()}>+</button>
+            </div>
+          </div>
+
+          <div className="flex gap-2 mt-2">
+            <button className="btn btn-primary" onClick={save} disabled={!form.name}>{editing ? 'Mettre à jour' : 'Créer'}</button>
+            {editing && <button className="btn btn-ghost" onClick={reset}>Annuler</button>}
+          </div>
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="card-title">Applications existantes ({applications.length})</div>
+        <div style={{ display:'flex', flexDirection:'column', gap:6, maxHeight:560, overflowY:'auto' }}>
+          {applications.map((app: any) => {
+            const critColor = CRIT_COLORS[app.criticality] || '#64748b'
+            const ipCount = (app.ips || []).length
+            return (
+              <div key={app.id} style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 10px', background:'var(--bg-input)', borderRadius:6, borderLeft:`3px solid ${critColor}` }}>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ fontWeight:600, fontSize:12, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{app.name}</div>
+                  {app.code && <div style={{ fontSize:10, fontFamily:'monospace', color:'var(--text-3)' }}>{app.code}</div>}
+                </div>
+                <span style={{ fontSize:10, padding:'2px 6px', borderRadius:8, background:`${critColor}22`, color:critColor, fontWeight:700, whiteSpace:'nowrap' }}>{app.criticality}</span>
+                <span style={{ fontSize:10, padding:'2px 6px', borderRadius:8, background:'rgba(59,130,246,0.12)', color:'#3b82f6', fontWeight:600, whiteSpace:'nowrap' }}>{app.app_type}</span>
+                <span style={{ fontSize:10, color:'var(--text-3)', whiteSpace:'nowrap' }}>{ipCount} IP</span>
+                <button className="btn btn-ghost btn-sm" onClick={() => startEdit(app)}>✏</button>
+                <button className="btn btn-ghost btn-sm" style={{ color:'var(--red)' }} onClick={() => del(app.id, app.name)}>✕</button>
+              </div>
+            )
+          })}
+          {applications.length === 0 && <div className="empty-state" style={{ padding:20 }}>Aucune application configurée</div>}
         </div>
       </div>
     </div>

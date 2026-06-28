@@ -181,3 +181,27 @@ class VRFEquipment(Base):
     id = Column(Integer, primary_key=True, index=True)
     vrf_id = Column(Integer, ForeignKey("vrfs.id"), nullable=False)
     equipment_id = Column(Integer, ForeignKey("equipment.id"), nullable=False)
+
+
+class Application(Base):
+    __tablename__ = "applications"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    code = Column(String, nullable=True)
+    description = Column(String, nullable=True)
+    app_type = Column(String, default="Web")          # Web|API|ERP|Base de données|Middleware|Télécom|Virtualisation|Infrastructure|Sécurité|Supervision|ITSM
+    domain = Column(String, default="Production")     # Production|Communication|Sécurité|Support
+    criticality = Column(String, default="Moyenne")   # Faible|Moyenne|Elevée|Critique
+    environment = Column(String, default="PROD")      # DEV|PREPROD1|PREPROD2|PROD
+    team_id = Column(Integer, ForeignKey("teams.id"), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    ips = relationship("ApplicationIP", back_populates="application", cascade="all, delete-orphan")
+
+
+class ApplicationIP(Base):
+    __tablename__ = "application_ips"
+    id = Column(Integer, primary_key=True, index=True)
+    application_id = Column(Integer, ForeignKey("applications.id"), nullable=False)
+    ip_address = Column(String, nullable=False)
+    zone_id = Column(Integer, ForeignKey("zones.id"), nullable=True)
+    application = relationship("Application", back_populates="ips")

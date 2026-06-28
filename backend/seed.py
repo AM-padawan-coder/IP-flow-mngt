@@ -1,7 +1,7 @@
 """Données de démonstration réalistes pour l'outil de gestion de flux IP."""
 import json
 from datetime import datetime, timedelta
-from models import Zone, Equipment, Network, EquipmentInterface, TopologyLink, ValidationRule, FlowRequest, Team, PhysicalZone, VRF, VRFEquipment
+from models import Zone, Equipment, Network, EquipmentInterface, TopologyLink, ValidationRule, FlowRequest, Team, PhysicalZone, VRF, VRFEquipment, Application, ApplicationIP
 
 
 def seed_database(db):
@@ -184,5 +184,36 @@ def seed_database(db):
             if eq:
                 db.add(VRFEquipment(vrf_id=vrfs[vrf_key].id, equipment_id=eq.id))
 
+    # ─── Applications (v2.9) ──────────────────────────────────────────────────
+    apps_data = [
+        dict(name="SAP ERP",           code="SAP-ERP",    app_type="ERP",              domain="Production",   criticality="Critique", environment="PROD",    team_id=teams["app"].id,   description="ERP métier RH/Finance/Achats",
+             ips=[("172.16.10.100", zones["ZONE-SERVEURS"].id), ("172.16.10.101", zones["ZONE-SERVEURS"].id)]),
+        dict(name="Portail Web nginx",  code="WEB-NGINX",  app_type="Web",              domain="Production",   criticality="Haute",    environment="PROD",    team_id=teams["infra"].id, description="Reverse proxy et portail intranet",
+             ips=[("192.168.100.50", zones["DMZ"].id), ("192.168.100.51", zones["DMZ"].id)]),
+        dict(name="PostgreSQL",         code="PG-MAIN",    app_type="Base de données",  domain="Production",   criticality="Critique", environment="PROD",    team_id=teams["app"].id,   description="Base de données applicatifs principaux",
+             ips=[("172.16.20.50", zones["ZONE-SERVEURS"].id)]),
+        dict(name="Zabbix Supervision", code="MON-ZABBIX", app_type="Supervision",      domain="Support",      criticality="Moyenne",  environment="PROD",    team_id=teams["ops"].id,   description="Monitoring réseau et serveurs",
+             ips=[("192.168.200.100", zones["ZONE-MGMT"].id)]),
+        dict(name="API Gateway",        code="API-GW",     app_type="API",              domain="Production",   criticality="Haute",    environment="PROD",    team_id=teams["app"].id,   description="Point d'entrée microservices",
+             ips=[("172.16.10.200", zones["ZONE-SERVEURS"].id)]),
+        dict(name="Serveur Messagerie", code="MAIL-SRV",   app_type="Télécom",          domain="Communication",criticality="Haute",    environment="PROD",    team_id=teams["infra"].id, description="Relais SMTP interne",
+             ips=[("192.168.101.50", zones["DMZ"].id)]),
+        dict(name="Veeam Backup",       code="BACKUP-VBR", app_type="Infrastructure",   domain="Support",      criticality="Haute",    environment="PROD",    team_id=teams["ops"].id,   description="Solution de sauvegarde Veeam B&R",
+             ips=[("192.168.250.10", zones["ZONE-BACKUP"].id)]),
+        dict(name="VMware vCenter",     code="VCENTER",    app_type="Virtualisation",   domain="Production",   criticality="Critique", environment="PROD",    team_id=teams["ops"].id,   description="Gestion infrastructure VMware",
+             ips=[("192.168.200.80", zones["ZONE-MGMT"].id)]),
+        dict(name="ServiceNow ITSM",    code="SNOW",       app_type="ITSM",             domain="Support",      criticality="Moyenne",  environment="PROD",    team_id=teams["secu"].id,  description="Gestion des incidents et changements",
+             ips=[("10.10.5.100", zones["LAN-USERS"].id)]),
+        dict(name="App RH (Preprod)",   code="RH-APP-PPD", app_type="Web",              domain="Production",   criticality="Faible",   environment="PREPROD1",team_id=teams["app"].id,   description="Application RH en cours de recette",
+             ips=[("172.16.10.150", zones["ZONE-SERVEURS"].id)]),
+    ]
+    for app_d in apps_data:
+        ips_list = app_d.pop("ips", [])
+        app = Application(**app_d)
+        db.add(app)
+        db.flush()
+        for ip_addr, zone_id in ips_list:
+            db.add(ApplicationIP(application_id=app.id, ip_address=ip_addr, zone_id=zone_id))
+
     db.commit()
-    print("[seed] Base initialisée avec données de démo v2.6 (overlays: flux, routes, VRF)")
+    print("[seed] Base initialisée avec données de démo v2.9 (overlays: flux, routes, VRF; applications)")

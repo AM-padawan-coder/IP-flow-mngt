@@ -1,5 +1,23 @@
 # Changelog — IP Flow Manager
 
+## [2.9.0] — 2026-06-28
+
+### Gestion des Applications
+- **Onglet Applications** dans Configuration : CRUD complet (Nom, Code, Type, Domaine, Criticité, Environnement, Équipe, IPs multiples avec zone logique)
+- **Onglet Applications** dans Topologie : vue cartes avec filtres type/criticité/environnement
+- **Import en masse** dans Import/Export : JSON Applications (tableau de définitions)
+- **Données de démo** : 10 applications réalistes (SAP, nginx, PostgreSQL, Zabbix, vCenter…)
+- Les flux IP sont liés aux applications via les adresses IP
+
+## [2.8.6] — 2026-06-28
+
+### Topologie — VRF et routes
+- Anneaux colorés multiples sur les équipements appartenant à plusieurs VRF (un anneau par VRF, concentriques, espacement 6 px)
+- Filtre multi-choix VRF dans le panneau gauche : cocher/décocher les VRF à afficher individuellement, bouton tout cocher/décocher
+- Filtre multi-choix routes : sélectionner les types de protocoles à afficher (BGP, OSPF, IS-IS, Connecté, Statique), bouton tout cocher/décocher
+
+---
+
 ## [2.8.5] — 2026-06-27
 
 ### Configuration — VRF, ajout d'équipements à la création

@@ -342,6 +342,18 @@ export default function TopologyGraph({
     }
 
     // ── Nodes ───────────────────────────────────────────────────────────────
+    // Map node name → list of VRF colors (for multi-VRF concentric rings)
+    const nodeVRFColors = new Map<string, string[]>()
+    if (showVRF) {
+      vrfOverlay.forEach(v => {
+        v.equipment_names.forEach(n => {
+          const existing = nodeVRFColors.get(n) || []
+          existing.push(v.color)
+          nodeVRFColors.set(n, existing)
+        })
+      })
+    }
+    // Legacy single-color map (kept for dimming logic)
     const nodeVRFColor = new Map<string, string>()
     if (showVRF) vrfOverlay.forEach(v => v.equipment_names.forEach(n => nodeVRFColor.set(n, v.color)))
 
@@ -351,18 +363,21 @@ export default function TopologyGraph({
       const color     = TYPE_COLORS[n.type] || '#64748b'
       const letter    = VENDOR_LETTER[n.vendor] || n.vendor[0]?.toUpperCase() || '?'
       const dimmed    = showVRF && vrfMemberNames.size > 0 && !vrfMemberNames.has(n.name)
-      const vrfColor  = nodeVRFColor.get(n.name)
+      const vrfColors = nodeVRFColors.get(n.name) || []
 
       ctx.save()
       ctx.globalAlpha = dimmed ? 0.18 : 1
 
-      // VRF halo
-      if (vrfColor) {
-        ctx.beginPath(); ctx.arc(n.x, n.y, NODE_R + 9, 0, Math.PI * 2)
-        ctx.strokeStyle = vrfColor; ctx.lineWidth = 2
-        ctx.setLineDash([3, 3]); ctx.globalAlpha = dimmed ? 0.18 : 0.7
-        ctx.stroke(); ctx.setLineDash([])
-        ctx.globalAlpha = dimmed ? 0.18 : 1
+      // VRF concentric rings (one per VRF, innermost first)
+      if (vrfColors.length > 0) {
+        vrfColors.forEach((vrfColor, ringIdx) => {
+          const ringR = NODE_R + 7 + ringIdx * 6
+          ctx.beginPath(); ctx.arc(n.x, n.y, ringR, 0, Math.PI * 2)
+          ctx.strokeStyle = vrfColor; ctx.lineWidth = 1.8
+          ctx.setLineDash([3, 3]); ctx.globalAlpha = dimmed ? 0.18 : 0.7
+          ctx.stroke(); ctx.setLineDash([])
+          ctx.globalAlpha = dimmed ? 0.18 : 1
+        })
       }
 
       if (inPath)      { ctx.shadowColor = '#f97316'; ctx.shadowBlur = 20 }

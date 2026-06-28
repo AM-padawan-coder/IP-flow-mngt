@@ -4,7 +4,7 @@ import TopologyGraph, { CRITICALITY_COLOR, ROUTE_COLOR, TYPE_COLORS } from '../c
 import type { FlowOverlay, RouteOverlay, VRFOverlay } from '../components/TopologyGraph'
 import type { Equipment, Network, Zone } from '../types'
 
-type Tab = 'graph' | 'equipment' | 'networks' | 'zones' | 'physzones' | 'links'
+type Tab = 'graph' | 'equipment' | 'networks' | 'zones' | 'physzones' | 'links' | 'apps'
 
 interface Link {
   id: number
@@ -15,12 +15,15 @@ interface Link {
 interface GraphData { nodes: any[]; edges: any[] }
 interface Props { highlightedPath?: string[] }
 
+const ALL_ROUTE_TYPES = ['bgp', 'ospf', 'isis', 'connected', 'static'] as const
+type RouteType = typeof ALL_ROUTE_TYPES[number]
+
 // ── Toggle switch ──────────────────────────────────────────────────────────────
-function Toggle({ on, onChange, label, count, color, noBorder }: {
-  on: boolean; onChange: () => void; label: string; count?: number; color?: string; noBorder?: boolean
+function Toggle({ on, onChange, label, count, color }: {
+  on: boolean; onChange: () => void; label: string; count?: number; color?: string
 }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 0', borderBottom: noBorder ? 'none' : '1px solid var(--border)' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 0', borderBottom: '1px solid var(--border)' }}>
       <button
         onClick={onChange}
         style={{ width: 36, height: 20, borderRadius: 10, border: 'none', cursor: 'pointer', background: on ? (color || '#3b82f6') : 'var(--bg-input)', position: 'relative', transition: 'background 0.2s', flexShrink: 0 }}
@@ -94,6 +97,7 @@ export default function TopologyPage({ highlightedPath = [] }: Props) {
   const [zones,     setZones]     = useState<Zone[]>([])
   const [links,     setLinks]     = useState<Link[]>([])
   const [physZones, setPhysZones] = useState<any[]>([])
+  const [apps,      setApps]      = useState<any[]>([])
   const [loading,   setLoading]   = useState(true)
 
   // Zone mode (physical / logical / none) — persisted
@@ -112,6 +116,11 @@ export default function TopologyPage({ highlightedPath = [] }: Props) {
   const [overlayRoutes, setOverlayRoutes] = useState<RouteOverlay[]>([])
   const [overlayVRF,    setOverlayVRF]    = useState<VRFOverlay[]>([])
   const [loadingOverlay, setLoadingOverlay] = useState<string | null>(null)
+
+  // VRF multi-select filter (all selected by default once data loads)
+  const [selectedVRFIds, setSelectedVRFIds] = useState<Set<number>>(new Set())
+  // Route type multi-select filter
+  const [selectedRouteTypes, setSelectedRouteTypes] = useState<Set<RouteType>>(new Set(ALL_ROUTE_TYPES))
 
   // Flux filter state
   const [fApp,      setFApp]      = useState('')
@@ -133,6 +142,7 @@ export default function TopologyPage({ highlightedPath = [] }: Props) {
       api.getZones().then(d => setZones(d as Zone[])),
       api.getLinks().then(d => setLinks(d as Link[])),
       api.getPhysicalZones().then(d => setPhysZones(d as any[])),
+      api.getApplications().then(d => setApps(d as any[])).catch(() => {}),
     ]).finally(() => setLoading(false))
   }
   useEffect(() => { load() }, [])
@@ -153,7 +163,11 @@ export default function TopologyPage({ highlightedPath = [] }: Props) {
   useEffect(() => {
     if (showVRF && overlayVRF.length === 0) {
       setLoadingOverlay('vrf')
-      api.getOverlayVRF().then((d: any) => setOverlayVRF(d as VRFOverlay[])).catch(() => {}).finally(() => setLoadingOverlay(null))
+      api.getOverlayVRF().then((d: any) => {
+        const vlist = d as VRFOverlay[]
+        setOverlayVRF(vlist)
+        setSelectedVRFIds(new Set(vlist.map(v => v.id)))
+      }).catch(() => {}).finally(() => setLoadingOverlay(null))
     }
   }, [showVRF])
 
@@ -178,6 +192,18 @@ export default function TopologyPage({ highlightedPath = [] }: Props) {
     )
   }, [overlayFlows, fActive])
 
+  // VRF filtered by selected IDs
+  const filteredVRF = useMemo(() => {
+    if (selectedVRFIds.size === 0) return overlayVRF
+    return overlayVRF.filter(v => selectedVRFIds.has(v.id))
+  }, [overlayVRF, selectedVRFIds])
+
+  // Routes filtered by selected types
+  const filteredRoutes = useMemo(() => {
+    if (selectedRouteTypes.size === ALL_ROUTE_TYPES.length) return overlayRoutes
+    return overlayRoutes.filter(r => selectedRouteTypes.has(r.route_type as RouteType))
+  }, [overlayRoutes, selectedRouteTypes])
+
   // Autocomplete option lists derived from loaded flows
   const optApps   = useMemo(() => [...new Set(overlayFlows.map(f => f.application).filter(Boolean) as string[])].sort(), [overlayFlows])
   const optProtos = useMemo(() => [...new Set(overlayFlows.map(f => f.protocol).filter(Boolean) as string[])].sort(), [overlayFlows])
@@ -188,7 +214,7 @@ export default function TopologyPage({ highlightedPath = [] }: Props) {
   // Counts for right panel
   const visibleNodes   = graph.nodes.length
   const visibleEdges   = graph.edges.length
-  const vrfNodes       = showVRF ? new Set(overlayVRF.flatMap(v => v.equipment_names)).size : 0
+  const vrfNodes       = showVRF ? new Set(filteredVRF.flatMap(v => v.equipment_names)).size : 0
 
   const TABS = [
     { id: 'graph',      label: 'Graphe réseau' },
@@ -197,6 +223,7 @@ export default function TopologyPage({ highlightedPath = [] }: Props) {
     { id: 'zones',      label: `Zones logiques (${zones.length})` },
     { id: 'physzones',  label: `Zones physiques (${physZones.length})` },
     { id: 'links',      label: `Liens (${links.length})` },
+    { id: 'apps',       label: `Applications (${apps.length})` },
   ] as const
 
   const INPUT: React.CSSProperties = {
@@ -271,7 +298,7 @@ export default function TopologyPage({ highlightedPath = [] }: Props) {
                     <Toggle
                       on={showVRF}    onChange={() => setShowVRF(v => !v)}
                       label="VRF"     count={overlayVRF.length || undefined}
-                      color="#a855f7" noBorder
+                      color="#a855f7"
                     />
                     {loadingOverlay && (
                       <div style={{ marginTop: 8, fontSize: 11, color: 'var(--text-3)', display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -339,17 +366,70 @@ export default function TopologyPage({ highlightedPath = [] }: Props) {
                     </div>
                   )}
 
-                  {/* VRF list (visible when VRF overlay is on) */}
+                  {/* VRF multi-select filter (visible when VRF overlay is on) */}
                   {showVRF && overlayVRF.length > 0 && (
                     <div className="card" style={{ padding: '10px 12px' }}>
-                      <div style={{ fontSize: 10, fontWeight: 700, color: '#a855f7', letterSpacing: '0.8px', textTransform: 'uppercase', marginBottom: 8 }}>VRF actives</div>
-                      {overlayVRF.map((v, idx) => (
-                        <div key={v.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', borderBottom: idx < overlayVRF.length - 1 ? '1px solid var(--border)' : 'none' }}>
-                          <div style={{ width: 8, height: 8, borderRadius: '50%', background: v.color, flexShrink: 0 }} />
-                          <span style={{ fontSize: 11, color: 'var(--text-1)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.name}</span>
-                          <span style={{ fontSize: 10, color: 'var(--text-3)' }}>{v.equipment_names.length} éq.</span>
-                        </div>
-                      ))}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: '#a855f7', letterSpacing: '0.8px', textTransform: 'uppercase' }}>VRF actives</div>
+                        <button
+                          style={{ fontSize: 9, padding: '1px 5px', borderRadius: 4, border: '1px solid var(--border)', background: 'var(--bg-input)', color: 'var(--text-3)', cursor: 'pointer', fontFamily: 'inherit' }}
+                          onClick={() => setSelectedVRFIds(selectedVRFIds.size === overlayVRF.length ? new Set() : new Set(overlayVRF.map(v => v.id)))}
+                        >
+                          {selectedVRFIds.size === overlayVRF.length ? 'Tout décocher' : 'Tout cocher'}
+                        </button>
+                      </div>
+                      {overlayVRF.map((v, idx) => {
+                        const checked = selectedVRFIds.has(v.id)
+                        return (
+                          <div key={v.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', borderBottom: idx < overlayVRF.length - 1 ? '1px solid var(--border)' : 'none', cursor: 'pointer' }}
+                            onClick={() => {
+                              const next = new Set(selectedVRFIds)
+                              if (checked) next.delete(v.id); else next.add(v.id)
+                              setSelectedVRFIds(next)
+                            }}
+                          >
+                            <div style={{ width: 14, height: 14, borderRadius: 3, border: `2px solid ${v.color}`, background: checked ? v.color : 'transparent', flexShrink: 0, transition: 'background 0.15s' }} />
+                            <div style={{ width: 8, height: 8, borderRadius: '50%', background: v.color, flexShrink: 0 }} />
+                            <span style={{ fontSize: 11, color: checked ? 'var(--text-1)' : 'var(--text-3)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.name}</span>
+                            <span style={{ fontSize: 10, color: 'var(--text-3)' }}>{v.equipment_names.length} éq.</span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+
+                  {/* Route type multi-select filter (visible when Routes overlay is on) */}
+                  {showRoutes && overlayRoutes.length > 0 && (
+                    <div className="card" style={{ padding: '10px 12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: '#3b82f6', letterSpacing: '0.8px', textTransform: 'uppercase' }}>Protocoles</div>
+                        <button
+                          style={{ fontSize: 9, padding: '1px 5px', borderRadius: 4, border: '1px solid var(--border)', background: 'var(--bg-input)', color: 'var(--text-3)', cursor: 'pointer', fontFamily: 'inherit' }}
+                          onClick={() => setSelectedRouteTypes(selectedRouteTypes.size === ALL_ROUTE_TYPES.length ? new Set<RouteType>() : new Set(ALL_ROUTE_TYPES))}
+                        >
+                          {selectedRouteTypes.size === ALL_ROUTE_TYPES.length ? 'Tout décocher' : 'Tout cocher'}
+                        </button>
+                      </div>
+                      {([['bgp','BGP'],['ospf','OSPF'],['isis','IS-IS'],['connected','Connecté'],['static','Statique']] as const).map(([k, lbl]) => {
+                        const cnt = overlayRoutes.filter(r => r.route_type === k).length
+                        if (!cnt) return null
+                        const checked = selectedRouteTypes.has(k)
+                        const color = ROUTE_COLOR[k]
+                        return (
+                          <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', borderBottom: '1px solid var(--border)', cursor: 'pointer' }}
+                            onClick={() => {
+                              const next = new Set(selectedRouteTypes)
+                              if (checked) next.delete(k as RouteType); else next.add(k as RouteType)
+                              setSelectedRouteTypes(next)
+                            }}
+                          >
+                            <div style={{ width: 14, height: 14, borderRadius: 3, border: `2px solid ${color}`, background: checked ? color : 'transparent', flexShrink: 0, transition: 'background 0.15s' }} />
+                            <div style={{ width: 24, height: 0, borderTop: `2px dashed ${color}`, flexShrink: 0 }} />
+                            <span style={{ fontSize: 11, color: checked ? 'var(--text-1)' : 'var(--text-3)', flex: 1 }}>{lbl}</span>
+                            <span style={{ fontSize: 10, color: 'var(--text-3)' }}>{cnt}</span>
+                          </div>
+                        )
+                      })}
                     </div>
                   )}
                 </div>
@@ -376,8 +456,8 @@ export default function TopologyPage({ highlightedPath = [] }: Props) {
                     showRoutes={showRoutes}
                     showVRF={showVRF}
                     flowsOverlay={filteredFlows}
-                    routesOverlay={overlayRoutes}
-                    vrfOverlay={overlayVRF}
+                    routesOverlay={filteredRoutes}
+                    vrfOverlay={filteredVRF}
                     zoneMode={zoneMode}
                   />
                 </div>
@@ -392,8 +472,8 @@ export default function TopologyPage({ highlightedPath = [] }: Props) {
                       ['Équipements', visibleNodes, '#64748b'],
                       ['Liens',       visibleEdges, '#64748b'],
                       showFlows  ? ['Flux',   filteredFlows.length,   '#f97316'] : null,
-                      showRoutes ? ['Routes', overlayRoutes.length,   '#3b82f6'] : null,
-                      showVRF    ? ['VRF',    overlayVRF.length,      '#a855f7'] : null,
+                      showRoutes ? ['Routes', filteredRoutes.length,  '#3b82f6'] : null,
+                      showVRF    ? ['VRF',    filteredVRF.length,     '#a855f7'] : null,
                       showVRF    ? ['Nœuds VRF', vrfNodes,            '#a855f7'] : null,
                     ].filter(Boolean).map((row) => { const [lbl, cnt, color] = row as [string, number, string]; return (
                       <div key={lbl} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '3px 0', borderBottom: '1px solid var(--border)' }}>
@@ -424,7 +504,7 @@ export default function TopologyPage({ highlightedPath = [] }: Props) {
                     <div className="card" style={{ padding: '10px 12px' }}>
                       <div style={{ fontSize: 10, fontWeight: 700, color: '#3b82f6', letterSpacing: '0.8px', textTransform: 'uppercase', marginBottom: 8 }}>Protocoles routes</div>
                       {[['bgp','BGP'],['ospf','OSPF'],['isis','IS-IS'],['connected','Connecté'],['static','Statique']].map(([k, lbl]) => {
-                        const cnt = overlayRoutes.filter(r => r.route_type === k).length
+                        const cnt = filteredRoutes.filter(r => r.route_type === k).length
                         if (!cnt) return null
                         return (
                           <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
@@ -438,10 +518,10 @@ export default function TopologyPage({ highlightedPath = [] }: Props) {
                   )}
 
                   {/* Légende VRF */}
-                  {showVRF && overlayVRF.length > 0 && (
+                  {showVRF && filteredVRF.length > 0 && (
                     <div className="card" style={{ padding: '10px 12px' }}>
                       <div style={{ fontSize: 10, fontWeight: 700, color: '#a855f7', letterSpacing: '0.8px', textTransform: 'uppercase', marginBottom: 8 }}>Légende VRF</div>
-                      {overlayVRF.map(v => (
+                      {filteredVRF.map(v => (
                         <div key={v.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
                           <div style={{ width: 14, height: 14, borderRadius: '50%', border: `2px dashed ${v.color}`, background: `${v.color}18`, flexShrink: 0 }} />
                           <span style={{ fontSize: 10, color: 'var(--text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.name}</span>
@@ -461,6 +541,7 @@ export default function TopologyPage({ highlightedPath = [] }: Props) {
             {tab === 'zones'      && <ZoneTable zones={zones}               onRefresh={load} />}
             {tab === 'physzones'  && <PhysZoneTable physZones={physZones}   onRefresh={load} />}
             {tab === 'links'      && <LinkTable links={links}               onRefresh={load} />}
+            {tab === 'apps'       && <ApplicationTable apps={apps}          onRefresh={load} />}
           </>
         )}
       </div>
@@ -600,6 +681,104 @@ function LinkTable({ links, onRefresh }: { links: Link[]; onRefresh: () => void 
             ))}
           </tbody>
         </table>
+      </div>
+    </div>
+  )
+}
+
+// ── Applications table ────────────────────────────────────────────────────────
+const CRIT_APP_COLOR: Record<string, string> = {
+  Critique: '#ef4444', Elevée: '#f97316', Moyenne: '#3b82f6', Faible: '#64748b',
+}
+const ENV_BADGE_COLOR: Record<string, string> = {
+  PROD: '#22c55e', PREPROD1: '#eab308', PREPROD2: '#f97316', DEV: '#64748b',
+}
+
+function ApplicationTable({ apps, onRefresh }: { apps: any[]; onRefresh: () => void }) {
+  const [filterType, setFilterType] = useState('')
+  const [filterCrit, setFilterCrit] = useState('')
+  const [filterEnv,  setFilterEnv]  = useState('')
+
+  const filtered = apps.filter(a =>
+    (!filterType || a.app_type === filterType) &&
+    (!filterCrit || a.criticality === filterCrit) &&
+    (!filterEnv  || a.environment === filterEnv)
+  )
+
+  const INPUT: React.CSSProperties = {
+    background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 4,
+    padding: '4px 8px', fontSize: 11, color: 'var(--text-1)', fontFamily: 'inherit',
+    outline: 'none', cursor: 'pointer',
+  }
+
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)', marginRight: 8 }}>
+          Applications ({filtered.length})
+        </div>
+        <select style={INPUT} value={filterType} onChange={e => setFilterType(e.target.value)}>
+          <option value="">Tous types</option>
+          {[...new Set(apps.map(a => a.app_type).filter(Boolean))].sort().map(t => <option key={t}>{t}</option>)}
+        </select>
+        <select style={INPUT} value={filterCrit} onChange={e => setFilterCrit(e.target.value)}>
+          <option value="">Toutes criticités</option>
+          {['Critique','Elevée','Moyenne','Faible'].map(c => <option key={c}>{c}</option>)}
+        </select>
+        <select style={INPUT} value={filterEnv} onChange={e => setFilterEnv(e.target.value)}>
+          <option value="">Tous env.</option>
+          {['PROD','PREPROD1','PREPROD2','DEV'].map(e => <option key={e}>{e}</option>)}
+        </select>
+        <button className="btn btn-ghost btn-sm" style={{ marginLeft: 'auto' }} onClick={onRefresh}>↺ Rafraîchir</button>
+      </div>
+
+      {filtered.length === 0 && (
+        <div className="empty-state" style={{ padding: 40 }}>Aucune application trouvée</div>
+      )}
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 12 }}>
+        {filtered.map((app: any) => {
+          const critColor = CRIT_APP_COLOR[app.criticality] || '#64748b'
+          const envColor  = ENV_BADGE_COLOR[app.environment] || '#64748b'
+          const ips: any[] = app.ips || []
+          return (
+            <div key={app.id} className="card" style={{ borderLeft: `3px solid ${critColor}`, padding: '12px 14px' }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-1)' }}>{app.name}</div>
+                  {app.code && <div style={{ fontSize: 11, color: 'var(--text-3)', fontFamily: 'monospace' }}>{app.code}</div>}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end', flexShrink: 0 }}>
+                  <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 8, background: `${critColor}22`, color: critColor, fontWeight: 700 }}>{app.criticality}</span>
+                  <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 8, background: `${envColor}22`, color: envColor, fontWeight: 600 }}>{app.environment}</span>
+                </div>
+              </div>
+              {app.description && (
+                <div style={{ fontSize: 11, color: 'var(--text-3)', marginBottom: 6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{app.description}</div>
+              )}
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
+                <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 8, background: 'rgba(59,130,246,0.12)', color: '#3b82f6', fontWeight: 600 }}>{app.app_type}</span>
+                {app.domain && <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 8, background: 'var(--bg-input)', color: 'var(--text-3)' }}>{app.domain}</span>}
+              </div>
+              {ips.length > 0 && (
+                <div style={{ marginBottom: 4 }}>
+                  <div style={{ fontSize: 10, color: 'var(--text-3)', fontWeight: 600, marginBottom: 3 }}>IPs ({ips.length})</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                    {ips.slice(0, 5).map((ip: any, i: number) => (
+                      <span key={i} style={{ fontSize: 10, fontFamily: 'monospace', padding: '1px 5px', background: 'var(--bg-input)', borderRadius: 4, color: 'var(--text-2)' }}>{ip.ip_address}</span>
+                    ))}
+                    {ips.length > 5 && <span style={{ fontSize: 10, color: 'var(--text-3)' }}>+{ips.length - 5}</span>}
+                  </div>
+                </div>
+              )}
+              {app.team_name && (
+                <div style={{ fontSize: 10, color: 'var(--text-3)', marginTop: 4 }}>
+                  Équipe : <span style={{ color: 'var(--text-2)' }}>{app.team_name}</span>
+                </div>
+              )}
+            </div>
+          )
+        })}
       </div>
     </div>
   )

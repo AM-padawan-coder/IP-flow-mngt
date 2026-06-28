@@ -1,7 +1,24 @@
 import { useState } from 'react'
 import { api } from '../api/client'
 
-type Mode = 'json' | 'csv-equipment' | 'csv-networks' | 'csv-links'
+type Mode = 'json' | 'csv-equipment' | 'csv-networks' | 'csv-links' | 'json-applications'
+
+const APPS_TEMPLATE = JSON.stringify([
+  {
+    name: "Mon Application",
+    code: "MON-APP",
+    description: "Application métier exemple",
+    app_type: "Web",
+    domain: "Production",
+    criticality: "Moyenne",
+    environment: "PROD",
+    team_id: null,
+    ips: [
+      { ip_address: "172.16.10.50", zone_id: null },
+      { ip_address: "172.16.10.51", zone_id: null }
+    ]
+  }
+], null, 2)
 
 const CSV_TEMPLATES = {
   'csv-equipment': `name,type,vendor,model,management_ip,description
@@ -52,6 +69,9 @@ export default function ImportPage({ onNavigate }: Props) {
         r = await api.importCsvEquipment(content)
       } else if (mode === 'csv-networks') {
         r = await api.importCsvNetworks(content)
+      } else if (mode === 'json-applications') {
+        const parsed = JSON.parse(content)
+        r = await api.importApplications(parsed)
       } else {
         r = await api.importCsvLinks(content)
       }
@@ -69,14 +89,16 @@ export default function ImportPage({ onNavigate }: Props) {
 
   const loadTemplate = () => {
     if (mode === 'json') setContent(JSON_TEMPLATE)
+    else if (mode === 'json-applications') setContent(APPS_TEMPLATE)
     else setContent(CSV_TEMPLATES[mode as keyof typeof CSV_TEMPLATES] || '')
   }
 
   const MODES = [
-    { id: 'json',          label: 'JSON complet',       desc: 'Importe zones, équipements, réseaux et liens en une fois' },
-    { id: 'csv-equipment', label: 'CSV Équipements',    desc: 'name, type, vendor, model, management_ip, description' },
-    { id: 'csv-networks',  label: 'CSV Réseaux',        desc: 'name, cidr, zone_name, vlan_id, gateway, description' },
-    { id: 'csv-links',     label: 'CSV Liens topo',     desc: 'equipment_a, equipment_b, link_type, description' },
+    { id: 'json',              label: 'JSON complet',       desc: 'Importe zones, équipements, réseaux et liens en une fois' },
+    { id: 'csv-equipment',     label: 'CSV Équipements',    desc: 'name, type, vendor, model, management_ip, description' },
+    { id: 'csv-networks',      label: 'CSV Réseaux',        desc: 'name, cidr, zone_name, vlan_id, gateway, description' },
+    { id: 'csv-links',         label: 'CSV Liens topo',     desc: 'equipment_a, equipment_b, link_type, description' },
+    { id: 'json-applications', label: 'JSON Applications',  desc: 'Import en masse des applications — tableau JSON (v2.9)' },
   ] as const
 
   return (

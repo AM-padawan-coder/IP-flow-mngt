@@ -116,4 +116,12 @@ export const api = {
   createPhysicalZone:  (data: object)             => req('/org/physical-zones',       { method: 'POST',   body: JSON.stringify(data) }),
   updatePhysicalZone:  (id: number, data: object) => req(`/org/physical-zones/${id}`, { method: 'PUT',    body: JSON.stringify(data) }),
   deletePhysicalZone:  (id: number)               => req(`/org/physical-zones/${id}`, { method: 'DELETE' }),
+
+  // Applications (v2.9)
+  getApplications:    () => req('/applications'),
+  getApplication:     (id: number) => req(`/applications/${id}`),
+  createApplication:  (data: object) => req('/applications', { method: 'POST', body: JSON.stringify(data) }),
+  updateApplication:  (id: number, data: object) => req(`/applications/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteApplication:  (id: number) => req(`/applications/${id}`, { method: 'DELETE' }),
+  importApplications: (data: object) => req('/applications/import', { method: 'POST', body: JSON.stringify(data) }),
 }
