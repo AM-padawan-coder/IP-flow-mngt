@@ -125,6 +125,17 @@ const PHASES: Phase[] = [
       'Dropdown Environnement dans Applications alimenté par l\'API Environnements',
       'Dropdowns modernisés (ModernSelect pill-group) dans Configuration',
     ] },
+  { v: 'v2.9.10', title: 'Schéma modèle de données & corrections UI', status: 'done', label: '✓ Livré', eta: '', subOf: 'v2.9',
+    items: [
+      'HelpModal schema 1 : ACL déplacée sous Interface (flèche quasi-verticale, pas de diagonale croisée)',
+      'HelpModal schema 1 : connexion Zone logique → Politique réseau visible (bord gauche, labels réf. zones)',
+      'HelpModal schema 1 : "RÈGLES & ROUTAGE" repositionné à gauche ; "owns" traduit en "possède"',
+      'RoadmapModal : v2.10 en Prochain, v4.0 Infoblox en Planifié',
+      'Historique : champ recherche élargi (280px), "0 résultat" sans s',
+      'Vue Applications : "Tout décocher" vide correctement le graphe (Set vide ≠ undefined)',
+      'Politiques réseau : onglets script-tab, sélecteur form-select, icônes Tabler',
+      'Dropdowns natifs : color-scheme sur :root pour thème sombre correct',
+    ] },
   { v: 'v2.9.9', title: 'Filtre apps par dimension & corrections SVG HelpModal', status: 'done', label: '✓ Livré', eta: '', subOf: 'v2.9',
     items: [
       'Filtre apps : Types / Domaines / Environnements (plus par nom)',
@@ -273,7 +284,7 @@ const STATUS_STYLE: Record<string, { dot: string; badge: string; badgeText: stri
   vision:  { dot: '#484f58', badge: 'rgba(72,79,88,0.2)',    badgeText: '#8b949e', border: 'rgba(72,79,88,0.3)',     bg: 'rgba(22,27,34,0.5)' },
 }
 
-// Build index: parent → children
+// Build index: parent → children, sorted ascending by version
 const SUB_VERSIONS: Record<string, Phase[]> = {}
 PHASES.forEach(p => {
   if (p.subOf) {
@@ -281,6 +292,17 @@ PHASES.forEach(p => {
     SUB_VERSIONS[p.subOf].push(p)
   }
 })
+const parseVer = (v: string) => v.replace(/^v/, '').split('.').map(Number)
+Object.values(SUB_VERSIONS).forEach(arr =>
+  arr.sort((a, b) => {
+    const av = parseVer(a.v), bv = parseVer(b.v)
+    for (let i = 0; i < Math.max(av.length, bv.length); i++) {
+      const d = (av[i] ?? 0) - (bv[i] ?? 0)
+      if (d !== 0) return d
+    }
+    return 0
+  })
+)
 const TOP_PHASES = PHASES.filter(p => !p.subOf)
 
 interface PhaseRowProps {
@@ -445,7 +467,7 @@ export default function RoadmapModal({ onClose }: { onClose: () => void }) {
                           <div style={{ position: 'absolute', left: -12, top: 18, width: 12, height: 1, background: s.border }} />
                           <div style={{ display: 'flex', gap: 0 }}>
                             {/* Sub version label */}
-                            <div style={{ width: 52, minWidth: 52, paddingRight: 12, paddingTop: 10, textAlign: 'right', flexShrink: 0 }}>
+                            <div style={{ width: 66, minWidth: 66, paddingRight: 12, paddingTop: 10, textAlign: 'right', flexShrink: 0 }}>
                               <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-3)', letterSpacing: '0.2px', opacity: 0.8 }}>{sub.v}</span>
                             </div>
                             {/* Sub card */}
