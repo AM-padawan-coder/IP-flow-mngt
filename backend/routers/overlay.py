@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from database import get_db
-from models import FlowRequest, Equipment, RoutingEntry, VRF, VRFEquipment
+from models import FlowRequest, Equipment, EquipmentInterface, RoutingEntry, VRF, VRFEquipment
 
 router = APIRouter()
 
@@ -79,6 +79,10 @@ def get_overlay_routes(
 
     all_eq = db.query(Equipment).filter(Equipment.active == True).all()
     ip_to_name = {e.management_ip: e.name for e in all_eq if e.management_ip}
+    # Also resolve gateways via equipment interface IPs (transit links, etc.)
+    for iface, eq in db.query(EquipmentInterface, Equipment).join(Equipment, EquipmentInterface.equipment_id == Equipment.id).all():
+        if iface.ip_address:
+            ip_to_name.setdefault(iface.ip_address, eq.name)
 
     result = []
     for route, equip in q.limit(500).all():

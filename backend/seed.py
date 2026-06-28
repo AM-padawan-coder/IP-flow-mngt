@@ -1,7 +1,7 @@
 """Données de démonstration réalistes pour l'outil de gestion de flux IP."""
 import json
 from datetime import datetime, timedelta
-from models import Zone, Equipment, Network, EquipmentInterface, TopologyLink, ValidationRule, FlowRequest, Team, PhysicalZone, VRF, VRFEquipment, Application, ApplicationIP, Environment
+from models import Zone, Equipment, Network, EquipmentInterface, TopologyLink, ValidationRule, FlowRequest, Team, PhysicalZone, VRF, VRFEquipment, Application, ApplicationIP, Environment, RoutingEntry
 
 
 def seed_database(db):
@@ -229,3 +229,67 @@ def seed_database(db):
         db.commit()
 
     print("[seed] Base initialisée avec données de démo v2.9.1 (overlays: flux, routes, VRF; applications; environnements)")
+
+
+def seed_demo_routes(db):
+    """
+    Injecte des routes de démo utilisant les IPs d'interfaces (transit links) comme gateway.
+    La résolution gateway_equipment dans overlay/routes cherche dans les IPs d'interfaces,
+    ce qui permet d'afficher les flèches entre équipements sur le graphe.
+    Exécuté indépendamment du seed principal — fonctionne sur une base déjà initialisée.
+    """
+    if db.query(RoutingEntry).count() > 0:
+        return
+
+    eq_by_name = {e.name: e for e in db.query(Equipment).all()}
+    if not eq_by_name:
+        return  # DB vide, le seed principal n'a pas encore tourné
+
+    # IPs transit (voir EquipmentInterface en seed) :
+    # TRANSIT-A : RTR-CORE=10.0.0.1, FW-INTERNE-01=10.0.0.2, NSX-DFW=10.0.0.3, FW-CP=10.0.0.4
+    # TRANSIT-B : RTR-CORE=10.0.0.5, FW-INTERNET-01=10.0.0.6, RTR-DMZ=10.0.0.7
+
+    def route(eq_name, destination, gateway, route_type="static", metric=1, interface="", comment=""):
+        eq = eq_by_name.get(eq_name)
+        if not eq:
+            return None
+        return RoutingEntry(
+            equipment_id=eq.id, destination=destination, gateway=gateway,
+            route_type=route_type, metric=metric, interface=interface, comment=comment,
+        )
+
+    demo_routes = [
+        # RTR-CORE-01 : cœur de réseau, voit tout
+        route("RTR-CORE-01", "0.0.0.0/0",        "10.0.0.6",          "static", 1,   "ge-0/0/1",  "Default via FW-INTERNET-01 WAN"),
+        route("RTR-CORE-01", "10.0.0.0/8",        "10.0.0.2",          "ospf",   10,  "ge-0/0/0",  "LAN utilisateurs via FW-INTERNE-01"),
+        route("RTR-CORE-01", "172.16.0.0/12",     "10.0.0.2",          "ospf",   10,  "ge-0/0/0",  "Zone serveurs via FW-INTERNE-01"),
+        route("RTR-CORE-01", "192.168.100.0/23",  "10.0.0.7",          "static", 1,   "ge-0/0/1",  "DMZ via RTR-DMZ-01"),
+        route("RTR-CORE-01", "192.168.250.0/24",  "192.168.200.50",    "static", 5,   "ge-0/0/2",  "Zone Backup via FW-MGMT-01"),
+        # FW-INTERNE-01 : firewall LAN ↔ Serveurs
+        route("FW-INTERNE-01", "0.0.0.0/0",       "10.0.0.1",          "static", 1,   "Untrust",   "Default via RTR-CORE-01"),
+        route("FW-INTERNE-01", "172.16.10.0/24",   "10.0.0.3",          "ospf",   20,  "Untrust",   "SERV-APP via NSX-DFW"),
+        route("FW-INTERNE-01", "172.16.20.0/24",   "10.0.0.3",          "ospf",   20,  "Untrust",   "SERV-DB via NSX-DFW"),
+        # NSX-DFW : distributed firewall
+        route("NSX-DFW",     "0.0.0.0/0",          "10.0.0.2",          "bgp",    100, "uplink-T1", "Default via FW-INTERNE-01"),
+        route("NSX-DFW",     "10.10.0.0/16",       "10.0.0.2",          "bgp",    100, "uplink-T1", "LAN bureautique via FW-INTERNE-01"),
+        route("NSX-DFW",     "172.16.30.0/24",     "10.0.0.4",          "bgp",    100, "uplink-T1", "SERV-FILE via FW-CP-GW-01"),
+        # FW-INTERNET-01 : firewall périmétrique
+        route("FW-INTERNET-01", "0.0.0.0/0",       "80.0.0.254",        "static", 1,   "eth1-WAN",  "Default route Internet"),
+        route("FW-INTERNET-01", "10.0.0.0/8",      "10.0.0.5",          "static", 1,   "eth1-WAN",  "LAN interne via RTR-CORE-01"),
+        route("FW-INTERNET-01", "172.16.0.0/12",   "10.0.0.5",          "static", 1,   "eth1-WAN",  "Zone serveurs via RTR-CORE-01"),
+        # RTR-DMZ-01 : switch L3 DMZ
+        route("RTR-DMZ-01",  "0.0.0.0/0",          "10.0.0.5",          "static", 1,   "ge-0/0/2",  "Default via RTR-CORE-01"),
+        route("RTR-DMZ-01",  "10.0.0.0/8",         "10.0.0.5",          "static", 5,   "ge-0/0/2",  "LAN interne via RTR-CORE-01"),
+        # FW-MGMT-01 : firewall management
+        route("FW-MGMT-01",  "0.0.0.0/0",          "192.168.200.40",    "static", 1,   "port1",     "Default via RTR-CORE-01 (management IP)"),
+        route("FW-MGMT-01",  "192.168.0.0/16",     "192.168.200.40",    "static", 1,   "port1",     "RFC1918 /16 via RTR-CORE-01"),
+        # FW-CP-GW-01 : legacy datacenter
+        route("FW-CP-GW-01", "0.0.0.0/0",          "10.0.0.3",          "bgp",    200, "bond0.mgmt","Default via NSX-DFW"),
+        route("FW-CP-GW-01", "192.168.200.0/24",   "10.0.0.3",          "bgp",    200, "bond0.mgmt","MGMT via NSX-DFW"),
+    ]
+
+    for r in demo_routes:
+        if r:
+            db.add(r)
+    db.commit()
+    print("[seed] Routes de démo injectées (static/ospf/bgp entre équipements)")
