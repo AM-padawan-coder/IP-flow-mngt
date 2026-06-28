@@ -1041,9 +1041,9 @@ function SchemasSection() {
 
             {/* Acteurs (gauche) */}
             {([
-              { y: 65,  label: 'Admin réseau',    color: '#3b82f6' },
-              { y: 200, label: 'Équipe sécurité', color: '#f97316' },
-              { y: 350, label: 'Auditeur',         color: '#64748b' },
+              { y: 55,  label: 'Admin réseau',    color: '#3b82f6' },
+              { y: 185, label: 'Équipe sécurité', color: '#f97316' },
+              { y: 370, label: 'Auditeur',         color: '#64748b' },
             ] as { y: number; label: string; color: string }[]).map(({ y, label, color }) => (
               <g key={label}>
                 <rect x="10" y={y} width="115" height="40" rx="8" fill={`${color}18`} stroke={color} strokeWidth="1.5"/>
@@ -1051,6 +1051,21 @@ function SchemasSection() {
                 <line x1="125" y1={y + 20} x2="205" y2={y + 20} stroke={color} strokeWidth="1.2" markerEnd="url(#s3-arr)"/>
               </g>
             ))}
+
+            {/* Sources d'import de données */}
+            <g>
+              <rect x="10" y="258" width="115" height="44" rx="8" fill="rgba(245,158,11,0.10)" stroke="#f59e0b" strokeWidth="1.5" strokeDasharray="5,3"/>
+              {/* Icône fichier */}
+              <g transform="translate(16, 268)">
+                <path d="M0,0 L7,0 L11,4 L11,15 L0,15 Z" fill="none" stroke="#f59e0b" strokeWidth="1" opacity="0.85"/>
+                <path d="M7,0 L7,4 L11,4" fill="none" stroke="#f59e0b" strokeWidth="1" opacity="0.85"/>
+                <line x1="2" y1="8" x2="9" y2="8" stroke="#f59e0b" strokeWidth="0.75" opacity="0.85"/>
+                <line x1="2" y1="11" x2="9" y2="11" stroke="#f59e0b" strokeWidth="0.75" opacity="0.85"/>
+              </g>
+              <text x="75" y="277" textAnchor="middle" fill="#f59e0b" fontSize="10" fontWeight="700">CSV / JSON</text>
+              <text x="75" y="290" textAnchor="middle" fill="#64748b" fontSize="9">Import topo. &amp; flux</text>
+              <line x1="125" y1="280" x2="205" y2="290" stroke="#f59e0b" strokeWidth="1.2" strokeDasharray="4,3" markerEnd="url(#s3-arr)"/>
+            </g>
 
             {/* IP Flow Manager box — height 420 to give bottom padding */}
             <rect x="205" y="20" width="295" height="420" rx="12" fill="rgba(59,130,246,0.06)" stroke="#3b82f6" strokeWidth="2"/>
