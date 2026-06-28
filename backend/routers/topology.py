@@ -1,4 +1,4 @@
-import csv, io, json
+import csv, io, json, ipaddress
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
@@ -301,17 +301,32 @@ def topology_graph(db: Session = Depends(get_db)):
 
 @router.get("/apps-overlay")
 def apps_overlay(db: Session = Depends(get_db)):
+    # Build CIDR → equipment_name map via EquipmentInterface.network_id → Network.cidr
+    cidr_eq: list[tuple[ipaddress.IPv4Network, str]] = []
+    for iface, net, eq in (
+        db.query(EquipmentInterface, Network, Equipment)
+        .join(Network, EquipmentInterface.network_id == Network.id)
+        .join(Equipment, EquipmentInterface.equipment_id == Equipment.id)
+        .all()
+    ):
+        try:
+            cidr_eq.append((ipaddress.ip_network(net.cidr, strict=False), eq.name))
+        except Exception:
+            pass
+
     apps = db.query(Application).all()
     result = []
     for app in apps:
         app_ips = db.query(ApplicationIP).filter(ApplicationIP.application_id == app.id).all()
         equipment_names: list[str] = []
         for app_ip in app_ips:
-            iface = db.query(EquipmentInterface).filter(EquipmentInterface.ip_address == app_ip.ip_address).first()
-            if iface:
-                eq = db.query(Equipment).filter(Equipment.id == iface.equipment_id).first()
-                if eq and eq.name not in equipment_names:
-                    equipment_names.append(eq.name)
+            try:
+                addr = ipaddress.ip_address(app_ip.ip_address)
+            except Exception:
+                continue
+            for net_obj, eq_name in cidr_eq:
+                if addr in net_obj and eq_name not in equipment_names:
+                    equipment_names.append(eq_name)
         result.append({
             "id": app.id,
             "name": app.name,
