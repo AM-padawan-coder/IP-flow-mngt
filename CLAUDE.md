@@ -7,6 +7,16 @@
 - Déploiement : Render (backend Python + Static Site)
 - **NE JAMAIS modifier `BASE_URL` dans `frontend/src/api/client.ts`** (URL Render de production)
 
+## Règle d'incrément de version
+
+**Ne modifier le numéro de version que si l'utilisateur l'indique explicitement dans son prompt** (ex : "livre la v2.9.10"). Pour tous les autres commits (corrections, ajustements), commiter sans toucher à la version.
+
+Les trois fichiers suivants doivent **toujours afficher le même numéro de version** et être mis à jour ensemble :
+
+1. `CHANGELOG.md`
+2. `frontend/src/components/RoadmapModal.tsx`
+3. `frontend/src/App.tsx` (chaîne `demo · vX.Y.Z` dans le footer)
+
 ## À faire systématiquement à chaque nouvelle version
 
 ### 1. CHANGELOG.md
@@ -33,9 +43,7 @@ Utiliser la date courante fournie dans le contexte (`currentDate`).
 
 ### 3. Version dans `frontend/src/App.tsx`
 
-Mettre à jour la chaîne `demo · vX.Y.Z` dans le footer de la sidebar **en même temps** que CHANGELOG.md et RoadmapModal.tsx — ces trois fichiers doivent toujours afficher le même numéro de version.
-
-**Règle d'incrément de version** : ne changer le numéro de version que si l'utilisateur indique explicitement la nouvelle version dans son prompt (ex : "livre la v2.9.10"). Pour tous les autres commits (corrections, ajustements), commiter sans changer la version.
+Mettre à jour la chaîne `demo · vX.Y.Z` dans le footer de la sidebar **en même temps** que CHANGELOG.md et RoadmapModal.tsx.
 
 ### 4. Guide d'utilisation — `frontend/src/components/HelpModal.tsx`
 
