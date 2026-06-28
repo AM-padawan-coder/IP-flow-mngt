@@ -148,7 +148,7 @@ export default function BackupPage() {
                 <div style={{ fontSize: 11, color: '#ef4444', marginTop: 4 }}>⚠ Alerte : {fmt(scheduler.last_alert)}</div>
               )}
               <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 6 }}>
-                {scheduler.total_backups} sauvegarde{scheduler.total_backups !== 1 ? 's' : ''} au total
+                {scheduler.total_backups} sauvegarde{scheduler.total_backups > 1 ? 's' : ''} au total
               </div>
             </div>
 

@@ -25,10 +25,10 @@ export default function SimulationPage() {
       </div>
       <div className="page-content">
         <div className="script-tabs mb-4">
-          <button className={`script-tab${tab === 'whatif'  ? ' active' : ''}`} onClick={() => setTab('whatif')}>🔬 Simulation What-if</button>
-          <button className={`script-tab${tab === 'loops'   ? ' active' : ''}`} onClick={() => setTab('loops')}>🔁 Détection de boucles</button>
-          <button className={`script-tab${tab === 'impact'  ? ' active' : ''}`} onClick={() => setTab('impact')}>💥 Analyse d'impact</button>
-          <button className={`script-tab${tab === 'spof'    ? ' active' : ''}`} onClick={() => setTab('spof')}>⚡ SPOF</button>
+          <button className={`script-tab${tab === 'whatif'  ? ' active' : ''}`} onClick={() => setTab('whatif')}><i className="ti ti-microscope" style={{ marginRight: 5, verticalAlign: 'middle' }} aria-hidden="true" />Simulation What-if</button>
+          <button className={`script-tab${tab === 'loops'   ? ' active' : ''}`} onClick={() => setTab('loops')}><i className="ti ti-rotate-clockwise-2" style={{ marginRight: 5, verticalAlign: 'middle' }} aria-hidden="true" />Détection de boucles</button>
+          <button className={`script-tab${tab === 'impact'  ? ' active' : ''}`} onClick={() => setTab('impact')}><i className="ti ti-bomb" style={{ marginRight: 5, verticalAlign: 'middle' }} aria-hidden="true" />Analyse d'impact</button>
+          <button className={`script-tab${tab === 'spof'    ? ' active' : ''}`} onClick={() => setTab('spof')}><i className="ti ti-bolt" style={{ marginRight: 5, verticalAlign: 'middle' }} aria-hidden="true" />SPOF</button>
         </div>
         {tab === 'whatif' && <WhatIfPanel />}
         {tab === 'loops'  && <LoopsPanel />}
@@ -76,7 +76,7 @@ function WhatIfPanel() {
   return (
     <div>
       <div className="card mb-4">
-        <div className="card-title">⚡ Scénarios rapides</div>
+        <div className="card-title"><i className="ti ti-bolt" style={{ marginRight: 6, verticalAlign: 'middle' }} aria-hidden="true" />Scénarios rapides</div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {DEMOS.map(d => (
             <button key={d.label} className="btn btn-ghost btn-sm"
@@ -103,7 +103,7 @@ function WhatIfPanel() {
       <div className="grid-2 gap-4">
         {/* Form */}
         <div className="card">
-          <div className="card-title">🔬 Paramètres du flux à simuler</div>
+          <div className="card-title"><i className="ti ti-microscope" style={{ marginRight: 6, verticalAlign: 'middle' }} aria-hidden="true" />Paramètres du flux à simuler</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div className="grid-2">
               <div className="form-group"><label className="form-label">IP Source *</label>
@@ -174,7 +174,7 @@ function WhatIfPanel() {
         ) : (
           <div className="card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <div className="empty-state">
-              <div className="empty-state-icon">🔬</div>
+              <div className="empty-state-icon"><i className="ti ti-microscope" style={{ fontSize: 28 }} aria-hidden="true" /></div>
               <div>Renseignez les paramètres et cliquez sur Simuler</div>
               <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 6 }}>Aucune donnée n'est enregistrée en base</div>
             </div>
@@ -246,7 +246,7 @@ function SpofPanel() {
   return (
     <div style={{ maxWidth: 760 }}>
       <div className="card mb-4">
-        <div className="card-title">⚡ Détection de SPOF (Single Points of Failure)</div>
+        <div className="card-title"><i className="ti ti-bolt" style={{ marginRight: 6, verticalAlign: 'middle' }} aria-hidden="true" />Détection de SPOF (Single Points of Failure)</div>
         <p style={{ fontSize: 13, color: 'var(--text-2)', marginBottom: 16, lineHeight: 1.6 }}>
           Identifie les équipements dont la panne rendrait le réseau non-connexe (points d'articulation du graphe de topologie). Un SPOF avec des flux actifs est une vulnérabilité critique à adresser en priorité.
         </p>
@@ -316,7 +316,7 @@ function LoopsPanel() {
   return (
     <div style={{ maxWidth: 720 }}>
       <div className="card mb-4">
-        <div className="card-title">🔁 Détection de boucles L2/L3</div>
+        <div className="card-title"><i className="ti ti-rotate-clockwise-2" style={{ marginRight: 6, verticalAlign: 'middle' }} aria-hidden="true" />Détection de boucles L2/L3</div>
         <p style={{ fontSize: 13, color: 'var(--text-2)', marginBottom: 16, lineHeight: 1.6 }}>
           Analyse le graphe de topologie pour détecter des boucles de routage (L3) ou de commutation (L2) qui pourraient causer des tempêtes de broadcast ou des routes infinies.
         </p>
@@ -388,7 +388,7 @@ function ImpactPanel() {
   return (
     <div style={{ maxWidth: 800 }}>
       <div className="card mb-4">
-        <div className="card-title">💥 Analyse d'impact — simulation de panne</div>
+        <div className="card-title"><i className="ti ti-bomb" style={{ marginRight: 6, verticalAlign: 'middle' }} aria-hidden="true" />Analyse d'impact — simulation de panne</div>
         <p style={{ fontSize: 13, color: 'var(--text-2)', marginBottom: 16, lineHeight: 1.6 }}>
           Sélectionnez un équipement et découvrez quels flux validés seraient interrompus en cas de panne ou de maintenance.
         </p>
@@ -468,13 +468,13 @@ function ImpactPanel() {
                 </p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {[
-                    { icon: '🔒', action: 'Bloquer le trafic via une règle ACL DENY', desc: `Ajouter une règle ACL DENY any→any sur ${result.equipment} pour bloquer le trafic avant maintenance`, page: 'policies' },
-                    { icon: '🗺', action: 'Vérifier les routes passant par cet équipement', desc: `Consulter la table de routage de ${result.equipment} pour identifier les routes alternatives possibles`, page: 'policies' },
-                    { icon: '🔁', action: 'Analyser les boucles induites par la suppression', desc: 'Lancer la détection de boucles pour vérifier si la suppression crée une boucle L2/L3', page: 'loops' },
-                    { icon: '📋', action: `Notifier les propriétaires des ${result.impacted_count} flux`, desc: 'Exporter la liste des flux impactés pour notification des équipes responsables', page: null },
+                    { icon: 'ti ti-lock', action: 'Bloquer le trafic via une règle ACL DENY', desc: `Ajouter une règle ACL DENY any→any sur ${result.equipment} pour bloquer le trafic avant maintenance`, page: 'policies' },
+                    { icon: 'ti ti-map-2', action: 'Vérifier les routes passant par cet équipement', desc: `Consulter la table de routage de ${result.equipment} pour identifier les routes alternatives possibles`, page: 'policies' },
+                    { icon: 'ti ti-rotate-clockwise-2', action: 'Analyser les boucles induites par la suppression', desc: 'Lancer la détection de boucles pour vérifier si la suppression crée une boucle L2/L3', page: 'loops' },
+                    { icon: 'ti ti-clipboard-list', action: `Notifier les propriétaires des ${result.impacted_count} flux`, desc: 'Exporter la liste des flux impactés pour notification des équipes responsables', page: null },
                   ].map((item, i) => (
                     <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '10px 14px', background: 'var(--bg-input)', borderRadius: 8 }}>
-                      <span style={{ fontSize: 20, flexShrink: 0 }}>{item.icon}</span>
+                      <span style={{ fontSize: 18, flexShrink: 0, width: 22, textAlign: 'center', color: 'var(--blue)' }}><i className={item.icon} aria-hidden="true" /></span>
                       <div style={{ flex: 1 }}>
                         <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-1)' }}>{item.action}</div>
                         <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>{item.desc}</div>
