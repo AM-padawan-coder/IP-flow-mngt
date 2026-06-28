@@ -33,7 +33,9 @@ Utiliser la date courante fournie dans le contexte (`currentDate`).
 
 ### 3. Version dans `frontend/src/App.tsx`
 
-Mettre à jour la chaîne `demo · vX.Y.Z` dans le footer de la sidebar à chaque release.
+Mettre à jour la chaîne `demo · vX.Y.Z` dans le footer de la sidebar **en même temps** que CHANGELOG.md et RoadmapModal.tsx — ces trois fichiers doivent toujours afficher le même numéro de version.
+
+**Règle d'incrément de version** : ne changer le numéro de version que si l'utilisateur indique explicitement la nouvelle version dans son prompt (ex : "livre la v2.9.10"). Pour tous les autres commits (corrections, ajustements), commiter sans changer la version.
 
 ### 4. Guide d'utilisation — `frontend/src/components/HelpModal.tsx`
 
