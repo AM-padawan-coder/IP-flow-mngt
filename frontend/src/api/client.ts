@@ -137,4 +137,22 @@ export const api = {
   // App graph & context (v2.9.4)
   getAppGraph:        (): Promise<any> => req('/topology/app-graph'),
   getAppContext:      (appId: number): Promise<any> => req(`/applications/${appId}/context`),
+
+  // Logs & Traçabilité (v2.10)
+  getAuditLogs:    (params: Record<string, string | number | undefined> = {}): Promise<any> =>
+    req(`/audit-logs${qs(params)}`),
+  getAuditLog:     (id: number): Promise<any> => req(`/audit-logs/${id}`),
+  getAuditStats:   (): Promise<any> => req('/audit-logs/stats'),
+  getAuditSinks:   (): Promise<any> => req('/audit-logs/sinks'),
+  getAuditRetention: (): Promise<any> => req('/audit-logs/retention'),
+  setAuditRetention: (days: number): Promise<any> =>
+    req('/audit-logs/retention', { method: 'PUT', body: JSON.stringify({ days }) }),
+  exportAuditLogs: (format: 'csv' | 'json', params: Record<string, string | number | undefined> = {}): Promise<any> =>
+    req(`/audit-logs/export${qs({ ...params, format })}`),
+}
+
+function qs(params: Record<string, string | number | undefined>): string {
+  const entries = Object.entries(params).filter(([, v]) => v !== undefined && v !== '' && v !== null)
+  if (entries.length === 0) return ''
+  return '?' + entries.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`).join('&')
 }

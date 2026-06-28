@@ -1,7 +1,8 @@
 """Données de démonstration réalistes pour l'outil de gestion de flux IP."""
+import hashlib
 import json
 from datetime import datetime, timedelta
-from models import Zone, Equipment, Network, EquipmentInterface, TopologyLink, ValidationRule, FlowRequest, Team, PhysicalZone, VRF, VRFEquipment, Application, ApplicationIP, Environment, RoutingEntry
+from models import Zone, Equipment, Network, EquipmentInterface, TopologyLink, ValidationRule, FlowRequest, Team, PhysicalZone, VRF, VRFEquipment, Application, ApplicationIP, Environment, RoutingEntry, AuditLog
 
 
 def seed_database(db):
@@ -318,3 +319,83 @@ def seed_demo_routes(db):
             db.add(r)
     db.commit()
     print("[seed] Routes de démo injectées (static/ospf/bgp entre équipements)")
+
+
+def seed_demo_audit_logs(db):
+    """Injecte un jeu d'entrées d'audit de démonstration (idempotent).
+
+    Les entrées sont chaînées par `integrity_hash` (sha256 du contenu + hash
+    précédent) pour illustrer l'immuabilité du journal."""
+    if db.query(AuditLog).count() > 0:
+        return
+
+    now = datetime.utcnow()
+
+    # (offset_minutes, user, action, object_type, object_id, object_name, status,
+    #  category, source, ip, environment, application, before, after, details)
+    raw = [
+        (5,    "admin",   "CREATE",   "FLOW",        "FLOW-123",   "LAN → WEB HTTPS",          "SUCCESS", None,         "WEB_UI",    "192.168.10.15", "PROD",    "WEB-NGINX",  None, {"port": 443, "protocol": "TCP"}, {"port": 443, "protocol": "TCP"}),
+        (12,   "admin",   "VALIDATE", "FLOW",        "FLOW-123",   "LAN → WEB HTTPS",          "SUCCESS", None,         "WEB_UI",    "192.168.10.15", "PROD",    "WEB-NGINX",  {"status": "pending"}, {"status": "validated"}, None),
+        (28,   "jsmith",  "CREATE",   "APPLICATION", "APP-SAP",    "SAP ECC Production",       "SUCCESS", None,         "WEB_UI",    "10.10.4.22",    "PROD",    "SAP-ECC",    None, {"type": "ERP", "criticality": "Critique"}, None),
+        (45,   "jsmith",  "UPDATE",   "APPLICATION", "APP-SAP",    "SAP ECC Production",       "SUCCESS", None,         "WEB_UI",    "10.10.4.22",    "PROD",    "SAP-ECC",    {"criticality": "Elevée"}, {"criticality": "Critique"}, None),
+        (61,   "mdupont", "CREATE",   "EQUIPMENT",   "EQ-FW-12",   "FW-INTERNE-02",            "SUCCESS", None,         "WEB_UI",    "192.168.200.5", None,      None,         None, {"vendor": "paloalto", "model": "PA-3220"}, None),
+        (78,   "mdupont", "CREATE",   "ROUTE",       "ROUTE-12",   "0.0.0.0/0 via 10.0.0.1",   "SUCCESS", None,         "WEB_UI",    "192.168.200.5", None,      None,         None, {"route_type": "static", "metric": 1}, None),
+        (96,   "user01",  "CREATE",   "ACL",         "ACL-204",    "Autoriser HTTPS LAN",     "SUCCESS", None,         "WEB_UI",    "10.10.4.88",    "PROD",    "WEB-NGINX",  None, {"action": "permit", "port": 443}, None),
+        (120,  "admin",   "IMPORT",   "TOPOLOGY",    "IMP-0007",   "Import JSON topologie",    "SUCCESS", None,         "WEB_UI",    "192.168.10.15", None,      None,         None, None, {"created": 14, "ignored": 2, "format": "json"}),
+        (150,  "admin",   "IMPORT",   "APPLICATION", "IMP-0008",   "Import CSV applications",   "SUCCESS", None,         "WEB_UI",    "192.168.10.15", None,      None,         None, None, {"created": 10, "ignored": 0, "format": "csv"}),
+        (185,  "cmdb",    "IMPORT",   "EQUIPMENT",   "SYNC-CMDB",  "Synchronisation CMDB",     "SUCCESS", "Import",     "CMDB_SYNC", None,            None,      None,         None, None, {"synced": 23, "source": "ServiceNow"}),
+        (210,  "jsmith",  "VALIDATE", "SIMULATION",  "WHATIF-31",  "What-If LAN → SQL",        "SUCCESS", None,         "WEB_UI",    "10.10.4.22",    None,      None,         None, None, {"risk": "Modéré", "overlaps": 2}),
+        (240,  "user01",  "DELETE",   "ROUTE",       "ROUTE-09",   "172.16.0.0/12 via 10.0.0.5","SUCCESS", None,        "WEB_UI",    "10.10.4.88",    None,      None,         {"route_type": "static"}, None, None),
+        (275,  "admin",   "EXPORT",   "FLOW",        "EXP-0003",   "Export CSV flux",          "SUCCESS", None,         "WEB_UI",    "192.168.10.15", None,      None,         None, None, {"count": 42, "format": "csv"}),
+        (310,  "admin",   "UPDATE",   "ENVIRONMENT", "ENV-PPROD2", "PPROD2",                   "SUCCESS", None,         "WEB_UI",    "192.168.10.15", "PPROD2",  None,         {"color": "#64748b"}, {"color": "#f59e0b"}, None),
+        (360,  "mdupont", "CREATE",   "ZONE",        "ZONE-DMZ2",  "DMZ-PARTENAIRES",          "SUCCESS", None,         "WEB_UI",    "192.168.200.5", None,      None,         None, {"trust_level": 25}, None),
+        (420,  "user01",  "VALIDATE", "FLOW",        "FLOW-118",   "WIFI → SQL 1433",          "FAILURE", None,         "WEB_UI",    "10.20.1.40",    "PROD",    "DB-POSTGRES",None, {"reason": "Port interdit inter-zones"}, {"status": "rejected"}),
+        (480,  "jsmith",  "DELETE",   "APPLICATION", "APP-OLD",    "Legacy Intranet",          "SUCCESS", None,         "WEB_UI",    "10.10.4.22",    "INT",     None,         {"type": "Web"}, None, None),
+        (560,  "admin",   "CREATE",   "BACKUP",      "BK-W32",     "Sauvegarde complète",      "SUCCESS", None,         "WEB_UI",    "192.168.10.15", None,      None,         None, None, {"type": "full", "size_mb": 4.2}),
+        (640,  "admin",   "EXPORT",   "LOGS",        "LOGSET-01",  "Export JSON journaux",     "SUCCESS", None,         "WEB_UI",    "192.168.10.15", None,      None,         None, None, {"count": 17, "format": "json"}),
+        (720,  "secadmin","UPDATE",   "ACL",         "ACL-117",    "Bloquer Telnet",          "SUCCESS", "Security",   "WEB_UI",    "192.168.200.7", None,      None,         {"action": "permit"}, {"action": "deny"}, None),
+    ]
+
+    prev_hash = ""
+    entries = []
+    # Construire de la plus ancienne à la plus récente pour chaîner les hash
+    for off, user, action, otype, oid, oname, status, cat, source, ip, env, app, before, after, details in sorted(raw, key=lambda x: -x[0]):
+        ts = now - timedelta(minutes=off)
+        if action == "IMPORT":
+            category = "Import"
+        elif action == "EXPORT":
+            category = "Export"
+        elif action == "VALIDATE":
+            category = "Validation"
+        else:
+            category = cat or {
+                "FLOW": "Flow", "APPLICATION": "Application", "ROUTE": "Route",
+                "ACL": "Security", "EQUIPMENT": "Administration", "ZONE": "Administration",
+                "ENVIRONMENT": "Administration", "BACKUP": "Administration",
+                "LOGS": "Export", "SIMULATION": "Simulation",
+            }.get(otype, "Administration")
+
+        core = {
+            "timestamp": ts.isoformat(), "user_id": user, "action": action,
+            "object_type": otype, "object_id": oid, "object_name": oname,
+            "status": status, "details": details, "before": before, "after": after,
+        }
+        canonical = json.dumps(core, sort_keys=True, ensure_ascii=False, default=str)
+        integrity = hashlib.sha256((prev_hash + canonical).encode("utf-8")).hexdigest()
+        prev_hash = integrity
+
+        entries.append(AuditLog(
+            timestamp=ts, user_id=user, username=user, action=action,
+            object_type=otype, object_id=oid, object_name=oname, category=category,
+            status=status, source=source, ip_address=ip, environment=env, application=app,
+            details=json.dumps(details, ensure_ascii=False) if details else None,
+            before_state=json.dumps(before, ensure_ascii=False) if before else None,
+            after_state=json.dumps(after, ensure_ascii=False) if after else None,
+            integrity_hash=integrity,
+        ))
+
+    for e in entries:
+        db.add(e)
+    db.commit()
+    print(f"[seed] {len(entries)} entrées d'audit de démonstration injectées")
+

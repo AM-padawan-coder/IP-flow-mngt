@@ -6,6 +6,7 @@ from typing import Optional
 from sqlalchemy.orm import Session
 from database import get_db
 from models import Equipment, RoutingEntry, AclRule, FlowRequest, PolicyEvent
+import audit
 
 router = APIRouter()
 
@@ -68,6 +69,10 @@ def create_route(data: RouteIn, db: Session = Depends(get_db)):
                        description=f"Route {data.destination} via {data.gateway or data.interface or '?'} créée", entity_id=entry.id))
     db.commit()
     db.refresh(entry)
+    audit.record_audit(db, action="CREATE", object_type="ROUTE",
+                       object_id=f"ROUTE-{entry.id}",
+                       object_name=f"{data.destination} via {data.gateway or data.interface or '?'} ({eq.name})",
+                       after={"route_type": data.route_type, "metric": data.metric, "equipment": eq.name})
     return _route_out(entry)
 
 
@@ -92,8 +97,13 @@ def delete_route(entry_id: int, db: Session = Depends(get_db)):
     db.add(PolicyEvent(event_type="route_deleted", equipment_id=entry.equipment_id,
                        equipment_name=eq.name if eq else "?",
                        description=f"Route {entry.destination} supprimée", entity_id=entry_id))
+    dest = entry.destination
+    eq_name = eq.name if eq else "?"
     db.delete(entry)
     db.commit()
+    audit.record_audit(db, action="DELETE", object_type="ROUTE",
+                       object_id=f"ROUTE-{entry_id}", object_name=f"{dest} ({eq_name})",
+                       before={"destination": dest, "equipment": eq_name})
 
 
 # ── ACL ───────────────────────────────────────────────────────────────────────
@@ -128,6 +138,10 @@ def create_acl(data: AclIn, db: Session = Depends(get_db)):
                        description=f"ACL {data.action.upper()} {data.src_ip}→{data.dst_ip}:{data.port}/{data.protocol} ({data.direction}) créée", entity_id=rule.id))
     db.commit()
     db.refresh(rule)
+    audit.record_audit(db, action="CREATE", object_type="ACL",
+                       object_id=f"ACL-{rule.id}",
+                       object_name=data.name or f"{data.action.upper()} {data.src_ip}→{data.dst_ip}:{data.port}",
+                       after={"action": data.action, "port": data.port, "direction": data.direction, "equipment": eq.name})
     return _acl_out(rule)
 
 
@@ -152,8 +166,13 @@ def delete_acl(rule_id: int, db: Session = Depends(get_db)):
     db.add(PolicyEvent(event_type="acl_deleted", equipment_id=rule.equipment_id,
                        equipment_name=eq.name if eq else "?",
                        description=f"ACL {rule.action.upper()} {rule.src_ip}→{rule.dst_ip}:{rule.port} supprimée", entity_id=rule_id))
+    acl_label = rule.name or f"{rule.action.upper()} {rule.src_ip}→{rule.dst_ip}:{rule.port}"
+    eq_name = eq.name if eq else "?"
     db.delete(rule)
     db.commit()
+    audit.record_audit(db, action="DELETE", object_type="ACL",
+                       object_id=f"ACL-{rule_id}", object_name=acl_label,
+                       before={"equipment": eq_name})
 
 
 # ── Generate from flow ────────────────────────────────────────────────────────
@@ -205,6 +224,11 @@ def generate_from_flow(flow_id: int, db: Session = Depends(get_db)):
         priority_base += 10
 
     db.commit()
+    audit.record_audit(db, action="CREATE", object_type="ACL", category="Security",
+                       object_id=f"ACL-GEN-{flow_id}",
+                       object_name=f"{len(created)} ACL générées depuis FLOW-{flow_id}",
+                       application=flow.application or None,
+                       details={"generated": len(created), "equipment": created})
     return {
         "generated": len(created),
         "equipment": created,

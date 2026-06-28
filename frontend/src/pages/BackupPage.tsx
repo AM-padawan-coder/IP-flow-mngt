@@ -176,7 +176,7 @@ export default function BackupPage() {
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             <button onClick={() => createBackup('full')} disabled={creating}
               style={{ padding: '7px 16px', borderRadius: 6, border: '1px solid rgba(59,130,246,0.5)', background: 'rgba(59,130,246,0.1)', color: 'var(--blue)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600 }}>
-              💾 Complète (toutes tables)
+              <i className="ti ti-database" style={{ marginRight: 6, verticalAlign: 'middle' }} aria-hidden="true" />Complète (toutes tables)
             </button>
             {(['metier', 'audits', 'simulation', 'all'] as const).map(dom => (
               <button key={dom} onClick={() => createBackup('incremental', dom)} disabled={creating}

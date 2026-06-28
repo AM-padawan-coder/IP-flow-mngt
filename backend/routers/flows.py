@@ -1,11 +1,12 @@
 import json
 from datetime import datetime
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from database import get_db
 from models import FlowRequest
+import audit
 from engine.validator import validate_flow
 from engine.path_finder import find_path
 from engine.script_generator import generate_scripts
@@ -77,7 +78,7 @@ def analyze_flow(data: FlowIn, compliance_source: Optional[str] = None,
 
 
 @router.post("", status_code=201)
-def submit_flow(data: FlowIn, db: Session = Depends(get_db)):
+def submit_flow(data: FlowIn, request: Request = None, db: Session = Depends(get_db)):
     """Soumet et persiste une demande de flux."""
     validation = validate_flow(data.src_ip, data.dst_ip, data.port, data.protocol, db)
     path = {}
@@ -115,6 +116,17 @@ def submit_flow(data: FlowIn, db: Session = Depends(get_db)):
     db.add(flow)
     db.commit()
     db.refresh(flow)
+
+    audit.record_audit(
+        db, action="CREATE", object_type="FLOW",
+        object_id=f"FLOW-{flow.id}",
+        object_name=f"{data.src_ip} → {data.dst_ip}:{data.port}",
+        application=data.application or None,
+        details={"port": data.port, "protocol": data.protocol, "valid": validation.get("valid")},
+        after={"status": status, "src_ip": data.src_ip, "dst_ip": data.dst_ip, "port": data.port},
+        user_id=data.analyst or "admin", username=data.analyst or "admin",
+        ip_address=audit.client_ip(request),
+    )
 
     return {
         "id": flow.id,
@@ -168,29 +180,51 @@ def get_flow(flow_id: int, db: Session = Depends(get_db)):
 
 
 @router.patch("/{flow_id}/status")
-def update_flow_status(flow_id: int, data: StatusUpdate, db: Session = Depends(get_db)):
+def update_flow_status(flow_id: int, data: StatusUpdate, request: Request = None, db: Session = Depends(get_db)):
     flow = db.query(FlowRequest).filter(FlowRequest.id == flow_id).first()
     if not flow:
         raise HTTPException(status_code=404, detail="Flux non trouvé")
     allowed = {"pending", "validated", "deployed", "rejected"}
     if data.status not in allowed:
         raise HTTPException(status_code=400, detail=f"Statut invalide. Valeurs : {allowed}")
+    old_status = flow.status
     flow.status = data.status
     if data.status == "rejected" and data.rejection_reason is not None:
         flow.rejection_reason = data.rejection_reason
     elif data.status != "rejected":
         flow.rejection_reason = None
     db.commit()
+
+    # VALIDATE pour validated/deployed, sinon UPDATE ; FAILURE si rejet
+    action = "VALIDATE" if data.status in ("validated", "deployed") else "UPDATE"
+    audit.record_audit(
+        db, action=action, object_type="FLOW",
+        object_id=f"FLOW-{flow_id}",
+        object_name=f"{flow.src_ip} → {flow.dst_ip}:{flow.port}",
+        status="FAILURE" if data.status == "rejected" else "SUCCESS",
+        application=flow.application or None,
+        before={"status": old_status},
+        after={"status": data.status, **({"rejection_reason": data.rejection_reason} if data.status == "rejected" else {})},
+        ip_address=audit.client_ip(request),
+    )
     return {"id": flow_id, "status": data.status}
 
 
 @router.delete("/{flow_id}", status_code=204)
-def delete_flow(flow_id: int, db: Session = Depends(get_db)):
+def delete_flow(flow_id: int, request: Request = None, db: Session = Depends(get_db)):
     flow = db.query(FlowRequest).filter(FlowRequest.id == flow_id).first()
     if not flow:
         raise HTTPException(status_code=404, detail="Flux non trouvé")
+    snapshot = {"src_ip": flow.src_ip, "dst_ip": flow.dst_ip, "port": flow.port, "status": flow.status}
+    label = f"{flow.src_ip} → {flow.dst_ip}:{flow.port}"
+    app_name = flow.application or None
     db.delete(flow)
     db.commit()
+    audit.record_audit(
+        db, action="DELETE", object_type="FLOW",
+        object_id=f"FLOW-{flow_id}", object_name=label, application=app_name,
+        before=snapshot, ip_address=audit.client_ip(request),
+    )
 
 
 @router.get("/audit/summary")

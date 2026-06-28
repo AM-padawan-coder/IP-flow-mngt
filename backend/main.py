@@ -37,6 +37,7 @@ from routers import backup as backup_router
 from routers import compliance as compliance_router
 from routers import applications as applications_router
 from routers import environments as environments_router
+from routers import audit_logs as audit_logs_router
 app.include_router(flows.router,               prefix="/flows",        tags=["Flux IP"])
 app.include_router(topology.router,            prefix="/topology",     tags=["Topologie"])
 app.include_router(teams_router.router,        prefix="/org",          tags=["Organisation"])
@@ -47,6 +48,7 @@ app.include_router(backup_router.router,       prefix="/backups",      tags=["Sa
 app.include_router(compliance_router.router,   prefix="/compliance",   tags=["Conformité"])
 app.include_router(applications_router.router, prefix="/applications", tags=["Applications"])
 app.include_router(environments_router.router, prefix="/environments", tags=["Environnements"])
+app.include_router(audit_logs_router.router,   prefix="/audit-logs",   tags=["Logs & Traçabilité"])
 
 
 def _run_migrations():
@@ -69,12 +71,15 @@ def _run_migrations():
 @app.on_event("startup")
 async def startup_event():
     _run_migrations()
-    from seed import seed_database, seed_demo_routes, seed_default_environments
+    from seed import seed_database, seed_demo_routes, seed_default_environments, seed_demo_audit_logs
+    import audit
     db = SessionLocal()
     try:
         seed_database(db)
         seed_demo_routes(db)
         seed_default_environments(db)
+        seed_demo_audit_logs(db)
+        audit.purge_old_logs(db)
     finally:
         db.close()
     # Start backup scheduler as background asyncio task

@@ -4,6 +4,7 @@ import HistoryPage from './pages/HistoryPage'
 import TopologyPage from './pages/TopologyPage'
 import AdminPage from './pages/AdminPage'
 import BackupPage from './pages/BackupPage'
+import LogsPage from './pages/LogsPage'
 import CompliancePage from './pages/CompliancePage'
 import ImportPage from './pages/ImportPage'
 import TeamsPage from './pages/TeamsPage'
@@ -14,7 +15,7 @@ import FlowsTopologyPage from './pages/FlowsTopologyPage'
 import HelpModal from './components/HelpModal'
 import RoadmapModal from './components/RoadmapModal'
 
-type Page = 'new' | 'history' | 'simulation' | 'topology' | 'admin' | 'import' | 'teams' | 'audit' | 'policies' | 'flows-topology' | 'backups' | 'compliance'
+type Page = 'new' | 'history' | 'simulation' | 'topology' | 'admin' | 'import' | 'teams' | 'audit' | 'policies' | 'flows-topology' | 'backups' | 'logs' | 'compliance'
 
 const NAV = [
   { id: 'new',        label: 'Nouveau flux',       icon: '＋', section: 'Flux IP' },
@@ -23,6 +24,7 @@ const NAV = [
   { id: 'topology',        label: 'Graphe réseau',       icon: '⬡', section: 'Topologie' },
   { id: 'admin',           label: 'Configuration',       icon: '⚙', section: 'Topologie' },
   { id: 'backups',         label: 'Sauvegardes',         icon: 'ti ti-database', section: 'Administration' },
+  { id: 'logs',            label: 'Logs & Traçabilité',  icon: 'ti ti-history', section: 'Administration' },
   { id: 'flows-topology',  label: 'Flux',                icon: '↔', section: 'Topologie' },
   { id: 'policies',        label: 'Politiques réseau',   icon: 'ti ti-shield', section: 'Topologie' },
   { id: 'import',          label: 'Import / Export',     icon: '⬆', section: 'Topologie' },
@@ -106,7 +108,7 @@ export default function App() {
 
         {/* Footer — version + actions */}
         <div style={{ padding: '10px 14px', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 6 }}>
-          <div className="text-xs text-dimmed" style={{ flex: 1 }}>demo · v2.9.10</div>
+          <div className="text-xs text-dimmed" style={{ flex: 1 }}>demo · v2.10</div>
 
           {/* Dark/Light toggle */}
           <button
@@ -155,6 +157,7 @@ export default function App() {
         {page === 'topology'        && <TopologyPage highlightedPath={highlightedPath} />}
         {page === 'admin'      && <AdminPage />}
         {page === 'backups'    && <BackupPage />}
+        {page === 'logs'       && <LogsPage />}
         {page === 'compliance' && <CompliancePage />}
         {page === 'import'     && <ImportPage onNavigate={(p) => setPage(p as Page)} />}
         {page === 'teams'      && <TeamsPage />}

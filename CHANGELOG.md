@@ -1,5 +1,20 @@
 # Changelog — IP Flow Manager
 
+## [2.10.0] — 2026-06-28
+
+### Logs & Traçabilité
+
+- **Backend — modèle `AuditLog`** : journal d'audit append-only (timestamp, user, action, object_type/id/name, catégorie, statut, détails, états avant/après, IP, session, source) + empreinte d'intégrité `sha256` chaînée (tamper-evidence) ; table `app_settings` pour la rétention
+- **Backend — service `audit.record_audit()`** : point d'entrée centralisé, défensif (ne casse jamais l'appelant), avec architecture de *sinks* extensible (Signature crypto v3.6, Syslog v4, SIEM v5, détection d'anomalies v6 — désactivés)
+- **Backend — router `/audit-logs`** : liste paginée + filtres (recherche, action, type, statut, catégorie, utilisateur, environnement, période), stats/facettes, vue détail, export CSV/JSON horodaté, rétention GET/PUT, liste des intégrations
+- **Backend — traçage automatique** : flux (création/validation/refus/suppression), applications (CRUD + import), environnements (CRUD), routes & ACL (création/suppression + génération depuis flux)
+- **Backend — seed** : 20 entrées d'audit de démonstration idempotentes couvrant toutes les catégories/actions ; purge automatique selon la rétention au démarrage
+- **Frontend — page « Logs & Traçabilité »** (section Administration) : KPIs par action, table paginée (Date, Utilisateur, Action, Type, Objet, Catégorie, Source, Résultat), filtres complets + recherche temps réel, sélecteur de conservation (30/90/120/180/365 j / illimité), export CSV/JSON, panneau « Intégrations à venir »
+- **Frontend — vue détail** : modal avant/après (JSON), IP source, session, empreinte d'intégrité chaînée
+- **Frontend — sidebar** : `overflow-y: auto` sur `.sidebar-nav` pour accéder au menu complet sur petits écrans
+- **Frontend — Sauvegardes** : icône du bouton « Complète (toutes tables) » remplacée par `ti ti-database`
+- **Roadmap** : v2.10 livrée ; ajout de v3.6 « Configuration avancée » (Syslog, Elastic, signature cryptographique)
+
 ## [2.9.10] — 2026-06-28
 
 ### Schéma Modèle de données & Roadmap

@@ -19,6 +19,7 @@ const SECTIONS = [
   { id: 'equipes',     iconClass: 'ti ti-users',                   label: 'Équipes' },
   { id: 'audit',       iconClass: 'ti ti-eye',                     label: 'Audit' },
   { id: 'sauvegardes', iconClass: 'ti ti-database',                label: 'Sauvegardes' },
+  { id: 'logs',        iconClass: 'ti ti-history',                 label: 'Logs & Traçabilité' },
   { id: 'conformite',  iconClass: 'ti ti-checkbox',                label: 'Conformité' },
   { id: 'schemas',     iconClass: 'ti ti-sitemap',                 label: 'Schémas & Workflows' },
   { id: 'faq',         iconClass: 'ti ti-help-circle',             label: 'FAQ' },
@@ -711,6 +712,39 @@ const CONTENT: Record<string, JSX.Element> = {
 
       <div style={{ ...CALLOUT, borderColor: 'rgba(234,179,8,0.3)', background: 'rgba(234,179,8,0.07)' }}>
         ⚠ <strong>Stockage sur Render (plan gratuit)</strong> : le disque est éphémère — les fichiers de sauvegarde sont perdus en cas de redéploiement. Pour un usage en production, montez un disque persistant Render ou exportez les sauvegardes vers un stockage objet externe (S3, Backblaze…).
+      </div>
+    </div>
+  ),
+
+  logs: (
+    <div>
+      <h2 style={H2}>Logs &amp; Traçabilité (v2.10)</h2>
+      <p style={P}>La page <strong>Logs &amp; Traçabilité</strong> (section <em>Administration</em>) centralise un journal d'audit <strong>immuable</strong> de toutes les actions critiques. Chaque entrée est horodatée, attribuée à un utilisateur et scellée par une empreinte d'intégrité chaînée (tamper-evidence).</p>
+
+      <h3 style={H3}>Actions tracées</h3>
+      <ul style={UL}>
+        <li style={LI}>🟢 <strong>CREATE</strong> — création de flux, application, équipement, route, zone, environnement</li>
+        <li style={LI}>🔵 <strong>UPDATE</strong> — modification d'un attribut, changement de statut, mise à jour de règle</li>
+        <li style={LI}>🟦 <strong>VALIDATE</strong> — validation d'un flux ou d'un scénario What-If, approbation</li>
+        <li style={LI}>🔴 <strong>DELETE</strong> — suppression de flux, application, équipement, route, ACL</li>
+        <li style={LI}>🟣 <strong>IMPORT</strong> — import JSON / CSV, synchronisation CMDB</li>
+        <li style={LI}>🟠 <strong>EXPORT</strong> — export de flux, applications, routes et journaux</li>
+      </ul>
+
+      <h3 style={H3}>Filtres &amp; recherche</h3>
+      <p style={P}>Filtrez par période, utilisateur, type d'objet, action, statut, catégorie et environnement. La recherche globale temps réel porte sur l'identifiant d'objet, l'utilisateur, l'application, l'action ou la catégorie (ex : <span style={MONO}>FLOW-123</span>, <span style={MONO}>admin</span>, <span style={MONO}>EXPORT</span>).</p>
+
+      <h3 style={H3}>Vue détail</h3>
+      <p style={P}>Un clic sur une ligne ouvre le détail complet : valeurs <strong>avant / après</strong> (JSON), IP source, session, source (WEB_UI / API / CMDB_SYNC) et empreinte d'intégrité chaînée.</p>
+
+      <h3 style={H3}>Export &amp; conservation</h3>
+      <div style={UL as React.CSSProperties}>
+        <div style={BTN_DOC}><span style={BTN_LABEL}>⬇ CSV / JSON</span> Export horodaté <span style={MONO}>logs_AAAAMMJJ_HHMMSS</span> respectant les filtres actifs ; l'export est lui-même tracé.</div>
+        <div style={BTN_DOC}><span style={BTN_LABEL}>⏱ Conservation</span> Durée paramétrable (30 / 90 / 120 / 180 / 365 jours ou illimité) avec purge automatique des entrées plus anciennes.</div>
+      </div>
+
+      <div style={CALLOUT}>
+        <strong>Intégrations à venir</strong> : signature cryptographique des journaux (v3.6), envoi Syslog (v4), connecteurs SIEM — Splunk / Elastic / QRadar / Sentinel (v5) et détection d'anomalies (v6). L'architecture de <em>sinks</em> est déjà en place côté backend.
       </div>
     </div>
   ),

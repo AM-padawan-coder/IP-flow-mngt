@@ -214,3 +214,40 @@ class Environment(Base):
     name = Column(String, nullable=False)
     description = Column(String, default='')
     color = Column(String, default='#64748b')
+
+
+class AuditLog(Base):
+    """Journal d'audit immuable (append-only). Toute action critique y est tracée.
+
+    Tamper-evidence : chaque entrée porte un `integrity_hash` chaîné au hash de
+    l'entrée précédente (cf. audit.record_audit). Le champ `signature` est réservé
+    à la signature cryptographique (roadmap v3.6 — Configuration avancée)."""
+    __tablename__ = "audit_logs"
+    id = Column(Integer, primary_key=True, index=True)
+    timestamp = Column(DateTime, default=datetime.utcnow, index=True)
+    user_id = Column(String, default="admin")
+    username = Column(String, default="admin")
+    action = Column(String, index=True)        # CREATE | UPDATE | VALIDATE | DELETE | IMPORT | EXPORT
+    object_type = Column(String, index=True)   # FLOW | APPLICATION | EQUIPMENT | ROUTE | ZONE | ENVIRONMENT | ACL | LOGS | ...
+    object_id = Column(String, nullable=True)
+    object_name = Column(String, nullable=True)
+    category = Column(String, index=True)      # Security | Administration | Flow | Route | Application | Import | Export | Simulation | Validation | User Management
+    status = Column(String, default="SUCCESS") # SUCCESS | FAILURE
+    details = Column(Text, nullable=True)       # JSON libre
+    before_state = Column(Text, nullable=True)  # JSON — état avant (UPDATE/DELETE)
+    after_state = Column(Text, nullable=True)   # JSON — état après (CREATE/UPDATE)
+    ip_address = Column(String, nullable=True)
+    session_id = Column(String, nullable=True)
+    source = Column(String, default="WEB_UI")  # WEB_UI | API | CMDB_SYNC
+    environment = Column(String, nullable=True)
+    application = Column(String, nullable=True)
+    integrity_hash = Column(String, nullable=True)  # sha256 chaîné (tamper-evidence)
+    signature = Column(String, nullable=True)        # réservé v3.6 (signature crypto)
+
+
+class AppSetting(Base):
+    """Stockage clé/valeur des paramètres applicatifs (ex: rétention des logs)."""
+    __tablename__ = "app_settings"
+    id = Column(Integer, primary_key=True, index=True)
+    key = Column(String, unique=True, nullable=False)
+    value = Column(String, nullable=True)

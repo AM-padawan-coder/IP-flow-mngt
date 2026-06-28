@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from typing import Optional, List
 from database import SessionLocal
 from models import Application, ApplicationIP, Team, RoutingEntry, Equipment, Network, EquipmentInterface, FlowRequest
+import audit
 
 router = APIRouter()
 
@@ -85,6 +86,12 @@ def create_application(data: ApplicationIn):
             db.add(ApplicationIP(application_id=app.id, ip_address=ip_data.ip_address, zone_id=ip_data.zone_id))
         db.commit()
         db.refresh(app)
+        audit.record_audit(
+            db, action="CREATE", object_type="APPLICATION",
+            object_id=f"APP-{app.id}", object_name=app.name,
+            application=app.code or app.name, environment=app.environment,
+            after={"type": app.app_type, "criticality": app.criticality, "environment": app.environment},
+        )
         teams = {t.id: t.name for t in db.query(Team).all()}
         return _serialize(app, teams.get(app.team_id))
     finally:
@@ -98,6 +105,7 @@ def update_application(app_id: int, data: ApplicationIn):
         app = db.query(Application).filter(Application.id == app_id).first()
         if not app:
             raise HTTPException(status_code=404, detail="Application introuvable")
+        before = {"name": app.name, "criticality": app.criticality, "environment": app.environment, "type": app.app_type}
         app.name = data.name
         app.code = data.code
         app.description = data.description
@@ -114,6 +122,13 @@ def update_application(app_id: int, data: ApplicationIn):
             db.add(ApplicationIP(application_id=app.id, ip_address=ip_data.ip_address, zone_id=ip_data.zone_id))
         db.commit()
         db.refresh(app)
+        audit.record_audit(
+            db, action="UPDATE", object_type="APPLICATION",
+            object_id=f"APP-{app.id}", object_name=app.name,
+            application=app.code or app.name, environment=app.environment,
+            before=before,
+            after={"name": app.name, "criticality": app.criticality, "environment": app.environment, "type": app.app_type},
+        )
         teams = {t.id: t.name for t in db.query(Team).all()}
         return _serialize(app, teams.get(app.team_id))
     finally:
@@ -127,8 +142,14 @@ def delete_application(app_id: int):
         app = db.query(Application).filter(Application.id == app_id).first()
         if not app:
             raise HTTPException(status_code=404, detail="Application introuvable")
+        name, code, env, atype = app.name, app.code, app.environment, app.app_type
         db.delete(app)
         db.commit()
+        audit.record_audit(
+            db, action="DELETE", object_type="APPLICATION",
+            object_id=f"APP-{app_id}", object_name=name,
+            application=code or name, environment=env, before={"type": atype},
+        )
         return {"deleted": app_id}
     finally:
         db.close()
@@ -260,6 +281,11 @@ def import_applications(data: List[ApplicationIn]):
                 db.add(ApplicationIP(application_id=app.id, ip_address=ip_data.ip_address, zone_id=ip_data.zone_id))
             created += 1
         db.commit()
+        audit.record_audit(
+            db, action="IMPORT", object_type="APPLICATION",
+            object_id="IMP-APP", object_name=f"Import applications ({created})",
+            details={"created": created},
+        )
         return {"created": created}
     finally:
         db.close()

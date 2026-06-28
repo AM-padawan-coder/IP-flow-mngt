@@ -78,7 +78,7 @@ html, body, #root {
 .sidebar-logo h1 { font-size: 15px; font-weight: 700; color: var(--text-1); letter-spacing: -0.3px; }
 .sidebar-logo p  { font-size: 11px; color: var(--text-3); margin-top: 2px; }
 
-.sidebar-nav { padding: 12px 8px; flex: 1; }
+.sidebar-nav { padding: 12px 8px; flex: 1; overflow-y: auto; min-height: 0; }
 .nav-section { margin-bottom: 20px; }
 .nav-section-label {
   font-size: 10px;
