@@ -1,5 +1,23 @@
 # Changelog — IP Flow Manager
 
+## [2.9.6] — 2026-06-28
+
+### UX Vue Applications — glow, filtres, drag & stacked mode
+
+- **TopologyPage — helper pl()** : singulier/pluriel automatique sur tous les labels compteurs (onglets, panneau Éléments visibles)
+- **AppGraphView — glow sélection** : lignes SVG et boîtes réseau liés à l'app sélectionnée mis en évidence (strokeWidth 2.5, drop-shadow coloré, boxShadow réseau) ; éléments non liés atténués à opacity 0.35 ; filtre SVG `<defs>` glow
+- **TopologyPage — overlays masqués en Vue Applications** : message discret "Overlays non disponibles en vue Applications" remplace les toggles quand appViewMode est actif
+- **TopologyPage — filtre apps en Vue Applications** : liste de checkboxes dans le panneau gauche pour filtrer les applications affichées dans AppGraphView ; prop `filteredAppIds` transmise au composant
+- **AppGraphView — drag to reorder** : glisser-déposer horizontal des cartes application pour réorganiser leur ordre ; indicateur de position cible (ligne bleue) ; animation CSS transition sur left
+- **AppGraphView — mode Stacked** : regroupement des apps par `app_type` avec cartes empilées visuelles ; clic pour ouvrir/fermer un groupe ; bouton "Tout empiler" dans le panneau gauche
+- **HelpModal — section Schémas & Workflows** : 3 schémas SVG inline (modèle de données entité-relation, workflow flux, vue de haut niveau des services) avec onglets internes
+- **RoadmapModal — v4.8** : "Revue de code IA — modules sensibles" ajoutée (planifié)
+- **RoadmapModal — v2.9.6** : sous-version ajoutée sous v2.9 (livré)
+- **TopologyGraph — mode clair** : texte des labels nœuds (#1e293b), fond cercle (#f1f5f9) et grille adaptatifs selon le thème ; fond légende remplacé par `color-mix(in srgb, var(--bg-card) 90%, transparent)`
+- **AppGraphView — export image** : bouton caméra activé en Vue Applications via `forwardRef` + `useImperativeHandle` ; re-dessin canvas offscreen (lignes, cartes, cercles équipements)
+
+---
+
 ## [2.9.5] — 2026-06-28
 
 ### Graphe réseau — export image & plein écran

@@ -125,6 +125,17 @@ const PHASES: Phase[] = [
       'Dropdown Environnement dans Applications alimenté par l\'API Environnements',
       'Dropdowns modernisés (ModernSelect pill-group) dans Configuration',
     ] },
+  { v: 'v2.9.6', title: 'Vue Applications — glow, filtres, drag & stacked', status: 'done', label: '✓ Livré', eta: '', subOf: 'v2.9',
+    items: [
+      'Helper pl() singulier/pluriel sur tous les labels compteurs',
+      'AppGraphView — glow sur sélection app (lignes SVG + boîtes réseau, atténuation des non liés)',
+      'Overlays masqués avec message discret quand Vue Applications est active',
+      'Filtre apps en Vue Applications : checkboxes dans le panneau gauche',
+      'Drag-to-reorder horizontal des cartes applications',
+      'Mode Stacked : regroupement par type avec expansion par groupe',
+      'HelpModal — section Schémas & Workflows avec 3 schémas SVG inline',
+      'Roadmap v4.8 « Revue de code IA — modules sensibles »',
+    ] },
   { v: 'v2.9.5', title: 'Graphe — export image & plein écran', status: 'done', label: '✓ Livré', eta: '', subOf: 'v2.9',
     items: [
       'Export PNG / JPEG via icône appareil photo (top-right du graphe)',
@@ -200,6 +211,13 @@ const PHASES: Phase[] = [
       'Script de migration des données existantes (schéma + données de démo)',
       'Tests de charge : simulation de plusieurs clients web simultanés sur le même backend',
       'Aucun changement côté code métier ni API — transparence totale pour le frontend',
+    ] },
+  { v: 'v4.8', title: 'Revue de code IA — modules sensibles', status: 'planned', label: '🗓 Planifié', eta: '',
+    items: [
+      'Revue automatisée des modules sensibles (conformité, auth, migrations) via Claude Opus 4.8',
+      'Détection de vulnérabilités et anti-patterns dans les routers FastAPI exposés',
+      'Rapport structuré : findings par sévérité, suggestions de refactoring, risques identifiés',
+      'Intégration CI : exécution à chaque merge sur main pour les fichiers critiques',
     ] },
 
   { v: 'v5.0', title: 'Services & Dépendances', status: 'planned', label: '🗓 Planifié', eta: '',

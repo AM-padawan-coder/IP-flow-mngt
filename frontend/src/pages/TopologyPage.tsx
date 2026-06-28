@@ -3,6 +3,7 @@ import { api } from '../api/client'
 import TopologyGraph, { CRITICALITY_COLOR, ROUTE_COLOR, TYPE_COLORS, CRIT_APP_COLOR } from '../components/TopologyGraph'
 import type { FlowOverlay, RouteOverlay, VRFOverlay, AppOverlay, TopologyGraphHandle } from '../components/TopologyGraph'
 import AppGraphView from '../components/AppGraphView'
+import type { AppGraphViewHandle } from '../components/AppGraphView'
 import type { Equipment, Network, Zone } from '../types'
 
 type Tab = 'graph' | 'equipment' | 'networks' | 'zones' | 'physzones' | 'links' | 'apps'
@@ -18,6 +19,11 @@ interface Props { highlightedPath?: string[] }
 
 const ALL_ROUTE_TYPES = ['bgp', 'ospf', 'isis', 'connected', 'static'] as const
 type RouteType = typeof ALL_ROUTE_TYPES[number]
+
+// ── Plural helper ──────────────────────────────────────────────────────────────
+function pl(n: number, singular: string, plural: string): string {
+  return `${n} ${n <= 1 ? singular : plural}`
+}
 
 // ── Toggle switch ──────────────────────────────────────────────────────────────
 function Toggle({ on, onChange, label, count, color }: {
@@ -125,6 +131,7 @@ export default function TopologyPage({ highlightedPath = [] }: Props) {
   const [isFullscreen,  setIsFullscreen]  = useState(false)
   const [exportMenu,    setExportMenu]    = useState(false)
   const topologyGraphRef = useRef<TopologyGraphHandle>(null)
+  const appGraphViewRef  = useRef<AppGraphViewHandle>(null)
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setIsFullscreen(false) }
@@ -133,7 +140,9 @@ export default function TopologyPage({ highlightedPath = [] }: Props) {
   }, [])
 
   const downloadImage = (format: 'png' | 'jpeg') => {
-    const dataUrl = topologyGraphRef.current?.getDataUrl(format)
+    const dataUrl = appViewMode
+      ? appGraphViewRef.current?.getDataUrl(format)
+      : topologyGraphRef.current?.getDataUrl(format)
     if (!dataUrl) return
     const a = document.createElement('a')
     a.href = dataUrl
@@ -149,6 +158,9 @@ export default function TopologyPage({ highlightedPath = [] }: Props) {
   const [appContext,       setAppContext]       = useState<any>(null)
   const [loadingAppGraph,  setLoadingAppGraph]  = useState(false)
   const [loadingAppContext, setLoadingAppContext] = useState(false)
+  // App view filter (v2.9.6)
+  const [appViewFilter,    setAppViewFilter]    = useState<Set<number>>(new Set())
+  const [appStackedMode,   setAppStackedMode]   = useState(false)
 
   // Environments (for dynamic badge colors)
   const [environments, setEnvironments] = useState<any[]>([])
@@ -288,12 +300,12 @@ export default function TopologyPage({ highlightedPath = [] }: Props) {
 
   const TABS = [
     { id: 'graph',      label: 'Graphe réseau' },
-    { id: 'equipment',  label: `Équipements (${equipment.length})` },
-    { id: 'networks',   label: `Réseaux (${networks.length})` },
-    { id: 'zones',      label: `Zones logiques (${zones.length})` },
-    { id: 'physzones',  label: `Zones physiques (${physZones.length})` },
-    { id: 'links',      label: `Liens (${links.length})` },
-    { id: 'apps',       label: `Applications (${apps.length})` },
+    { id: 'equipment',  label: pl(equipment.length, 'Équipement', 'Équipements') },
+    { id: 'networks',   label: pl(networks.length, 'Réseau', 'Réseaux') },
+    { id: 'zones',      label: pl(zones.length, 'Zone logique', 'Zones logiques') },
+    { id: 'physzones',  label: pl(physZones.length, 'Zone physique', 'Zones physiques') },
+    { id: 'links',      label: pl(links.length, 'Lien', 'Liens') },
+    { id: 'apps',       label: pl(apps.length, 'Application', 'Applications') },
   ] as const
 
   const INPUT: React.CSSProperties = {
@@ -364,31 +376,39 @@ export default function TopologyPage({ highlightedPath = [] }: Props) {
                   {/* Overlay toggles */}
                   <div className="card" style={{ padding: '10px 12px' }}>
                     <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-3)', letterSpacing: '0.8px', textTransform: 'uppercase', marginBottom: 8 }}>Overlays</div>
-                    <Toggle
-                      on={showFlows}  onChange={() => setShowFlows(v => !v)}
-                      label="Flux"    count={overlayFlows.length || undefined}
-                      color="#f97316"
-                    />
-                    <Toggle
-                      on={showRoutes} onChange={() => setShowRoutes(v => !v)}
-                      label="Routes"  count={overlayRoutes.length || undefined}
-                      color="#3b82f6"
-                    />
-                    <Toggle
-                      on={showVRF}    onChange={() => setShowVRF(v => !v)}
-                      label="VRF"     count={overlayVRF.length || undefined}
-                      color="#a855f7"
-                    />
-                    <Toggle
-                      on={showApps}   onChange={() => setShowApps(v => !v)}
-                      label="Applications" count={overlayApps.length || undefined}
-                      color="#f59e0b"
-                    />
-                    {loadingOverlay && (
-                      <div style={{ marginTop: 8, fontSize: 11, color: 'var(--text-3)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <div className="spinner" style={{ width: 10, height: 10, border: '2px solid var(--border)', borderTopColor: '#3b82f6', borderRadius: '50%', animation: 'spin 0.6s linear infinite' }} />
-                        Chargement {loadingOverlay}…
+                    {appViewMode ? (
+                      <div style={{ fontSize: 10, color: 'var(--text-3)', fontStyle: 'italic', padding: '6px 0' }}>
+                        Overlays non disponibles en vue Applications
                       </div>
+                    ) : (
+                      <>
+                        <Toggle
+                          on={showFlows}  onChange={() => setShowFlows(v => !v)}
+                          label="Flux"    count={overlayFlows.length || undefined}
+                          color="#f97316"
+                        />
+                        <Toggle
+                          on={showRoutes} onChange={() => setShowRoutes(v => !v)}
+                          label="Routes"  count={overlayRoutes.length || undefined}
+                          color="#3b82f6"
+                        />
+                        <Toggle
+                          on={showVRF}    onChange={() => setShowVRF(v => !v)}
+                          label="VRF"     count={overlayVRF.length || undefined}
+                          color="#a855f7"
+                        />
+                        <Toggle
+                          on={showApps}   onChange={() => setShowApps(v => !v)}
+                          label="Applications" count={overlayApps.length || undefined}
+                          color="#f59e0b"
+                        />
+                        {loadingOverlay && (
+                          <div style={{ marginTop: 8, fontSize: 11, color: 'var(--text-3)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <div className="spinner" style={{ width: 10, height: 10, border: '2px solid var(--border)', borderTopColor: '#3b82f6', borderRadius: '50%', animation: 'spin 0.6s linear infinite' }} />
+                            Chargement {loadingOverlay}…
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
 
@@ -549,6 +569,53 @@ export default function TopologyPage({ highlightedPath = [] }: Props) {
                       })}
                     </div>
                   )}
+
+                  {/* App view filter (visible when appViewMode is on) */}
+                  {appViewMode && appGraphData && appGraphData.applications && appGraphData.applications.length > 0 && (
+                    <div className="card" style={{ padding: '10px 12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: '#22c55e', letterSpacing: '0.8px', textTransform: 'uppercase' }}>Filtrer les apps</div>
+                        <button
+                          style={{ fontSize: 9, padding: '1px 5px', borderRadius: 4, border: '1px solid var(--border)', background: 'var(--bg-input)', color: 'var(--text-3)', cursor: 'pointer', fontFamily: 'inherit' }}
+                          onClick={() => setAppViewFilter(appViewFilter.size === 0 ? new Set() : new Set())}
+                        >
+                          {appViewFilter.size === 0 ? 'Tout décocher' : 'Tout cocher'}
+                        </button>
+                      </div>
+                      {appGraphData.applications.map((app: any, idx: number) => {
+                        const checked = appViewFilter.size === 0 || appViewFilter.has(app.id)
+                        return (
+                          <div key={app.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', borderBottom: idx < appGraphData.applications.length - 1 ? '1px solid var(--border)' : 'none', cursor: 'pointer' }}
+                            onClick={() => {
+                              const next: Set<number> = new Set(appViewFilter.size === 0
+                                ? (appGraphData.applications.map((a: any) => a.id as number) as number[])
+                                : appViewFilter)
+                              if (checked) next.delete(app.id); else next.add(app.id)
+                              const allIds = new Set<number>(appGraphData.applications.map((a: any) => a.id as number))
+                              if (next.size === allIds.size) setAppViewFilter(new Set<number>())
+                              else setAppViewFilter(next)
+                            }}
+                          >
+                            <div style={{ width: 12, height: 12, borderRadius: 3, border: '1.5px solid #22c55e', background: checked ? '#22c55e' : 'transparent', flexShrink: 0, transition: 'background 0.15s' }} />
+                            <span style={{ fontSize: 10, color: checked ? 'var(--text-1)' : 'var(--text-3)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{app.name}</span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+
+                  {/* App stacked mode button */}
+                  {appViewMode && (
+                    <div className="card" style={{ padding: '10px 12px' }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-3)', letterSpacing: '0.8px', textTransform: 'uppercase', marginBottom: 8 }}>Vue applications</div>
+                      <button
+                        onClick={() => setAppStackedMode(v => !v)}
+                        style={{ width: '100%', padding: '5px 0', fontSize: 10, fontFamily: 'inherit', cursor: 'pointer', borderRadius: 5, border: appStackedMode ? '1px solid #22c55e' : '1px solid var(--border)', background: appStackedMode ? 'rgba(34,197,94,0.15)' : 'var(--bg-input)', color: appStackedMode ? '#22c55e' : 'var(--text-3)', fontWeight: appStackedMode ? 700 : 400, transition: 'all 0.15s' }}
+                      >
+                        {appStackedMode ? 'Déempiler' : 'Empiler par type'}
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {/* ── Main canvas ─────────────────────────────────────────── */}
@@ -567,13 +634,12 @@ export default function TopologyPage({ highlightedPath = [] }: Props) {
                     <div style={{ position: 'relative' }}>
                       <button
                         onClick={() => setExportMenu(v => !v)}
-                        disabled={appViewMode}
                         title="Exporter l'image"
-                        style={{ width: 26, height: 26, borderRadius: '50%', border: '1px solid var(--border)', background: 'color-mix(in srgb, var(--bg-input) 80%, transparent)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', color: appViewMode ? 'var(--text-3)' : 'var(--text-2)', cursor: appViewMode ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, opacity: appViewMode ? 0.4 : 1 }}
+                        style={{ width: 26, height: 26, borderRadius: '50%', border: '1px solid var(--border)', background: 'color-mix(in srgb, var(--bg-input) 80%, transparent)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', color: 'var(--text-2)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13 }}
                       >
                         <i className="ti ti-camera" aria-hidden="true" />
                       </button>
-                      {exportMenu && !appViewMode && (
+                      {exportMenu && (
                         <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 6, boxShadow: '0 4px 16px rgba(0,0,0,0.4)', overflow: 'hidden', minWidth: 90, zIndex: 30 }}>
                           {(['png', 'jpeg'] as const).map(fmt => (
                             <button
@@ -601,10 +667,14 @@ export default function TopologyPage({ highlightedPath = [] }: Props) {
                   {appViewMode ? (
                     <>
                       <AppGraphView
+                        ref={appGraphViewRef}
                         data={appGraphData}
                         selectedAppId={selectedAppId}
                         onSelectApp={setSelectedAppId}
                         loading={loadingAppGraph}
+                        filteredAppIds={appViewFilter.size > 0 ? appViewFilter : undefined}
+                        stackedMode={appStackedMode}
+                        onToggleStack={() => setAppStackedMode(v => !v)}
                       />
                       {selectedAppId && appContext && (
                         <AppContextPanel
@@ -663,14 +733,14 @@ export default function TopologyPage({ highlightedPath = [] }: Props) {
                   <div className="card" style={{ padding: '10px 12px' }}>
                     <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-3)', letterSpacing: '0.8px', textTransform: 'uppercase', marginBottom: 8 }}>Éléments visibles</div>
                     {[
-                      ['Équipements', visibleNodes, '#64748b'],
-                      ['Liens',       visibleEdges, '#64748b'],
-                      showFlows  ? ['Flux',   filteredFlows.length,   '#f97316'] : null,
-                      showRoutes ? ['Routes', filteredRoutes.length,  '#3b82f6'] : null,
-                      showVRF    ? ['VRF',    filteredVRF.length,     '#a855f7'] : null,
-                      showVRF    ? ['Nœuds VRF', vrfNodes,            '#a855f7'] : null,
-                      showApps   ? ['Apps',   filteredApps.length,    '#f59e0b'] : null,
-                      showApps   ? ['Éq. avec apps', visibleApps,     '#f59e0b'] : null,
+                      [pl(visibleNodes, 'Équipement', 'Équipements'), visibleNodes, '#64748b'],
+                      [pl(visibleEdges, 'Lien', 'Liens'),             visibleEdges, '#64748b'],
+                      showFlows  ? [pl(filteredFlows.length, 'Flux', 'Flux'),     filteredFlows.length,  '#f97316'] : null,
+                      showRoutes ? [pl(filteredRoutes.length, 'Route', 'Routes'), filteredRoutes.length, '#3b82f6'] : null,
+                      showVRF    ? ['VRF',                                         filteredVRF.length,    '#a855f7'] : null,
+                      showVRF    ? [pl(vrfNodes, 'Nœud VRF', 'Nœuds VRF'),        vrfNodes,              '#a855f7'] : null,
+                      showApps   ? [pl(filteredApps.length, 'App', 'Apps'),        filteredApps.length,   '#f59e0b'] : null,
+                      showApps   ? [pl(visibleApps, 'Éq. avec apps', 'Éq. avec apps'), visibleApps,      '#f59e0b'] : null,
                     ].filter(Boolean).map((row) => { const [lbl, cnt, color] = row as [string, number, string]; return (
                       <div key={lbl} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '3px 0', borderBottom: '1px solid var(--border)' }}>
                         <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{lbl}</span>

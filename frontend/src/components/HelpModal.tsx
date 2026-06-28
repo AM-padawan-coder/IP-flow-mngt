@@ -20,6 +20,7 @@ const SECTIONS = [
   { id: 'audit',      icon: '◎',  label: 'Audit' },
   { id: 'sauvegardes',icon: 'ti', iconClass: 'ti ti-database',              label: 'Sauvegardes' },
   { id: 'conformite', icon: 'ti', iconClass: 'ti ti-checkbox',              label: 'Conformité' },
+  { id: 'schemas',    icon: '◈',  label: 'Schémas & Workflows' },
   { id: 'faq',        icon: '❓', label: 'FAQ' },
 ]
 
@@ -834,6 +835,170 @@ const CONTENT: Record<string, JSX.Element> = {
   ),
 }
 
+// ── Schemas section (needs local state, so separate component) ────────────────
+function SchemasSection() {
+  const [schemaTab, setSchemaTab] = useState(0)
+  const tabs = ['Modèle de données', 'Workflow flux', 'Vue services']
+  return (
+    <div>
+      <h2 style={H2}>Schémas & Workflows</h2>
+      <p style={P}>Schémas visuels expliquant la structure des données, le workflow d'un flux et l'architecture globale du système.</p>
+
+      {/* Tab bar */}
+      <div style={{ display: 'flex', gap: 6, marginBottom: 20 }}>
+        {tabs.map((t, i) => (
+          <button key={t} onClick={() => setSchemaTab(i)} style={{ padding: '6px 14px', fontSize: 12, borderRadius: 6, border: schemaTab === i ? '1px solid var(--blue)' : '1px solid var(--border)', background: schemaTab === i ? 'rgba(59,130,246,0.15)' : 'var(--bg-input)', color: schemaTab === i ? 'var(--blue)' : 'var(--text-2)', cursor: 'pointer', fontFamily: 'inherit', fontWeight: schemaTab === i ? 700 : 400 }}>{t}</button>
+        ))}
+      </div>
+
+      {/* Schema 1 — Entity-Relation */}
+      {schemaTab === 0 && (
+        <div style={{ overflowX: 'auto' }}>
+          <svg viewBox="0 0 700 420" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', maxWidth: 700, display: 'block' }}>
+            <defs>
+              <marker id="s1-arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#64748b"/></marker>
+              <marker id="s1-arr-o" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#f97316"/></marker>
+            </defs>
+            <rect x="10" y="10" width="130" height="50" rx="8" fill="rgba(59,130,246,0.12)" stroke="#3b82f6" strokeWidth="1.5"/>
+            <text x="75" y="32" textAnchor="middle" fill="#3b82f6" fontSize="11" fontWeight="700">Zone physique</text>
+            <text x="75" y="50" textAnchor="middle" fill="#64748b" fontSize="9">DC / Salle / Baie</text>
+            <rect x="10" y="100" width="130" height="50" rx="8" fill="rgba(59,130,246,0.10)" stroke="#60a5fa" strokeWidth="1.5"/>
+            <text x="75" y="122" textAnchor="middle" fill="#60a5fa" fontSize="11" fontWeight="700">Zone logique</text>
+            <text x="75" y="140" textAnchor="middle" fill="#64748b" fontSize="9">DMZ / LAN / WAN</text>
+            <rect x="10" y="190" width="130" height="50" rx="8" fill="rgba(96,165,250,0.10)" stroke="#93c5fd" strokeWidth="1.5"/>
+            <text x="75" y="212" textAnchor="middle" fill="#93c5fd" fontSize="11" fontWeight="700">Réseau</text>
+            <text x="75" y="230" textAnchor="middle" fill="#64748b" fontSize="9">CIDR / VLAN</text>
+            <rect x="270" y="190" width="130" height="50" rx="8" fill="rgba(34,197,94,0.12)" stroke="#22c55e" strokeWidth="1.5"/>
+            <text x="335" y="212" textAnchor="middle" fill="#22c55e" fontSize="11" fontWeight="700">Équipement</text>
+            <text x="335" y="230" textAnchor="middle" fill="#64748b" fontSize="9">Router / FW / Switch</text>
+            <rect x="145" y="265" width="110" height="40" rx="8" fill="rgba(34,197,94,0.08)" stroke="#4ade80" strokeWidth="1.5" strokeDasharray="5,3"/>
+            <text x="200" y="283" textAnchor="middle" fill="#4ade80" fontSize="10" fontWeight="700">Interface</text>
+            <text x="200" y="298" textAnchor="middle" fill="#64748b" fontSize="9">IP / masque</text>
+            <rect x="270" y="330" width="130" height="50" rx="8" fill="rgba(168,85,247,0.12)" stroke="#a855f7" strokeWidth="1.5"/>
+            <text x="335" y="352" textAnchor="middle" fill="#a855f7" fontSize="11" fontWeight="700">VRF</text>
+            <text x="335" y="370" textAnchor="middle" fill="#64748b" fontSize="9">Membership table routage</text>
+            <rect x="490" y="10" width="130" height="50" rx="8" fill="rgba(249,115,22,0.12)" stroke="#f97316" strokeWidth="1.5"/>
+            <text x="555" y="32" textAnchor="middle" fill="#f97316" fontSize="11" fontWeight="700">Application</text>
+            <text x="555" y="50" textAnchor="middle" fill="#64748b" fontSize="9">SAP / nginx / DB…</text>
+            <rect x="490" y="190" width="130" height="50" rx="8" fill="rgba(168,85,247,0.12)" stroke="#a855f7" strokeWidth="1.5"/>
+            <text x="555" y="212" textAnchor="middle" fill="#a855f7" fontSize="11" fontWeight="700">Flux IP</text>
+            <text x="555" y="230" textAnchor="middle" fill="#64748b" fontSize="9">src / dst / proto / port</text>
+            <line x1="75" y1="60" x2="75" y2="100" stroke="#3b82f6" strokeWidth="1.5" markerEnd="url(#s1-arr)"/>
+            <text x="85" y="84" fill="#64748b" fontSize="9">contient</text>
+            <line x1="75" y1="150" x2="75" y2="190" stroke="#60a5fa" strokeWidth="1.5" markerEnd="url(#s1-arr)"/>
+            <text x="85" y="174" fill="#64748b" fontSize="9">contient</text>
+            <line x1="140" y1="215" x2="155" y2="278" stroke="#93c5fd" strokeWidth="1.5" markerEnd="url(#s1-arr)"/>
+            <line x1="270" y1="218" x2="255" y2="278" stroke="#22c55e" strokeWidth="1.5" markerEnd="url(#s1-arr)"/>
+            <line x1="335" y1="240" x2="335" y2="330" stroke="#a855f7" strokeWidth="1.5" markerEnd="url(#s1-arr)"/>
+            <text x="342" y="290" fill="#64748b" fontSize="9">membre</text>
+            <line x1="555" y1="60" x2="555" y2="190" stroke="#f97316" strokeWidth="1.5" markerEnd="url(#s1-arr)"/>
+            <text x="560" y="130" fill="#64748b" fontSize="9">génère</text>
+            <line x1="490" y1="215" x2="400" y2="215" stroke="#a855f7" strokeWidth="1.5" markerEnd="url(#s1-arr)"/>
+            <text x="425" y="208" fill="#64748b" fontSize="9">traverse</text>
+            <line x1="490" y1="30" x2="420" y2="30" stroke="#f97316" strokeWidth="1" strokeDasharray="5,3"/>
+            <line x1="420" y1="30" x2="420" y2="205" stroke="#f97316" strokeWidth="1" strokeDasharray="5,3"/>
+            <line x1="420" y1="205" x2="400" y2="205" stroke="#f97316" strokeWidth="1" strokeDasharray="5,3" markerEnd="url(#s1-arr-o)"/>
+            <text x="428" y="120" fill="#f97316" fontSize="9">IPs → CIDR</text>
+          </svg>
+        </div>
+      )}
+
+      {/* Schema 2 — Workflow flux */}
+      {schemaTab === 1 && (
+        <div style={{ overflowX: 'auto', display: 'flex', justifyContent: 'center' }}>
+          <svg viewBox="0 0 400 480" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', maxWidth: 400, display: 'block' }}>
+            <defs>
+              <marker id="s2-arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#64748b"/></marker>
+              <marker id="s2-g" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#22c55e"/></marker>
+              <marker id="s2-r" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#ef4444"/></marker>
+            </defs>
+            <rect x="100" y="20" width="200" height="50" rx="12" fill="rgba(59,130,246,0.15)" stroke="#3b82f6" strokeWidth="2"/>
+            <text x="200" y="42" textAnchor="middle" fill="#60a5fa" fontSize="12" fontWeight="700">1. Saisir un flux</text>
+            <text x="200" y="60" textAnchor="middle" fill="#94a3b8" fontSize="10">src, dst, proto, port</text>
+            <line x1="200" y1="70" x2="200" y2="100" stroke="#64748b" strokeWidth="1.5" markerEnd="url(#s2-arr)"/>
+            <rect x="100" y="100" width="200" height="50" rx="12" fill="rgba(100,116,139,0.12)" stroke="#64748b" strokeWidth="2"/>
+            <text x="200" y="122" textAnchor="middle" fill="#94a3b8" fontSize="12" fontWeight="700">2. Calcul du chemin</text>
+            <text x="200" y="140" textAnchor="middle" fill="#64748b" fontSize="10">Résolution src → dst</text>
+            <line x1="200" y1="150" x2="200" y2="180" stroke="#64748b" strokeWidth="1.5" markerEnd="url(#s2-arr)"/>
+            <polygon points="200,180 290,225 200,270 110,225" fill="rgba(249,115,22,0.12)" stroke="#f97316" strokeWidth="2"/>
+            <text x="200" y="221" textAnchor="middle" fill="#f97316" fontSize="11" fontWeight="700">3. Conformité</text>
+            <text x="200" y="238" textAnchor="middle" fill="#f97316" fontSize="9">Politiques réseau</text>
+            <line x1="110" y1="225" x2="60" y2="225" stroke="#22c55e" strokeWidth="1.5"/>
+            <line x1="60" y1="225" x2="60" y2="290" stroke="#22c55e" strokeWidth="1.5" markerEnd="url(#s2-g)"/>
+            <line x1="290" y1="225" x2="340" y2="225" stroke="#ef4444" strokeWidth="1.5"/>
+            <line x1="340" y1="225" x2="340" y2="290" stroke="#ef4444" strokeWidth="1.5" markerEnd="url(#s2-r)"/>
+            <rect x="10" y="290" width="100" height="45" rx="10" fill="rgba(34,197,94,0.12)" stroke="#22c55e" strokeWidth="2"/>
+            <text x="60" y="310" textAnchor="middle" fill="#22c55e" fontSize="10" fontWeight="700">Autorisé</text>
+            <text x="60" y="326" textAnchor="middle" fill="#64748b" fontSize="9">Déploiement</text>
+            <rect x="290" y="290" width="100" height="45" rx="10" fill="rgba(239,68,68,0.12)" stroke="#ef4444" strokeWidth="2"/>
+            <text x="340" y="310" textAnchor="middle" fill="#ef4444" fontSize="10" fontWeight="700">Refusé</text>
+            <text x="340" y="326" textAnchor="middle" fill="#64748b" fontSize="9">Violations</text>
+            <line x1="60" y1="335" x2="60" y2="370" stroke="#22c55e" strokeWidth="1.5" markerEnd="url(#s2-g)"/>
+            <line x1="340" y1="335" x2="340" y2="370" stroke="#ef4444" strokeWidth="1.5" markerEnd="url(#s2-r)"/>
+            <rect x="10" y="370" width="100" height="45" rx="10" fill="rgba(34,197,94,0.08)" stroke="#4ade80" strokeWidth="1.5" strokeDasharray="5,3"/>
+            <text x="60" y="390" textAnchor="middle" fill="#4ade80" fontSize="10" fontWeight="700">Export config</text>
+            <text x="60" y="406" textAnchor="middle" fill="#64748b" fontSize="9">Ansible / Netconf</text>
+            <rect x="290" y="370" width="100" height="45" rx="10" fill="rgba(239,68,68,0.08)" stroke="#f87171" strokeWidth="1.5" strokeDasharray="5,3"/>
+            <text x="340" y="390" textAnchor="middle" fill="#f87171" fontSize="10" fontWeight="700">Historique</text>
+            <text x="340" y="406" textAnchor="middle" fill="#64748b" fontSize="9">Audit</text>
+          </svg>
+        </div>
+      )}
+
+      {/* Schema 3 — Vue services */}
+      {schemaTab === 2 && (
+        <div style={{ overflowX: 'auto' }}>
+          <svg viewBox="0 0 700 380" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', maxWidth: 700, display: 'block' }}>
+            <defs>
+              <marker id="s3-arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#64748b"/></marker>
+            </defs>
+            {([
+              { y: 60,  label: 'Admin réseau',    color: '#3b82f6' },
+              { y: 170, label: 'Équipe sécurité', color: '#f97316' },
+              { y: 280, label: 'Auditeur',         color: '#64748b' },
+            ] as { y: number; label: string; color: string }[]).map(({ y, label, color }) => (
+              <g key={label}>
+                <rect x="10" y={y} width="110" height="40" rx="8" fill={`${color}18`} stroke={color} strokeWidth="1.5"/>
+                <text x="65" y={y + 25} textAnchor="middle" fill={color} fontSize="11" fontWeight="700">{label}</text>
+                <line x1="120" y1={y + 20} x2="200" y2={y + 20} stroke={color} strokeWidth="1.2" markerEnd="url(#s3-arr)"/>
+              </g>
+            ))}
+            <rect x="200" y="20" width="300" height="340" rx="12" fill="rgba(59,130,246,0.06)" stroke="#3b82f6" strokeWidth="2"/>
+            <text x="350" y="46" textAnchor="middle" fill="#3b82f6" fontSize="13" fontWeight="700">IP Flow Manager</text>
+            {([
+              { y: 60,  label: 'Gestion des flux',   color: '#a855f7', highlight: false },
+              { y: 110, label: 'Topologie réseau',    color: '#3b82f6', highlight: false },
+              { y: 160, label: 'Conformité',          color: '#22c55e', highlight: true  },
+              { y: 210, label: 'Audit & traçabilité', color: '#f97316', highlight: false },
+              { y: 260, label: 'Import / Export',     color: '#64748b', highlight: false },
+              { y: 310, label: 'Applications',        color: '#eab308', highlight: false },
+            ] as { y: number; label: string; color: string; highlight: boolean }[]).map(({ y, label, color, highlight }) => (
+              <g key={label}>
+                <rect x="220" y={y} width="260" height="36" rx="6" fill={highlight ? `${color}22` : `${color}0f`} stroke={color} strokeWidth={highlight ? 2 : 1.5}/>
+                <text x="340" y={y + 22} textAnchor="middle" fill={color} fontSize="11" fontWeight={highlight ? 700 : 500}>{label}</text>
+                {highlight && (<><rect x="452" y={y + 8} width="22" height="14" rx="4" fill={color}/><text x="463" y={y + 18} textAnchor="middle" fill="#fff" fontSize="7" fontWeight="700">Actif</text></>)}
+              </g>
+            ))}
+            {([
+              { y: 60,  label: 'Git',               sublabel: 'Config équipements', color: '#f97316' },
+              { y: 160, label: 'IPAM (Infoblox)',    sublabel: 'Sync réseaux',       color: '#3b82f6' },
+              { y: 240, label: 'CMDB (ServiceNow)',  sublabel: 'Sync équipements',   color: '#64748b' },
+              { y: 320, label: 'SIEM / Syslog',      sublabel: 'Événements',         color: '#a855f7' },
+            ] as { y: number; label: string; sublabel: string; color: string }[]).map(({ y, label, sublabel, color }) => (
+              <g key={label}>
+                <line x1="500" y1={y + 18} x2="560" y2={y + 18} stroke={color} strokeWidth="1.2" markerEnd="url(#s3-arr)"/>
+                <rect x="560" y={y} width="130" height="44" rx="8" fill={`${color}12`} stroke={color} strokeWidth="1.5"/>
+                <text x="625" y={y + 18} textAnchor="middle" fill={color} fontSize="10" fontWeight="700">{label}</text>
+                <text x="625" y={y + 32} textAnchor="middle" fill="#64748b" fontSize="9">{sublabel}</text>
+              </g>
+            ))}
+          </svg>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function HelpModal({ onClose }: Props) {
   const [section, setSection] = useState('intro')
@@ -875,7 +1040,7 @@ export default function HelpModal({ onClose }: Props) {
 
           {/* Content */}
           <div style={{ flex: 1, overflowY: 'auto', padding: '24px 28px' }}>
-            {CONTENT[section]}
+            {section === 'schemas' ? <SchemasSection /> : CONTENT[section]}
           </div>
         </div>
 

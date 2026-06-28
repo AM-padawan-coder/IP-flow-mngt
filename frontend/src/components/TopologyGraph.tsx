@@ -167,8 +167,12 @@ const TopologyGraph = forwardRef<TopologyGraphHandle, Props>(function TopologyGr
     const W = canvas.width, H = canvas.height
     ctx.clearRect(0, 0, W, H)
 
+    const isLightTheme = document.documentElement.getAttribute('data-theme') === 'light'
+    const nodeBgFill   = isLightTheme ? '#f1f5f9' : '#161b27'
+    const nodeLabelColor = isLightTheme ? '#1e293b' : '#e8eaf0'
+
     // Grid
-    ctx.strokeStyle = 'rgba(255,255,255,0.03)'
+    ctx.strokeStyle = isLightTheme ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.03)'
     ctx.lineWidth = 1
     for (let x = 0; x < W; x += 40) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke() }
     for (let y = 0; y < H; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke() }
@@ -411,7 +415,7 @@ const TopologyGraph = forwardRef<TopologyGraphHandle, Props>(function TopologyGr
       ctx.fill()
 
       ctx.beginPath(); ctx.arc(n.x, n.y, NODE_R, 0, Math.PI * 2)
-      ctx.fillStyle = '#161b27'; ctx.fill()
+      ctx.fillStyle = nodeBgFill; ctx.fill()
       ctx.strokeStyle = inPath ? '#f97316' : isSelected ? '#3b82f6' : color
       ctx.lineWidth = inPath || isSelected ? 2.5 : 1.5; ctx.stroke()
 
@@ -424,7 +428,7 @@ const TopologyGraph = forwardRef<TopologyGraphHandle, Props>(function TopologyGr
       ctx.save()
       ctx.globalAlpha = dimmed ? 0.18 : 1
       ctx.font = `${inPath ? '600' : '500'} 11px Inter, sans-serif`
-      ctx.fillStyle = inPath ? '#f97316' : '#e8eaf0'
+      ctx.fillStyle = inPath ? '#f97316' : nodeLabelColor
       ctx.textAlign = 'center'; ctx.textBaseline = 'top'
       ctx.fillText(n.name, n.x, n.y + NODE_R + 5)
       ctx.restore()
@@ -676,7 +680,7 @@ const TopologyGraph = forwardRef<TopologyGraphHandle, Props>(function TopologyGr
       />
 
       {/* Equipment type legend */}
-      <div style={{ position: 'absolute', bottom: 28, left: 8, background: 'rgba(15,20,30,0.82)', border: '1px solid var(--border)', borderRadius: 6, padding: '6px 10px', pointerEvents: 'none' }}>
+      <div style={{ position: 'absolute', bottom: 28, left: 8, background: 'color-mix(in srgb, var(--bg-card) 90%, transparent)', border: '1px solid var(--border)', borderRadius: 6, padding: '6px 10px', pointerEvents: 'none' }}>
         {Object.entries(TYPE_COLORS).map(([type, color]) => (
           <div key={type} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
             <div style={{ width: 10, height: 10, borderRadius: '50%', border: `2px solid ${color}`, background: '#161b27', flexShrink: 0 }} />

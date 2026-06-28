@@ -106,7 +106,7 @@ export default function App() {
 
         {/* Footer — version + actions */}
         <div style={{ padding: '10px 14px', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 6 }}>
-          <div className="text-xs text-dimmed" style={{ flex: 1 }}>demo · v2.9.5</div>
+          <div className="text-xs text-dimmed" style={{ flex: 1 }}>demo · v2.9.6</div>
 
           {/* Dark/Light toggle */}
           <button
