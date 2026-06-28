@@ -1,4 +1,4 @@
-import { useRef, useEffect, useCallback, useState } from 'react'
+import { useRef, useEffect, useCallback, useState, forwardRef, useImperativeHandle } from 'react'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface GraphNode {
@@ -31,6 +31,10 @@ type OverlayTip =
   | { kind: 'route'; item: RouteOverlay; x: number; y: number }
   | { kind: 'vrf';   vrf: VRFOverlay; nodeName: string; x: number; y: number }
   | { kind: 'app';   app: AppOverlay; x: number; y: number }
+
+export interface TopologyGraphHandle {
+  getDataUrl: (format: 'png' | 'jpeg') => string | null
+}
 
 interface Props {
   nodes: GraphNode[]
@@ -124,14 +128,14 @@ function distToSeg(px: number, py: number, ax: number, ay: number, bx: number, b
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
-export default function TopologyGraph({
+const TopologyGraph = forwardRef<TopologyGraphHandle, Props>(function TopologyGraph({
   nodes: rawNodes, edges, highlightedPath = [], height = 520,
   showFlows = false, showRoutes = false, showVRF = false,
   flowsOverlay = [], routesOverlay = [], vrfOverlay = [],
   zoneMode = 'none',
   overlayApps = [],
   onSelectApp,
-}: Props) {
+}: Props, ref) {
   const canvasRef    = useRef<HTMLCanvasElement>(null)
   const nodesRef     = useRef<GraphNode[]>([])
   const dragRef      = useRef<{ id: number; ox: number; oy: number } | null>(null)
@@ -145,6 +149,15 @@ export default function TopologyGraph({
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null)
   const [nodeTip,      setNodeTip]      = useState<{ node: GraphNode; x: number; y: number } | null>(null)
   const [overlayTip,   setOverlayTip]   = useState<OverlayTip | null>(null)
+
+  useImperativeHandle(ref, () => ({
+    getDataUrl: (format) => {
+      const canvas = canvasRef.current
+      if (!canvas) return null
+      if (format === 'jpeg') return canvas.toDataURL('image/jpeg', 0.92)
+      return canvas.toDataURL('image/png')
+    }
+  }))
 
   // ── Draw ──────────────────────────────────────────────────────────────────
   const draw = useCallback(() => {
@@ -807,4 +820,6 @@ export default function TopologyGraph({
       )}
     </div>
   )
-}
+})
+
+export default TopologyGraph

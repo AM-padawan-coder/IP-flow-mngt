@@ -1,5 +1,15 @@
 # Changelog — IP Flow Manager
 
+## [2.9.5] — 2026-06-28
+
+### Graphe réseau — export image & plein écran
+
+- **Export PNG / JPEG** : icône appareil photo discrète (top-right du graphe) ouvrant un menu déroulant PNG / JPEG ; télécharge le canvas sous forme d'image nommée `reseau-YYYY-MM-DD.{ext}` ; désactivée en mode Vue Applications (graphe DOM non capturables nativement)
+- **Plein écran** : icône `maximize` (même zone) basculant le graphe en superposition fixe plein écran ; touche Échap ou clic sur `minimize` pour quitter
+- **Roadmap** : v4.2 « Graphe réseau avancé » passe en cours (⚡)
+
+---
+
 ## [2.9.4] — 2026-06-28
 
 ### Vue Applications — graphe hiérarchique & panel contexte

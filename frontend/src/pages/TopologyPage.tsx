@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo, useRef } from 'react'
 import { api } from '../api/client'
 import TopologyGraph, { CRITICALITY_COLOR, ROUTE_COLOR, TYPE_COLORS, CRIT_APP_COLOR } from '../components/TopologyGraph'
-import type { FlowOverlay, RouteOverlay, VRFOverlay, AppOverlay } from '../components/TopologyGraph'
+import type { FlowOverlay, RouteOverlay, VRFOverlay, AppOverlay, TopologyGraphHandle } from '../components/TopologyGraph'
 import AppGraphView from '../components/AppGraphView'
 import type { Equipment, Network, Zone } from '../types'
 
@@ -120,6 +120,27 @@ export default function TopologyPage({ highlightedPath = [] }: Props) {
   const [overlayApps,   setOverlayApps]   = useState<AppOverlay[]>([])
   const [selectedAppIds, setSelectedAppIds] = useState<Set<number>>(new Set())
   const [loadingOverlay, setLoadingOverlay] = useState<string | null>(null)
+
+  // Graph toolbar (fullscreen + export)
+  const [isFullscreen,  setIsFullscreen]  = useState(false)
+  const [exportMenu,    setExportMenu]    = useState(false)
+  const topologyGraphRef = useRef<TopologyGraphHandle>(null)
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setIsFullscreen(false) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
+  const downloadImage = (format: 'png' | 'jpeg') => {
+    const dataUrl = topologyGraphRef.current?.getDataUrl(format)
+    if (!dataUrl) return
+    const a = document.createElement('a')
+    a.href = dataUrl
+    a.download = `reseau-${new Date().toISOString().slice(0, 10)}.${format}`
+    a.click()
+    setExportMenu(false)
+  }
 
   // App view mode (v2.9.4)
   const [appViewMode,      setAppViewMode]      = useState(false)
@@ -531,7 +552,52 @@ export default function TopologyPage({ highlightedPath = [] }: Props) {
                 </div>
 
                 {/* ── Main canvas ─────────────────────────────────────────── */}
-                <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', position: 'relative' }}>
+                <div style={{
+                  flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column',
+                  position: isFullscreen ? 'fixed' : 'relative',
+                  inset: isFullscreen ? 0 : undefined,
+                  zIndex: isFullscreen ? 9999 : undefined,
+                  background: isFullscreen ? 'var(--bg-app)' : undefined,
+                  padding: isFullscreen ? 8 : undefined,
+                  overflow: isFullscreen ? 'hidden' : undefined,
+                }}>
+                  {/* Floating toolbar */}
+                  <div style={{ position: 'absolute', top: isFullscreen ? 16 : 8, right: isFullscreen ? 16 : 8, display: 'flex', gap: 4, zIndex: 20 }}>
+                    {/* Export */}
+                    <div style={{ position: 'relative' }}>
+                      <button
+                        onClick={() => setExportMenu(v => !v)}
+                        disabled={appViewMode}
+                        title="Exporter l'image"
+                        style={{ width: 26, height: 26, borderRadius: '50%', border: '1px solid var(--border)', background: 'color-mix(in srgb, var(--bg-input) 80%, transparent)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', color: appViewMode ? 'var(--text-3)' : 'var(--text-2)', cursor: appViewMode ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, opacity: appViewMode ? 0.4 : 1 }}
+                      >
+                        <i className="ti ti-camera" aria-hidden="true" />
+                      </button>
+                      {exportMenu && !appViewMode && (
+                        <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 6, boxShadow: '0 4px 16px rgba(0,0,0,0.4)', overflow: 'hidden', minWidth: 90, zIndex: 30 }}>
+                          {(['png', 'jpeg'] as const).map(fmt => (
+                            <button
+                              key={fmt}
+                              onClick={() => downloadImage(fmt)}
+                              style={{ display: 'block', width: '100%', padding: '7px 12px', background: 'none', border: 'none', color: 'var(--text-1)', cursor: 'pointer', fontSize: 12, textAlign: 'left', fontFamily: 'inherit' }}
+                              onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-hover)' }}
+                              onMouseLeave={e => { e.currentTarget.style.background = 'none' }}
+                            >
+                              {fmt.toUpperCase()}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    {/* Fullscreen */}
+                    <button
+                      onClick={() => { setIsFullscreen(v => !v); setExportMenu(false) }}
+                      title={isFullscreen ? 'Quitter le plein écran (Échap)' : 'Plein écran'}
+                      style={{ width: 26, height: 26, borderRadius: '50%', border: '1px solid var(--border)', background: 'color-mix(in srgb, var(--bg-input) 80%, transparent)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', color: 'var(--text-2)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13 }}
+                    >
+                      <i className={isFullscreen ? 'ti ti-minimize' : 'ti ti-maximize'} aria-hidden="true" />
+                    </button>
+                  </div>
                   {appViewMode ? (
                     <>
                       <AppGraphView
@@ -563,10 +629,11 @@ export default function TopologyPage({ highlightedPath = [] }: Props) {
                         </div>
                       )}
                       <TopologyGraph
+                        ref={topologyGraphRef}
                         nodes={graph.nodes}
                         edges={graph.edges}
                         highlightedPath={highlightedPath}
-                        height={560}
+                        height={isFullscreen ? Math.max(560, window.innerHeight - 120) : 560}
                         showFlows={showFlows}
                         showRoutes={showRoutes}
                         showVRF={showVRF}

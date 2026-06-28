@@ -125,6 +125,12 @@ const PHASES: Phase[] = [
       'Dropdown Environnement dans Applications alimenté par l\'API Environnements',
       'Dropdowns modernisés (ModernSelect pill-group) dans Configuration',
     ] },
+  { v: 'v2.9.5', title: 'Graphe — export image & plein écran', status: 'done', label: '✓ Livré', eta: '', subOf: 'v2.9',
+    items: [
+      'Export PNG / JPEG via icône appareil photo (top-right du graphe)',
+      'Plein écran via icône maximize (Échap pour quitter)',
+      'Roadmap v4.2 « Graphe réseau avancé » passe en cours',
+    ] },
   { v: 'v2.9.4', title: 'Vue Applications — graphe hiérarchique', status: 'done', label: '✓ Livré', eta: '', subOf: 'v2.9',
     items: [
       'Graphe hiérarchique Applications → Réseaux → Équipements (AppGraphView)',
@@ -176,7 +182,7 @@ const PHASES: Phase[] = [
     items: ['Pull CIDR / allocation IPs via REST Infoblox', 'Mock IPAM service Render (démo sans licence)', 'Sync bidirectionnelle réseaux validés → IPAM'] },
   { v: 'v4.1', title: 'VRF · ACL · Services + Snapshots', status: 'planned', label: '🗓 Planifié', eta: '',
     items: ['Gestion avancée des VRF (routage multi-instances, détection fuites)', 'Visualisation ACL par interface + détection shadowing', 'Objets de service réutilisables (groupes ports/protos)', 'Snapshots topologie + comparaison entre états', 'Simulation NAT dans le calcul de chemin'] },
-  { v: 'v4.2', title: 'Graphe réseau avancé', status: 'planned', label: '🗓 Planifié', eta: '',
+  { v: 'v4.2', title: 'Graphe réseau avancé', status: 'inprog', label: '⚡ En cours', eta: '',
     items: ['Vue hiérarchique (zones comme groupes visuels)', 'Mini-map de navigation pour grands graphes', 'Filtres dynamiques (zone, équipe, vendor)', 'Topology diff coloré (ajouts/suppressions)', 'Sélection lien/nœud + infobulle détaillée au hover'] },
   { v: 'v4.3', title: 'Connecteurs étendus', status: 'planned', label: '🗓 Planifié', eta: '',
     items: ['CMDB ServiceNow (sync bidirectionnelle équipements)', 'NSX-T live state (pull règles DFW actives en temps réel)', 'Palo Alto Panorama (lecture policies + détection conflits)', 'Syslog / SIEM — envoi événements vers Splunk / Elastic'] },
