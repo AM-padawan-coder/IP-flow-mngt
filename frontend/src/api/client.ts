@@ -133,4 +133,8 @@ export const api = {
 
   // Apps overlay (v2.9.1)
   getAppsOverlay:     () => req('/topology/apps-overlay'),
+
+  // App graph & context (v2.9.4)
+  getAppGraph:        (): Promise<any> => req('/topology/app-graph'),
+  getAppContext:      (appId: number): Promise<any> => req(`/applications/${appId}/context`),
 }

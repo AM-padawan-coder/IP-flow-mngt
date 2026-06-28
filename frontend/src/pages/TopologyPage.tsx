@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo, useRef } from 'react'
 import { api } from '../api/client'
 import TopologyGraph, { CRITICALITY_COLOR, ROUTE_COLOR, TYPE_COLORS, CRIT_APP_COLOR } from '../components/TopologyGraph'
 import type { FlowOverlay, RouteOverlay, VRFOverlay, AppOverlay } from '../components/TopologyGraph'
+import AppGraphView from '../components/AppGraphView'
 import type { Equipment, Network, Zone } from '../types'
 
 type Tab = 'graph' | 'equipment' | 'networks' | 'zones' | 'physzones' | 'links' | 'apps'
@@ -120,6 +121,14 @@ export default function TopologyPage({ highlightedPath = [] }: Props) {
   const [selectedAppIds, setSelectedAppIds] = useState<Set<number>>(new Set())
   const [loadingOverlay, setLoadingOverlay] = useState<string | null>(null)
 
+  // App view mode (v2.9.4)
+  const [appViewMode,      setAppViewMode]      = useState(false)
+  const [appGraphData,     setAppGraphData]     = useState<any>(null)
+  const [selectedAppId,    setSelectedAppId]    = useState<number | null>(null)
+  const [appContext,       setAppContext]       = useState<any>(null)
+  const [loadingAppGraph,  setLoadingAppGraph]  = useState(false)
+  const [loadingAppContext, setLoadingAppContext] = useState(false)
+
   // Environments (for dynamic badge colors)
   const [environments, setEnvironments] = useState<any[]>([])
 
@@ -187,6 +196,23 @@ export default function TopologyPage({ highlightedPath = [] }: Props) {
       }).catch(() => {}).finally(() => setLoadingOverlay(null))
     }
   }, [showApps])
+
+  // App graph view (v2.9.4)
+  useEffect(() => {
+    if (appViewMode && !appGraphData) {
+      setLoadingAppGraph(true)
+      api.getAppGraph().then((d: any) => setAppGraphData(d)).catch(() => {}).finally(() => setLoadingAppGraph(false))
+    }
+  }, [appViewMode])
+
+  useEffect(() => {
+    if (selectedAppId) {
+      setLoadingAppContext(true)
+      api.getAppContext(selectedAppId).then((d: any) => setAppContext(d)).catch(() => {}).finally(() => setLoadingAppContext(false))
+    } else {
+      setAppContext(null)
+    }
+  }, [selectedAppId])
 
   const applyFilters = () => {
     setFActive({ app: fApp, proto: fProto, crit: fCrit, status: fStatus, src: fSrc, dst: fDst, port: fPort })
@@ -283,13 +309,13 @@ export default function TopologyPage({ highlightedPath = [] }: Props) {
                   {/* Zone representation toggle */}
                   <div className="card" style={{ padding: '10px 12px' }}>
                     <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-3)', letterSpacing: '0.8px', textTransform: 'uppercase', marginBottom: 8 }}>Représentation</div>
-                    <div style={{ display: 'flex', gap: 4 }}>
+                    <div style={{ display: 'flex', gap: 4, opacity: appViewMode ? 0.4 : 1, pointerEvents: appViewMode ? 'none' : undefined }}>
                       {([['none','Aucune'],['physical','Physique'],['logical','Logique']] as const).map(([mode, label]) => (
                         <button
                           key={mode}
                           onClick={() => setZoneMode(mode)}
                           style={{
-                            flex: 1, padding: '5px 0', fontSize: 10, fontFamily: 'inherit', cursor: 'pointer',
+                            flex: 1, padding: '5px 0', fontSize: 10, fontFamily: 'inherit', cursor: appViewMode ? 'default' : 'pointer',
                             borderRadius: 5, border: zoneMode === mode ? '1px solid var(--blue)' : '1px solid var(--border)',
                             background: zoneMode === mode ? 'rgba(59,130,246,0.15)' : 'var(--bg-input)',
                             color: zoneMode === mode ? 'var(--blue)' : 'var(--text-3)',
@@ -298,11 +324,20 @@ export default function TopologyPage({ highlightedPath = [] }: Props) {
                         >{label}</button>
                       ))}
                     </div>
-                    {zoneMode !== 'none' && (
+                    {zoneMode !== 'none' && !appViewMode && (
                       <div style={{ marginTop: 6, fontSize: 10, color: 'var(--text-3)' }}>
                         {zoneMode === 'physical' ? '— Zones par site / datacenter' : '— Zones logiques (segmentation)'}
                       </div>
                     )}
+                    {/* Vue Applications toggle */}
+                    <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--border)' }}>
+                      <Toggle
+                        on={appViewMode}
+                        onChange={() => { setAppViewMode(v => !v); setSelectedAppId(null) }}
+                        label="Vue Applications"
+                        color="#22c55e"
+                      />
+                    </div>
                   </div>
 
                   {/* Overlay toggles */}
@@ -496,32 +531,62 @@ export default function TopologyPage({ highlightedPath = [] }: Props) {
                 </div>
 
                 {/* ── Main canvas ─────────────────────────────────────────── */}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  {highlightedPath.length > 0 && (
-                    <div style={{ background: 'rgba(249,115,22,0.1)', border: '1px solid rgba(249,115,22,0.3)', borderRadius: 6, padding: '10px 16px', marginBottom: 12, fontSize: 13, color: '#f97316', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                      🔶 Chemin :
-                      {highlightedPath.map((name, i) => (
-                        <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                          {i > 0 && <span style={{ color: 'rgba(249,115,22,0.5)' }}>→</span>}
-                          <span style={{ background: 'rgba(249,115,22,0.15)', padding: '1px 8px', borderRadius: 4, fontFamily: 'monospace', fontSize: 12 }}>{name}</span>
-                        </span>
-                      ))}
-                    </div>
+                <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', position: 'relative' }}>
+                  {appViewMode ? (
+                    <>
+                      <AppGraphView
+                        data={appGraphData}
+                        selectedAppId={selectedAppId}
+                        onSelectApp={setSelectedAppId}
+                        loading={loadingAppGraph}
+                      />
+                      {selectedAppId && appContext && (
+                        <AppContextPanel
+                          app={apps.find((a: any) => a.id === selectedAppId)}
+                          context={appContext}
+                          loading={loadingAppContext}
+                          onClose={() => setSelectedAppId(null)}
+                        />
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      {highlightedPath.length > 0 && (
+                        <div style={{ background: 'rgba(249,115,22,0.1)', border: '1px solid rgba(249,115,22,0.3)', borderRadius: 6, padding: '10px 16px', marginBottom: 12, fontSize: 13, color: '#f97316', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                          🔶 Chemin :
+                          {highlightedPath.map((name, i) => (
+                            <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                              {i > 0 && <span style={{ color: 'rgba(249,115,22,0.5)' }}>→</span>}
+                              <span style={{ background: 'rgba(249,115,22,0.15)', padding: '1px 8px', borderRadius: 4, fontFamily: 'monospace', fontSize: 12 }}>{name}</span>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      <TopologyGraph
+                        nodes={graph.nodes}
+                        edges={graph.edges}
+                        highlightedPath={highlightedPath}
+                        height={560}
+                        showFlows={showFlows}
+                        showRoutes={showRoutes}
+                        showVRF={showVRF}
+                        flowsOverlay={filteredFlows}
+                        routesOverlay={filteredRoutes}
+                        vrfOverlay={filteredVRF}
+                        zoneMode={zoneMode}
+                        overlayApps={showApps ? filteredApps : []}
+                        onSelectApp={showApps ? (id => { setSelectedAppId(id); setAppViewMode(false) }) : undefined}
+                      />
+                      {selectedAppId && appContext && (
+                        <AppContextPanel
+                          app={apps.find((a: any) => a.id === selectedAppId)}
+                          context={appContext}
+                          loading={loadingAppContext}
+                          onClose={() => setSelectedAppId(null)}
+                        />
+                      )}
+                    </>
                   )}
-                  <TopologyGraph
-                    nodes={graph.nodes}
-                    edges={graph.edges}
-                    highlightedPath={highlightedPath}
-                    height={560}
-                    showFlows={showFlows}
-                    showRoutes={showRoutes}
-                    showVRF={showVRF}
-                    flowsOverlay={filteredFlows}
-                    routesOverlay={filteredRoutes}
-                    vrfOverlay={filteredVRF}
-                    zoneMode={zoneMode}
-                    overlayApps={showApps ? filteredApps : []}
-                  />
                 </div>
 
                 {/* ── Right panel ─────────────────────────────────────────── */}
@@ -610,6 +675,112 @@ export default function TopologyPage({ highlightedPath = [] }: Props) {
         )}
       </div>
     </>
+  )
+}
+
+// ── AppContextPanel ───────────────────────────────────────────────────────────
+function AppContextPanel({ app, context, loading, onClose }: {
+  app: any; context: any; loading: boolean; onClose: () => void
+}) {
+  const STATUS_COLOR: Record<string, string> = {
+    deployed: '#22c55e', validated: '#3b82f6', pending: '#eab308', rejected: '#ef4444',
+  }
+  const STATUS_LABEL: Record<string, string> = {
+    deployed: 'Déployé', validated: 'Validé', pending: 'En attente', rejected: 'Refusé',
+  }
+
+  return (
+    <div style={{
+      background: 'var(--bg-panel, var(--bg-card))',
+      borderTop: '2px solid var(--border-focus, var(--blue))',
+      maxHeight: 220,
+      overflow: 'hidden',
+      display: 'flex',
+      flexDirection: 'column',
+      flexShrink: 0,
+    }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', padding: '8px 14px', borderBottom: '1px solid var(--border)', background: 'var(--bg-card)' }}>
+        <div style={{ fontWeight: 700, fontSize: 12, color: 'var(--text-1)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          ROUTES ET FLUX — {app?.name || ''}
+        </div>
+        {context?.stats && (
+          <div style={{ display: 'flex', gap: 12, marginRight: 10 }}>
+            {[
+              ['Flux', context.stats.flow_count, '#f97316'],
+              ['Routes', context.stats.route_count, '#3b82f6'],
+              ['Équipements', context.stats.equipment_count, '#a855f7'],
+            ].map(([lbl, cnt, color]) => (
+              <span key={lbl as string} style={{ fontSize: 10, color: color as string }}>
+                <b>{cnt as number}</b> {lbl}
+              </span>
+            ))}
+          </div>
+        )}
+        <button
+          onClick={onClose}
+          style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', fontSize: 14, padding: '0 4px', lineHeight: 1 }}
+        >✕</button>
+      </div>
+
+      {loading ? (
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="spinner" />
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+          {/* Routes */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: '0 0 0 0', borderRight: '1px solid var(--border)' }}>
+            <div style={{ fontSize: 9, fontWeight: 700, color: '#3b82f6', letterSpacing: '0.8px', textTransform: 'uppercase', padding: '6px 12px 4px', position: 'sticky', top: 0, background: 'var(--bg-panel, var(--bg-card))' }}>Routes</div>
+            {context?.routes?.length === 0 && (
+              <div style={{ padding: '8px 12px', fontSize: 11, color: 'var(--text-3)' }}>Aucune route</div>
+            )}
+            <table style={{ width: '100%', fontSize: 11, borderCollapse: 'collapse' }}>
+              <tbody>
+                {(context?.routes || []).map((r: any, i: number) => (
+                  <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
+                    <td style={{ padding: '4px 12px', color: 'var(--text-2)', fontWeight: 600, whiteSpace: 'nowrap' }}>{r.equipment_name}</td>
+                    <td style={{ padding: '4px 6px', fontFamily: 'monospace', color: 'var(--text-1)', whiteSpace: 'nowrap' }}>{r.destination}</td>
+                    <td style={{ padding: '4px 6px', color: 'var(--text-3)', whiteSpace: 'nowrap' }}>via {r.gateway_equipment || r.gateway || '—'}</td>
+                    <td style={{ padding: '4px 12px 4px 6px' }}>
+                      <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 4, background: 'rgba(59,130,246,0.15)', color: '#3b82f6', fontWeight: 600, textTransform: 'uppercase' }}>{r.route_type}</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Flux */}
+          <div style={{ flex: 1, overflowY: 'auto' }}>
+            <div style={{ fontSize: 9, fontWeight: 700, color: '#f97316', letterSpacing: '0.8px', textTransform: 'uppercase', padding: '6px 12px 4px', position: 'sticky', top: 0, background: 'var(--bg-panel, var(--bg-card))' }}>Flux</div>
+            {context?.flows?.length === 0 && (
+              <div style={{ padding: '8px 12px', fontSize: 11, color: 'var(--text-3)' }}>Aucun flux</div>
+            )}
+            <table style={{ width: '100%', fontSize: 11, borderCollapse: 'collapse' }}>
+              <tbody>
+                {(context?.flows || []).map((f: any) => (
+                  <tr key={f.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                    <td style={{ padding: '4px 12px', fontFamily: 'monospace', color: 'var(--text-2)', whiteSpace: 'nowrap' }}>
+                      {f.src_ip} → {f.dst_ip}
+                    </td>
+                    <td style={{ padding: '4px 6px', color: 'var(--text-3)', whiteSpace: 'nowrap' }}>{f.port}/{f.protocol}</td>
+                    <td style={{ padding: '4px 6px', whiteSpace: 'nowrap' }}>
+                      <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 4, background: `${STATUS_COLOR[f.status] || '#64748b'}22`, color: STATUS_COLOR[f.status] || '#64748b', fontWeight: 600 }}>
+                        {STATUS_LABEL[f.status] || f.status}
+                      </span>
+                    </td>
+                    <td style={{ padding: '4px 12px 4px 6px', color: 'var(--text-3)', fontSize: 10, maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {f.path.length > 0 ? f.path.join(' → ') : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
   )
 }
 

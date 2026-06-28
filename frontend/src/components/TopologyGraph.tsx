@@ -45,6 +45,7 @@ interface Props {
   vrfOverlay?: VRFOverlay[]
   zoneMode?: 'none' | 'physical' | 'logical'
   overlayApps?: AppOverlay[]
+  onSelectApp?: (id: number) => void
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -129,6 +130,7 @@ export default function TopologyGraph({
   flowsOverlay = [], routesOverlay = [], vrfOverlay = [],
   zoneMode = 'none',
   overlayApps = [],
+  onSelectApp,
 }: Props) {
   const canvasRef    = useRef<HTMLCanvasElement>(null)
   const nodesRef     = useRef<GraphNode[]>([])
@@ -619,6 +621,17 @@ export default function TopologyGraph({
     const wasDragging = dragRef.current !== null || dragZoneRef.current !== null
     if (!wasDragging) {
       const { x, y } = getPos(e)
+      // Check app badge click first (when overlay is active)
+      if (onSelectApp) {
+        for (const { app, x: bx, y: by, size } of appBadgeRectsRef.current) {
+          if (x >= bx && x <= bx + size && y >= by && y <= by + size) {
+            onSelectApp(app.id)
+            dragRef.current = null
+            dragZoneRef.current = null
+            return
+          }
+        }
+      }
       const n = getNodeAt(x, y)
       setSelectedNode(prev => prev?.id === n?.id ? null : n ?? null)
     }

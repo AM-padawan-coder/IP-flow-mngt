@@ -1,9 +1,10 @@
 """Router Applications — v2.9"""
+import json, ipaddress
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional, List
 from database import SessionLocal
-from models import Application, ApplicationIP, Team
+from models import Application, ApplicationIP, Team, RoutingEntry, Equipment, Network, EquipmentInterface, FlowRequest
 
 router = APIRouter()
 
@@ -129,6 +130,115 @@ def delete_application(app_id: int):
         db.delete(app)
         db.commit()
         return {"deleted": app_id}
+    finally:
+        db.close()
+
+
+@router.get("/{app_id}/context")
+def get_app_context(app_id: int):
+    """Routes et flux associés à une application, pour le panel bas."""
+    db = SessionLocal()
+    try:
+        app = db.query(Application).filter(Application.id == app_id).first()
+        if not app:
+            raise HTTPException(status_code=404, detail="Application introuvable")
+
+        # IPs de l'application
+        app_ips = [r.ip_address for r in db.query(ApplicationIP).filter(ApplicationIP.application_id == app_id).all()]
+
+        # Réseaux contenant ces IPs
+        all_networks = db.query(Network).all()
+        cidr_objs: list[tuple[ipaddress.IPv4Network, Network]] = []
+        for net in all_networks:
+            try:
+                cidr_objs.append((ipaddress.ip_network(net.cidr, strict=False), net))
+            except Exception:
+                pass
+
+        net_ids: list[int] = []
+        for ip_str in app_ips:
+            try:
+                addr = ipaddress.ip_address(ip_str)
+            except Exception:
+                continue
+            for net_obj, net in cidr_objs:
+                if addr in net_obj and net.id not in net_ids:
+                    net_ids.append(net.id)
+
+        # Équipements de ces réseaux
+        eq_ids: list[int] = []
+        for iface in db.query(EquipmentInterface).filter(EquipmentInterface.network_id.in_(net_ids)).all():
+            if iface.equipment_id not in eq_ids:
+                eq_ids.append(iface.equipment_id)
+
+        # Routes sur ces équipements
+        routes_result = []
+        for entry, eq in (
+            db.query(RoutingEntry, Equipment)
+            .join(Equipment, RoutingEntry.equipment_id == Equipment.id)
+            .filter(RoutingEntry.equipment_id.in_(eq_ids))
+            .all()
+        ):
+            # Résolution du gateway
+            gateway_eq = None
+            if entry.gateway:
+                # Cherche par management_ip
+                gw_eq = db.query(Equipment).filter(Equipment.management_ip == entry.gateway).first()
+                if not gw_eq:
+                    # Cherche via interfaces
+                    iface_gw = db.query(EquipmentInterface).filter(EquipmentInterface.ip_address == entry.gateway).first()
+                    if iface_gw:
+                        gw_eq = db.query(Equipment).filter(Equipment.id == iface_gw.equipment_id).first()
+                gateway_eq = gw_eq.name if gw_eq else None
+
+            routes_result.append({
+                "equipment_name": eq.name,
+                "destination": entry.destination,
+                "gateway": entry.gateway or "",
+                "gateway_equipment": gateway_eq,
+                "route_type": entry.route_type or "static",
+                "metric": entry.metric or 1,
+            })
+
+        # Flux impliquant les IPs de l'app
+        flows_result = []
+        if app_ips:
+            from sqlalchemy import or_
+            flows = db.query(FlowRequest).filter(
+                or_(
+                    FlowRequest.src_ip.in_(app_ips),
+                    FlowRequest.dst_ip.in_(app_ips),
+                )
+            ).all()
+            for f in flows:
+                path: list[str] = []
+                if f.path_result:
+                    try:
+                        pr = json.loads(f.path_result)
+                        hops = pr.get("hops", [])
+                        path = [h.get("equipment", h.get("name", "")) for h in hops if h.get("equipment") or h.get("name")]
+                    except Exception:
+                        pass
+                flows_result.append({
+                    "id": f.id,
+                    "src_ip": f.src_ip,
+                    "dst_ip": f.dst_ip,
+                    "port": f.port,
+                    "protocol": f.protocol,
+                    "application": f.application or "",
+                    "status": f.status,
+                    "path": path,
+                })
+
+        return {
+            "routes": routes_result,
+            "flows": flows_result,
+            "stats": {
+                "flow_count": len(flows_result),
+                "route_count": len(routes_result),
+                "equipment_count": len(eq_ids),
+            },
+        }
     finally:
         db.close()
 

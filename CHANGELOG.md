@@ -1,5 +1,18 @@
 # Changelog — IP Flow Manager
 
+## [2.9.4] — 2026-06-28
+
+### Vue Applications — graphe hiérarchique & panel contexte
+
+- **Topologie — Vue Applications** : nouveau toggle dans le panneau Représentation activant un graphe hiérarchique SVG+DOM (Applications → Réseaux → Équipements) sans bibliothèque tierce
+- **AppGraphView** : cartes app colorées par criticité, boîtes réseau pointillées par VRF, cercles équipements colorés par type ; connexions SVG (trait plein app→réseau, pointillé réseau→équipement)
+- **AppContextPanel** : panel bas fixe affichant les routes (équipement, destination, via, protocole) et les flux (src→dst, port, statut, chemin) liés à l'application sélectionnée
+- **Backend — GET /topology/app-graph** : graphe complet Applications → Réseaux (CIDR matching) → Équipements (interfaces), avec résolution VRF
+- **Backend — GET /applications/{id}/context** : routes des équipements du réseau app + flux impliquant ses IPs, avec résolution gateway
+- **Graphe force-directed** : clic sur un badge application (overlay Apps actif) sélectionne l'app et affiche l'AppContextPanel sans quitter la vue normale
+
+---
+
 ## [2.9.3] — 2026-06-28
 
 ### UX graphe applications + dropdowns glassmorphisme

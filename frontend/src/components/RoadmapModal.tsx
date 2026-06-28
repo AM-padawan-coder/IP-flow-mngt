@@ -125,6 +125,14 @@ const PHASES: Phase[] = [
       'Dropdown Environnement dans Applications alimenté par l\'API Environnements',
       'Dropdowns modernisés (ModernSelect pill-group) dans Configuration',
     ] },
+  { v: 'v2.9.4', title: 'Vue Applications — graphe hiérarchique', status: 'done', label: '✓ Livré', eta: '', subOf: 'v2.9',
+    items: [
+      'Graphe hiérarchique Applications → Réseaux → Équipements (AppGraphView)',
+      'Toggle "Vue Applications" dans le panneau Représentation',
+      'Panel bas (AppContextPanel) : routes et flux associés à l\'application sélectionnée',
+      'Clic sur badge app (overlay standard) → sélection et affichage panel',
+      'Backend : GET /topology/app-graph et GET /applications/{id}/context',
+    ] },
   { v: 'v2.9.3', title: 'UX graphe apps + dropdowns glassmorphisme', status: 'done', label: '✓ Livré', eta: '', subOf: 'v2.9',
     items: [
       'Badges applications agrandis (20 px) avec bordure blanche et espacement revu',

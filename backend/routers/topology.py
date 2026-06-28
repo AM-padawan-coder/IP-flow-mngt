@@ -5,7 +5,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from database import get_db
-from models import Zone, Equipment, Network, EquipmentInterface, TopologyLink, Team, PhysicalZone, Application, ApplicationIP
+from models import Zone, Equipment, Network, EquipmentInterface, TopologyLink, Team, PhysicalZone, Application, ApplicationIP, VRF, VRFEquipment
 
 router = APIRouter()
 
@@ -336,6 +336,112 @@ def apps_overlay(db: Session = Depends(get_db)):
             "equipment_names": equipment_names,
         })
     return result
+
+
+# ── App-graph ──────────────────────────────────────────────────────────────
+
+@router.get("/app-graph")
+def app_graph(db: Session = Depends(get_db)):
+    """Graphe hiérarchique Applications → Réseaux → Équipements."""
+
+    # Build CIDR → network map + network → equipment_ids map
+    all_networks = db.query(Network).all()
+    all_ifaces   = db.query(EquipmentInterface).all()
+
+    # network_id → list[equipment_id]
+    net_eq_ids: dict[int, list[int]] = {}
+    for iface in all_ifaces:
+        if iface.network_id not in net_eq_ids:
+            net_eq_ids[iface.network_id] = []
+        if iface.equipment_id not in net_eq_ids[iface.network_id]:
+            net_eq_ids[iface.network_id].append(iface.equipment_id)
+
+    # Pré-calcul CIDR objects
+    cidr_objs: list[tuple[ipaddress.IPv4Network, Network]] = []
+    for net in all_networks:
+        try:
+            cidr_objs.append((ipaddress.ip_network(net.cidr, strict=False), net))
+        except Exception:
+            pass
+
+    # VRF lookup : equipment_id → (vrf_name, vrf_color)
+    vrf_by_eq: dict[int, tuple[str, str]] = {}
+    for ve in db.query(VRFEquipment).all():
+        vrf = db.query(VRF).filter(VRF.id == ve.vrf_id).first()
+        if vrf and ve.equipment_id not in vrf_by_eq:
+            vrf_by_eq[ve.equipment_id] = (vrf.name, vrf.color)
+
+    # Build applications
+    apps_result = []
+    for app in db.query(Application).all():
+        app_ips_rows = db.query(ApplicationIP).filter(ApplicationIP.application_id == app.id).all()
+        ip_strings = [r.ip_address for r in app_ips_rows]
+
+        network_ids: list[int] = []
+        for ip_str in ip_strings:
+            try:
+                addr = ipaddress.ip_address(ip_str)
+            except Exception:
+                continue
+            for net_obj, net in cidr_objs:
+                if addr in net_obj and net.id not in network_ids:
+                    network_ids.append(net.id)
+
+        team = db.query(Team).filter(Team.id == app.team_id).first() if app.team_id else None
+        apps_result.append({
+            "id": app.id,
+            "name": app.name,
+            "code": app.code or "",
+            "app_type": app.app_type or "",
+            "criticality": app.criticality or "Moyenne",
+            "environment": app.environment or "PROD",
+            "team_name": team.name if team else None,
+            "ips": ip_strings,
+            "network_ids": network_ids,
+        })
+
+    # Build networks (only those referenced by apps)
+    referenced_net_ids: set[int] = set()
+    for a in apps_result:
+        referenced_net_ids.update(a["network_ids"])
+
+    nets_result = []
+    for net in all_networks:
+        if net.id not in referenced_net_ids:
+            continue
+        eq_ids = net_eq_ids.get(net.id, [])
+
+        # Find VRF from first equipment with a VRF assignment
+        vrf_name, vrf_color = None, None
+        for eq_id in eq_ids:
+            if eq_id in vrf_by_eq:
+                vrf_name, vrf_color = vrf_by_eq[eq_id]
+                break
+
+        nets_result.append({
+            "id": net.id,
+            "name": net.name,
+            "cidr": net.cidr,
+            "vrf_name": vrf_name,
+            "vrf_color": vrf_color,
+            "equipment_ids": eq_ids,
+        })
+
+    # Build equipment (only those referenced by networks)
+    referenced_eq_ids: set[int] = set()
+    for n in nets_result:
+        referenced_eq_ids.update(n["equipment_ids"])
+
+    eq_result = []
+    for eq in db.query(Equipment).filter(Equipment.id.in_(list(referenced_eq_ids))).all():
+        eq_result.append({
+            "id": eq.id,
+            "name": eq.name,
+            "type": eq.type or "switch",
+            "management_ip": eq.management_ip or "",
+        })
+
+    return {"applications": apps_result, "networks": nets_result, "equipment": eq_result}
 
 
 # ── Import ─────────────────────────────────────────────────────────────────
