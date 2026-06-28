@@ -125,6 +125,12 @@ const PHASES: Phase[] = [
       'Dropdown Environnement dans Applications alimenté par l\'API Environnements',
       'Dropdowns modernisés (ModernSelect pill-group) dans Configuration',
     ] },
+  { v: 'v2.9.8', title: 'Icône thème Tabler + motif de refus flux', status: 'done', label: '✓ Livré', eta: '', subOf: 'v2.9',
+    items: [
+      'Icône thème remplacée par ti-moon / ti-sun (Tabler outline)',
+      'FlowDetailModal : saisie obligatoire du motif avant confirmation du refus',
+      'Backend : colonne rejection_reason + API PATCH étendue',
+    ] },
   { v: 'v2.9.7', title: 'Vue Applications — corrections drag, clipping & mode empilé', status: 'done', label: '✓ Livré', eta: '', subOf: 'v2.9',
     items: [
       'Lignes SVG suivent la carte glissée en temps réel',

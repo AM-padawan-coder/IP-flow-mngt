@@ -56,7 +56,8 @@ def _run_migrations():
             ("flow_requests", "criticality",   "VARCHAR"),
             ("flow_requests", "sla",           "VARCHAR"),
             ("flow_requests", "bandwidth_max", "FLOAT"),
-            ("flow_requests", "vrf_name",      "VARCHAR"),
+            ("flow_requests", "vrf_name",        "VARCHAR"),
+            ("flow_requests", "rejection_reason", "VARCHAR"),
         ]:
             try:
                 conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {col} {typ}"))

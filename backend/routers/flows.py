@@ -16,6 +16,7 @@ router = APIRouter()
 
 class StatusUpdate(BaseModel):
     status: str  # pending, validated, deployed, rejected
+    rejection_reason: Optional[str] = None
 
 
 class FlowIn(BaseModel):
@@ -159,6 +160,7 @@ def get_flow(flow_id: int, db: Session = Depends(get_db)):
         "justification": flow.justification,
         "status": flow.status,
         "analyst": flow.analyst,
+        "rejection_reason": flow.rejection_reason,
         "validation": json.loads(flow.validation_result or "{}"),
         "path": json.loads(flow.path_result or "{}"),
         "scripts": json.loads(flow.scripts_result or "{}"),
@@ -174,6 +176,10 @@ def update_flow_status(flow_id: int, data: StatusUpdate, db: Session = Depends(g
     if data.status not in allowed:
         raise HTTPException(status_code=400, detail=f"Statut invalide. Valeurs : {allowed}")
     flow.status = data.status
+    if data.status == "rejected" and data.rejection_reason is not None:
+        flow.rejection_reason = data.rejection_reason
+    elif data.status != "rejected":
+        flow.rejection_reason = None
     db.commit()
     return {"id": flow_id, "status": data.status}
 

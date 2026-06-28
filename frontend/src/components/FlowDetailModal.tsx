@@ -22,6 +22,8 @@ export default function FlowDetailModal({ flowId, onClose, onDeleted, onStatusCh
   const [deleting, setDeleting] = useState(false)
   const [updatingStatus, setUpdatingStatus] = useState(false)
   const [openSection, setOpenSection] = useState<string[]>(['validation', 'path'])
+  const [rejectMode, setRejectMode] = useState(false)
+  const [rejectionReason, setRejectionReason] = useState('')
 
   useEffect(() => {
     api.getFlow(flowId).then(d => { setFlow(d); setLoading(false) })
@@ -36,11 +38,13 @@ export default function FlowDetailModal({ flowId, onClose, onDeleted, onStatusCh
     onDeleted()
   }
 
-  const handleStatus = async (status: string) => {
+  const handleStatus = async (status: string, reason?: string) => {
     setUpdatingStatus(true)
-    await api.updateFlowStatus(flowId, status)
-    setFlow((f: any) => ({ ...f, status }))
+    await api.updateFlowStatus(flowId, status, reason)
+    setFlow((f: any) => ({ ...f, status, rejection_reason: status === 'rejected' ? (reason ?? null) : null }))
     setUpdatingStatus(false)
+    setRejectMode(false)
+    setRejectionReason('')
     onStatusChanged?.()
   }
 
@@ -83,6 +87,17 @@ export default function FlowDetailModal({ flowId, onClose, onDeleted, onStatusCh
           </div>
         ) : (
           <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+
+            {/* Rejection reason banner */}
+            {flow.status === 'rejected' && flow.rejection_reason && (
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 14px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8 }}>
+                <i className="ti ti-ban" style={{ color: '#ef4444', fontSize: 16, flexShrink: 0, marginTop: 1 }} />
+                <div>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: '#ef4444', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 2 }}>Motif de refus</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-1)' }}>{flow.rejection_reason}</div>
+                </div>
+              </div>
+            )}
 
             {/* Meta */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
@@ -167,9 +182,35 @@ export default function FlowDetailModal({ flowId, onClose, onDeleted, onStatusCh
         )}
 
         {/* Footer */}
-        <div style={{ padding: '12px 20px', borderTop: '1px solid var(--border)', background: 'var(--bg-card)', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, flexWrap: 'wrap' }}>
+        <div style={{ padding: '12px 20px', borderTop: '1px solid var(--border)', background: 'var(--bg-card)', display: 'flex', flexDirection: 'column', gap: 8, flexShrink: 0 }}>
+          {/* Rejection reason input */}
+          {rejectMode && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <i className="ti ti-ban" style={{ color: '#ef4444', fontSize: 15, flexShrink: 0 }} />
+              <input
+                className="form-input"
+                style={{ flex: 1, fontSize: 12 }}
+                placeholder="Motif de refus (obligatoire)…"
+                value={rejectionReason}
+                onChange={e => setRejectionReason(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter' && rejectionReason.trim()) handleStatus('rejected', rejectionReason.trim()); if (e.key === 'Escape') { setRejectMode(false); setRejectionReason('') } }}
+                autoFocus
+              />
+              <button
+                onClick={() => handleStatus('rejected', rejectionReason.trim())}
+                disabled={updatingStatus || !rejectionReason.trim()}
+                style={{ padding: '5px 12px', borderRadius: 6, fontSize: 12, fontFamily: 'inherit', cursor: rejectionReason.trim() ? 'pointer' : 'not-allowed', fontWeight: 600, background: 'rgba(239,68,68,0.15)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.4)', flexShrink: 0, opacity: rejectionReason.trim() ? 1 : 0.5 }}
+              >Confirmer le refus</button>
+              <button
+                onClick={() => { setRejectMode(false); setRejectionReason('') }}
+                style={{ padding: '5px 10px', borderRadius: 6, fontSize: 12, fontFamily: 'inherit', cursor: 'pointer', background: 'var(--bg-input)', color: 'var(--text-3)', border: '1px solid var(--border)', flexShrink: 0 }}
+              >Annuler</button>
+            </div>
+          )}
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           {/* Status actions */}
-          {flow && !confirmDelete && (
+          {flow && !confirmDelete && !rejectMode && (
             <div style={{ display: 'flex', gap: 6, flex: 1 }}>
               {flow.status !== 'validated' && (
                 <button onClick={() => handleStatus('validated')} disabled={updatingStatus} style={{ padding: '5px 12px', borderRadius: 6, fontSize: 12, fontFamily: 'inherit', cursor: 'pointer', fontWeight: 600, background: 'rgba(34,197,94,0.15)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.35)' }}>
@@ -182,7 +223,7 @@ export default function FlowDetailModal({ flowId, onClose, onDeleted, onStatusCh
                 </button>
               )}
               {flow.status !== 'rejected' && (
-                <button onClick={() => handleStatus('rejected')} disabled={updatingStatus} style={{ padding: '5px 12px', borderRadius: 6, fontSize: 12, fontFamily: 'inherit', cursor: 'pointer', fontWeight: 600, background: 'rgba(239,68,68,0.12)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.35)' }}>
+                <button onClick={() => setRejectMode(true)} disabled={updatingStatus} style={{ padding: '5px 12px', borderRadius: 6, fontSize: 12, fontFamily: 'inherit', cursor: 'pointer', fontWeight: 600, background: 'rgba(239,68,68,0.12)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.35)' }}>
                   ✕ Refuser
                 </button>
               )}
@@ -211,7 +252,8 @@ export default function FlowDetailModal({ flowId, onClose, onDeleted, onStatusCh
               </>
             )}
           </div>
-        </div>
+          </div>{/* end flex row */}
+        </div>{/* end footer */}
       </div>
     </div>
   )

@@ -1,5 +1,15 @@
 # Changelog — IP Flow Manager
 
+## [2.9.8] — 2026-06-28
+
+### Icône thème + motif de refus flux
+
+- **App — icône thème** : remplacement des émojis 🌙/☀ par les icônes Tabler `ti ti-moon` / `ti ti-sun` dans le footer de la sidebar
+- **FlowDetailModal — motif de refus** : cliquer "Refuser" affiche un champ de saisie inline (motif obligatoire) avec "Confirmer le refus" (désactivé si vide) et "Annuler" ; le motif est sauvegardé en base et affiché en bandeau rouge dans la modale quand le flux est refusé
+- **Backend — colonne rejection_reason** : migration `ALTER TABLE flow_requests ADD COLUMN rejection_reason VARCHAR` ; `StatusUpdate` Pydantic étendu ; réinitialisé à `null` si le statut repasse à non-refusé
+
+---
+
 ## [2.9.7] — 2026-06-28
 
 ### Vue Applications — corrections drag, clipping, labels, mode empilé

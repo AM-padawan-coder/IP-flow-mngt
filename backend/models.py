@@ -157,6 +157,7 @@ class FlowRequest(Base):
     validation_result = Column(Text)
     path_result = Column(Text)
     scripts_result = Column(Text)
+    rejection_reason = Column(String, nullable=True)
     # v2.6 overlay fields
     criticality = Column(String, nullable=True)   # critique | haute | moyenne | basse
     sla = Column(String, nullable=True)

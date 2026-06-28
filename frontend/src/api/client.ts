@@ -55,7 +55,7 @@ export const api = {
 
   // Flows — delete + status
   deleteFlow:      (id: number)              => req(`/flows/${id}`,         { method: 'DELETE' }),
-  updateFlowStatus:(id: number, status: string) => req(`/flows/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+  updateFlowStatus:(id: number, status: string, rejectionReason?: string) => req(`/flows/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status, rejection_reason: rejectionReason ?? null }) }),
 
   // Simulation
   whatif:          (data: object) => req('/simulation/whatif',           { method: 'POST', body: JSON.stringify(data) }),

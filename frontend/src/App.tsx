@@ -106,7 +106,7 @@ export default function App() {
 
         {/* Footer — version + actions */}
         <div style={{ padding: '10px 14px', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 6 }}>
-          <div className="text-xs text-dimmed" style={{ flex: 1 }}>demo · v2.9.7</div>
+          <div className="text-xs text-dimmed" style={{ flex: 1 }}>demo · v2.9.8</div>
 
           {/* Dark/Light toggle */}
           <button
@@ -116,7 +116,7 @@ export default function App() {
             onMouseEnter={hoverBlue}
             onMouseLeave={hoverOut}
           >
-            {theme === 'dark' ? '☀' : '🌙'}
+            <i className={theme === 'dark' ? 'ti ti-sun' : 'ti ti-moon'} style={{ fontSize: 16 }} />
           </button>
 
           {/* Roadmap */}
