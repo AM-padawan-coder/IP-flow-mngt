@@ -65,7 +65,7 @@ export default function AdminPage() {
         {tab === 'networks'  && <NetworkAdmin networks={networks} zones={zones} onDone={async (m) => { await load(); notify(m) }} />}
         {tab === 'links'     && <LinkAdmin links={links} equipment={equipment} onDone={async (m) => { await load(); notify(m) }} />}
         {tab === 'vrf'          && <VrfAdmin vrfs={vrfs} equipment={equipment} onDone={async (m) => { await load(); notify(m) }} />}
-        {tab === 'applications' && <ApplicationAdmin applications={applications} zones={zones} teams={teams} environments={environments} onDone={async (m) => { await load(); notify(m) }} />}
+        {tab === 'applications' && <ApplicationAdmin applications={applications} zones={zones} teams={teams} environments={environments} networks={networks} onDone={async (m) => { await load(); notify(m) }} />}
         {tab === 'environments' && <EnvironmentAdmin environments={environments} onDone={async (m) => { await load(); notify(m) }} />}
       </div>
     </>
@@ -527,18 +527,68 @@ function NetworkAdmin({ networks, zones, onDone }: any) {
 // ── Application admin ────────────────────────────────────────────────────────
 const APP_TYPES = ['Web','API','ERP','Base de données','Middleware','Télécom','Virtualisation','Infrastructure','Sécurité','Supervision','ITSM'] as const
 const APP_DOMAINS = ['Production','Communication','Sécurité','Support'] as const
+// ── Glassmorphism select ──────────────────────────────────────────────────────
+function GlassSelect({ value, onChange, children, style }: {
+  value: string; onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void
+  children: React.ReactNode; style?: React.CSSProperties
+}) {
+  return (
+    <div style={{ position: 'relative', ...style }}>
+      <select
+        value={value}
+        onChange={onChange}
+        style={{
+          width: '100%',
+          appearance: 'none' as const,
+          WebkitAppearance: 'none' as const,
+          background: 'color-mix(in srgb, var(--bg-input) 78%, transparent)',
+          backdropFilter: 'blur(10px)',
+          WebkitBackdropFilter: 'blur(10px)',
+          border: '1px solid var(--border)',
+          borderRadius: 8,
+          padding: '6px 28px 6px 10px',
+          fontSize: 12,
+          color: 'var(--text-1)',
+          fontFamily: 'inherit',
+          cursor: 'pointer',
+          outline: 'none',
+          boxSizing: 'border-box' as const,
+        }}
+      >
+        {children}
+      </select>
+      <svg style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: 'var(--text-3)' }}
+        width="12" height="12" viewBox="0 0 12 12" fill="none">
+        <path d="M2 4L6 8L10 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    </div>
+  )
+}
+
+// ── IP CIDR helper ────────────────────────────────────────────────────────────
+function ipInCidr(ip: string, cidr: string): boolean {
+  try {
+    const [base, bits] = cidr.split('/')
+    const mask = bits ? parseInt(bits) : 32
+    const toNum = (s: string) => s.split('.').reduce((a, o) => (a << 8) + parseInt(o), 0) >>> 0
+    const maskNum = mask === 0 ? 0 : (~0 << (32 - mask)) >>> 0
+    return (toNum(ip) & maskNum) === (toNum(base) & maskNum)
+  } catch { return false }
+}
+
 const APP_CRITS = ['Faible','Moyenne','Elevée','Critique'] as const
 const APP_ENVS = ['DEV','PREPROD1','PREPROD2','PROD'] as const
 const CRIT_COLORS: Record<string, string> = { Critique:'#ef4444', Elevée:'#f97316', Moyenne:'#3b82f6', Faible:'#64748b' }
 
 interface AppIPRow { ip_address: string; zone_id: string }
 
-function ApplicationAdmin({ applications, zones, teams, environments, onDone }: any) {
+function ApplicationAdmin({ applications, zones, teams, environments, networks, onDone }: any) {
   const blankForm = { name:'', code:'', description:'', app_type:'Web', domain:'Production', criticality:'Moyenne', environment:'PROD', team_id:'' }
   const [form, setForm] = useState(blankForm)
   const [editing, setEditing] = useState<number | null>(null)
   const [ips, setIps] = useState<AppIPRow[]>([])
   const [newIp, setNewIp] = useState({ ip_address:'', zone_id:'' })
+  const [ipWarning, setIpWarning] = useState<string | null>(null)
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
 
   const reset = () => { setForm(blankForm); setEditing(null); setIps([]) }
@@ -570,7 +620,15 @@ function ApplicationAdmin({ applications, zones, teams, environments, onDone }: 
   }
 
   const addIp = () => {
-    if (!newIp.ip_address.trim()) return
+    const ip = newIp.ip_address.trim()
+    if (!ip) return
+    const nets: any[] = networks || []
+    const matched = nets.some((n: any) => n.cidr && ipInCidr(ip, n.cidr))
+    if (!matched && nets.length > 0) {
+      setIpWarning(`${ip} n'appartient à aucun réseau configuré — l'application ne s'affichera pas sur le graphe.`)
+    } else {
+      setIpWarning(null)
+    }
     setIps(prev => [...prev, { ...newIp }])
     setNewIp({ ip_address:'', zone_id:'' })
   }
@@ -590,40 +648,40 @@ function ApplicationAdmin({ applications, zones, teams, environments, onDone }: 
           <div className="grid-2">
             <div className="form-group">
               <label className="form-label">Type</label>
-              <select className="form-select" value={form.app_type} onChange={e => set('app_type', e.target.value)}>
+              <GlassSelect value={form.app_type} onChange={e => set('app_type', e.target.value)}>
                 {APP_TYPES.map(t => <option key={t}>{t}</option>)}
-              </select>
+              </GlassSelect>
             </div>
             <div className="form-group">
               <label className="form-label">Domaine</label>
-              <select className="form-select" value={form.domain} onChange={e => set('domain', e.target.value)}>
+              <GlassSelect value={form.domain} onChange={e => set('domain', e.target.value)}>
                 {APP_DOMAINS.map(d => <option key={d}>{d}</option>)}
-              </select>
+              </GlassSelect>
             </div>
           </div>
           <div className="grid-2">
             <div className="form-group">
               <label className="form-label">Criticité</label>
-              <select className="form-select" value={form.criticality} onChange={e => set('criticality', e.target.value)}>
+              <GlassSelect value={form.criticality} onChange={e => set('criticality', e.target.value)}>
                 {APP_CRITS.map(c => <option key={c}>{c}</option>)}
-              </select>
+              </GlassSelect>
             </div>
             <div className="form-group">
               <label className="form-label">Environnement</label>
-              <select className="form-select" value={form.environment} onChange={e => set('environment', e.target.value)}>
+              <GlassSelect value={form.environment} onChange={e => set('environment', e.target.value)}>
                 {(environments && environments.length > 0
                   ? environments.map((env: any) => env.name)
                   : APP_ENVS
                 ).map((env: string) => <option key={env}>{env}</option>)}
-              </select>
+              </GlassSelect>
             </div>
           </div>
           <div className="form-group">
             <label className="form-label">Équipe</label>
-            <select className="form-select" value={form.team_id} onChange={e => set('team_id', e.target.value)}>
+            <GlassSelect value={form.team_id} onChange={e => set('team_id', e.target.value)}>
               <option value="">— Aucune —</option>
               {teams.map((t: any) => <option key={t.id} value={t.id}>{t.name}</option>)}
-            </select>
+            </GlassSelect>
           </div>
 
           {/* IPs section */}
@@ -638,13 +696,21 @@ function ApplicationAdmin({ applications, zones, teams, environments, onDone }: 
             ))}
             {ips.length === 0 && <div className="text-xs text-dimmed" style={{ marginBottom:8 }}>Aucune IP ajoutée</div>}
             <div style={{ display:'flex', gap:6 }}>
-              <input style={{ ...INPUT, flex:1 }} placeholder="10.0.0.1" value={newIp.ip_address} onChange={e => setNewIp(p => ({ ...p, ip_address: e.target.value }))} />
-              <select style={{ ...SELECT, flex:1 }} value={newIp.zone_id} onChange={e => setNewIp(p => ({ ...p, zone_id: e.target.value }))}>
+              <input style={{ ...INPUT, flex:1 }} placeholder="10.0.0.1" value={newIp.ip_address}
+                onChange={e => { setNewIp(p => ({ ...p, ip_address: e.target.value })); setIpWarning(null) }}
+                onKeyDown={e => e.key === 'Enter' && addIp()} />
+              <GlassSelect style={{ flex:1 }} value={newIp.zone_id} onChange={e => setNewIp(p => ({ ...p, zone_id: e.target.value }))}>
                 <option value="">Zone opt.</option>
                 {(zones as any[]).filter((z: any) => z.zone_type === 'logical').map((z: any) => <option key={z.id} value={z.id}>{z.name}</option>)}
-              </select>
+              </GlassSelect>
               <button className="btn btn-primary btn-sm" onClick={addIp} disabled={!newIp.ip_address.trim()}>+</button>
             </div>
+            {ipWarning && (
+              <div style={{ marginTop: 8, padding: '8px 10px', background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.35)', borderRadius: 6, fontSize: 11, color: '#fbbf24', display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                <span style={{ flexShrink: 0 }}>⚠</span>
+                <span>{ipWarning} Elle restera visible dans l'onglet Applications de la Topologie.</span>
+              </div>
+            )}
           </div>
 
           <div className="flex gap-2 mt-2">

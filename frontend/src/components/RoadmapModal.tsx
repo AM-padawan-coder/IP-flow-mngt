@@ -125,6 +125,14 @@ const PHASES: Phase[] = [
       'Dropdown Environnement dans Applications alimenté par l\'API Environnements',
       'Dropdowns modernisés (ModernSelect pill-group) dans Configuration',
     ] },
+  { v: 'v2.9.3', title: 'UX graphe apps + dropdowns glassmorphisme', status: 'done', label: '✓ Livré', eta: '', subOf: 'v2.9',
+    items: [
+      'Badges applications agrandis (20 px) avec bordure blanche et espacement revu',
+      'Tooltip hover sur les badges : nom, code, criticité, environnement, équipements',
+      'Fix "Tout décocher" : les badges disparaissent correctement quand toutes les apps sont décochées',
+      'Dropdowns Configuration → Applications remplacés par GlassSelect (backdrop-filter blur, flèche SVG custom)',
+      'Alerte amber lors de l\'ajout d\'une IP hors de tout réseau CIDR connu',
+    ] },
   { v: 'v2.9.2', title: 'Overlay routes + environnements de référence', status: 'done', label: '✓ Livré', eta: '', subOf: 'v2.9',
     items: [
       'Fix overlay Routes : résolution gateway via IPs d\'interfaces (transit links 10.0.0.x)',

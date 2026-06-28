@@ -30,6 +30,7 @@ type OverlayTip =
   | { kind: 'flow';  item: FlowOverlay;  x: number; y: number }
   | { kind: 'route'; item: RouteOverlay; x: number; y: number }
   | { kind: 'vrf';   vrf: VRFOverlay; nodeName: string; x: number; y: number }
+  | { kind: 'app';   app: AppOverlay; x: number; y: number }
 
 interface Props {
   nodes: GraphNode[]
@@ -136,7 +137,8 @@ export default function TopologyGraph({
   const rafIdRef     = useRef(0)
   const dashOffRef   = useRef(0)
   const zoneAlphaRef = useRef(zoneMode !== 'none' ? 1 : 0)
-  const zoneBoxesRef = useRef<Map<string, {minX:number;minY:number;maxX:number;maxY:number;color:string}>>(new Map())
+  const zoneBoxesRef    = useRef<Map<string, {minX:number;minY:number;maxX:number;maxY:number;color:string}>>(new Map())
+  const appBadgeRectsRef = useRef<{app: AppOverlay; x: number; y: number; size: number}[]>([])
 
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null)
   const [nodeTip,      setNodeTip]      = useState<{ node: GraphNode; x: number; y: number } | null>(null)
@@ -414,8 +416,8 @@ export default function TopologyGraph({
     }
 
     // ── App overlay badges ────────────────────────────────────────────────────
+    appBadgeRectsRef.current = []
     if (overlayApps.length > 0) {
-      // Build map: node name → list of apps
       const nodeApps = new Map<string, AppOverlay[]>()
       for (const app of overlayApps) {
         for (const eqName of app.equipment_names) {
@@ -427,22 +429,25 @@ export default function TopologyGraph({
       for (const n of ns) {
         const apps = nodeApps.get(n.name)
         if (!apps || apps.length === 0) continue
-        const BADGE = 12
-        const SPACING = 14
+        const BADGE = 20
+        const SPACING = 24
         const totalW = apps.length * BADGE + (apps.length - 1) * (SPACING - BADGE)
         const startX = n.x - totalW / 2
-        const badgeY = n.y - NODE_R - 20
+        const badgeY = n.y - NODE_R - 30
         apps.forEach((app, idx) => {
           const bx = startX + idx * SPACING
           const color = CRIT_APP_COLOR[app.criticality] || '#64748b'
           ctx.save()
-          rndRect(ctx, bx, badgeY, BADGE, BADGE, 3)
-          ctx.fillStyle = color; ctx.globalAlpha = 0.9; ctx.fill()
-          ctx.font = 'bold 8px Inter, monospace'
+          rndRect(ctx, bx, badgeY, BADGE, BADGE, 4)
+          ctx.fillStyle = color; ctx.globalAlpha = 0.92; ctx.fill()
+          // White border for readability
+          ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.lineWidth = 1; ctx.globalAlpha = 1; ctx.stroke()
+          ctx.font = 'bold 10px Inter, monospace'
           ctx.fillStyle = '#fff'; ctx.globalAlpha = 1
           ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
           ctx.fillText((app.code || app.name)[0].toUpperCase(), bx + BADGE / 2, badgeY + BADGE / 2)
           ctx.restore()
+          appBadgeRectsRef.current.push({ app, x: bx, y: badgeY, size: BADGE })
         })
       }
     }
@@ -544,6 +549,10 @@ export default function TopologyGraph({
         const vrf = vrfOverlay.find(v => v.equipment_names.includes(node.name))
         if (vrf) return { kind: 'vrf', vrf, nodeName: node.name, x, y }
       }
+    }
+    for (const { app, x: bx, y: by, size } of appBadgeRectsRef.current) {
+      if (x >= bx && x <= bx + size && y >= by && y <= by + size)
+        return { kind: 'app', app, x, y }
     }
     return null
   }
@@ -740,6 +749,31 @@ export default function TopologyGraph({
           {overlayTip.vrf.description && <div style={{ marginTop: 8, fontSize: 11, color: 'var(--text-3)', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: 6 }}>{overlayTip.vrf.description}</div>}
         </div>
       )}
+
+      {/* Overlay tooltip — Application */}
+      {overlayTip?.kind === 'app' && (() => {
+        const { app, x, y } = overlayTip
+        const color = CRIT_APP_COLOR[app.criticality] || '#64748b'
+        return (
+          <div style={{ position: 'absolute', left: Math.min(x + 14, 500), top: y - 10, background: '#1c2233', border: `1px solid ${color}40`, borderRadius: 8, padding: '12px 14px', fontSize: 12, pointerEvents: 'none', zIndex: 20, boxShadow: '0 8px 32px rgba(0,0,0,0.6)', minWidth: 210 }}>
+            <div style={{ fontWeight: 700, color: 'var(--text-1)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ width: 10, height: 10, borderRadius: 3, background: color }} />
+              {app.name}
+            </div>
+            {app.code && <div style={{ fontFamily: 'monospace', fontSize: 11, color: 'var(--text-3)', marginBottom: 6 }}>{app.code}</div>}
+            {[
+              ['Criticité',    app.criticality],
+              ['Environnement',app.environment],
+              ['Équipements',  app.equipment_names.join(', ')],
+            ].filter(([, v]) => v).map(([k, v]) => (
+              <div key={k} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, gap: 12 }}>
+                <span style={{ color: 'var(--text-3)' }}>{k}</span>
+                <span style={{ color: 'var(--text-2)', fontFamily: k === 'Équipements' ? 'monospace' : 'inherit', fontSize: 11 }}>{v}</span>
+              </div>
+            ))}
+          </div>
+        )
+      })()}
 
       {/* Selected node panel */}
       {selectedNode && (

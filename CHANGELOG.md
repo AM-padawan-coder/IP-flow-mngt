@@ -1,5 +1,17 @@
 # Changelog — IP Flow Manager
 
+## [2.9.3] — 2026-06-28
+
+### UX graphe applications + dropdowns glassmorphisme
+
+- **Graphe — badges applications** : taille agrandie (12 → 20 px), bordure blanche, espacement revu
+- **Graphe — tooltip hover app** : survol d'un badge affiche nom, code, criticité, environnement et équipements associés
+- **Graphe — "Tout décocher" apps** : correction du bug où décocher toutes les applications laissait quand même les badges affichés
+- **Configuration → Applications** : dropdowns (Type, Domaine, Criticité, Environnement, Équipe, Zone) remplacés par des `GlassSelect` — fond glassmorphisme avec `backdrop-filter: blur(10px)`, flèche SVG custom, border-radius 8px
+- **Configuration → Applications — alerte IP** : message d'avertissement amber si l'IP ajoutée n'appartient à aucun CIDR réseau connu ("l'application ne s'affichera pas sur le graphe")
+
+---
+
 ## [2.9.2] — 2026-06-28
 
 ### Corrections et données de démo routes

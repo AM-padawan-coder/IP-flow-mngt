@@ -228,9 +228,8 @@ export default function TopologyPage({ highlightedPath = [] }: Props) {
   const optDsts   = useMemo(() => [...new Set(overlayFlows.map(f => f.dst_ip).filter(Boolean) as string[])].sort(), [overlayFlows])
   const optPorts  = useMemo(() => [...new Set(overlayFlows.map(f => f.port).filter(Boolean) as string[])].sort(), [overlayFlows])
 
-  // Apps filtered by selected IDs
+  // Apps filtered by selected IDs — no early return: empty set = show nothing
   const filteredApps = useMemo(() => {
-    if (selectedAppIds.size === 0) return overlayApps
     return overlayApps.filter(a => selectedAppIds.has(a.id))
   }, [overlayApps, selectedAppIds])
 
