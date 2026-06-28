@@ -7,7 +7,7 @@ const ROUTE_TYPES = ['static', 'connected', 'ospf', 'bgp']
 const DIRECTIONS = ['in', 'out', 'both']
 const ACTIONS = ['permit', 'deny']
 
-const EMPTY_ROUTE = { equipment_id: 0, destination: '', gateway: '', interface: '', metric: 1, route_type: 'static', comment: '' }
+const EMPTY_ROUTE = { equipment_id: 0, destination: '0.0.0.0/0', gateway: '', interface: '', metric: 1, route_type: 'static', comment: '' }
 const EMPTY_ACL = { equipment_id: 0, priority: 100, name: '', direction: 'in', action: 'permit', src_ip: 'any', dst_ip: 'any', port: 'any', protocol: 'any', comment: '', flow_id: undefined as number | undefined }
 
 export default function PolicyPage() {

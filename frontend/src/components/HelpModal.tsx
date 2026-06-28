@@ -12,14 +12,14 @@ const SECTIONS = [
   { id: 'chemin',     icon: '⬡',  label: 'Chemin réseau' },
   { id: 'scripts',    icon: '📄', label: 'Scripts générés' },
   { id: 'overlays',   icon: '⬡',  label: 'Overlays graphe' },
-  { id: 'simulation', icon: '🔬', label: 'Simulation' },
-  { id: 'policies',   icon: '🔒', label: 'Politiques réseau' },
+  { id: 'simulation', icon: 'ti', iconClass: 'ti ti-adjustments-horizontal', label: 'Simulation' },
+  { id: 'policies',   icon: 'ti', iconClass: 'ti ti-shield',                label: 'Politiques réseau' },
   { id: 'topo',       icon: '⚙',  label: 'Configuration' },
   { id: 'import',     icon: '⬆',  label: 'Import / Export' },
-  { id: 'equipes',    icon: '👥', label: 'Équipes & Sites' },
+  { id: 'equipes',    icon: 'ti', iconClass: 'ti ti-users',                 label: 'Équipes' },
   { id: 'audit',      icon: '◎',  label: 'Audit' },
-  { id: 'sauvegardes',icon: '💾', label: 'Sauvegardes' },
-  { id: 'conformite', icon: '🛡', label: 'Conformité' },
+  { id: 'sauvegardes',icon: 'ti', iconClass: 'ti ti-database',              label: 'Sauvegardes' },
+  { id: 'conformite', icon: 'ti', iconClass: 'ti ti-checkbox',              label: 'Conformité' },
   { id: 'faq',        icon: '❓', label: 'FAQ' },
 ]
 
@@ -73,7 +73,7 @@ const CONTENT: Record<string, JSX.Element> = {
         {[
           { icon: '⬡', label: 'Flux IP',      desc: 'Saisie, validation, historique' },
           { icon: '⬡', label: 'Topologie',     desc: 'Graphe, administration, import' },
-          { icon: '👥', label: 'Organisation', desc: 'Équipes, sites physiques' },
+          { icon: <i className="ti ti-users" aria-hidden="true" />, label: 'Organisation', desc: 'Équipes, sites physiques' },
           { icon: '◎', label: 'Référentiel',   desc: 'Audit et indicateurs' },
         ].map(item => (
           <div key={item.label} style={ARCH_CARD}>
@@ -540,7 +540,7 @@ const CONTENT: Record<string, JSX.Element> = {
       <h2 style={H2}>Simulation et analyse de risques</h2>
       <p style={P}>La page <strong>Simulation</strong> regroupe quatre outils d'analyse préventive du réseau. Aucun de ces outils ne modifie la configuration réelle — tout reste en lecture seule.</p>
 
-      <h3 style={H3}>🔬 Simulation What-if — ce qu'elle fait vraiment</h3>
+      <h3 style={H3}><i className="ti ti-adjustments-horizontal" aria-hidden="true" style={{ marginRight: 6 }} /> Simulation What-if — ce qu'elle fait vraiment</h3>
       <p style={P}>Le What-if répond à une question précise : <em>"Si j'ouvre ce nouveau flux, quels flux existants partagent les mêmes équipements réseau ?"</em></p>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
@@ -654,7 +654,7 @@ const CONTENT: Record<string, JSX.Element> = {
       <h3 style={H3}>Types de sauvegardes</h3>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
         {[
-          { label: '💾 Complète',      color: '#3b82f6', desc: 'Copie binaire de la base SQLite entière via sqlite3.backup(). Permet une restauration complète à l\'identique. Planifiée chaque dimanche à 03h00 UTC.' },
+          { label: 'Complète',      color: '#3b82f6', desc: 'Copie binaire de la base SQLite entière via sqlite3.backup(). Permet une restauration complète à l\'identique. Planifiée chaque dimanche à 03h00 UTC.' },
           { label: '⬇ Incrémentale',   color: '#64748b', desc: 'Export JSON des tables par domaine métier : Métier (flux, zones, équipements), Audits (ACL, routes, événements), Simulation (VRF). Planifiée chaque jour à 02h00 UTC.' },
         ].map(item => (
           <div key={item.label} style={{ padding: '10px 14px', background: 'var(--bg-input)', borderRadius: 6 }}>
@@ -863,7 +863,11 @@ export default function HelpModal({ onClose }: Props) {
           <div style={{ width: 200, minWidth: 200, borderRight: '1px solid var(--border)', padding: '12px 8px', overflowY: 'auto', background: 'var(--bg-card)' }}>
             {SECTIONS.map(s => (
               <button key={s.id} onClick={() => setSection(s.id)} style={{ display: 'flex', alignItems: 'center', gap: 9, width: '100%', padding: '8px 10px', borderRadius: 6, border: 'none', background: section === s.id ? 'rgba(59,130,246,0.15)' : 'transparent', color: section === s.id ? 'var(--blue)' : 'var(--text-2)', fontWeight: section === s.id ? 600 : 400, fontSize: 13, cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit' }}>
-                <span style={{ width: 18, textAlign: 'center' }}>{s.icon}</span>
+                <span style={{ width: 18, textAlign: 'center', fontSize: 15 }}>
+                  {s.icon === 'ti' && 'iconClass' in s
+                    ? <i className={(s as any).iconClass} aria-hidden="true" />
+                    : s.icon}
+                </span>
                 {s.label}
               </button>
             ))}

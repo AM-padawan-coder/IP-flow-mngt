@@ -16,11 +16,11 @@ interface GraphData { nodes: any[]; edges: any[] }
 interface Props { highlightedPath?: string[] }
 
 // ── Toggle switch ──────────────────────────────────────────────────────────────
-function Toggle({ on, onChange, label, count, color }: {
-  on: boolean; onChange: () => void; label: string; count?: number; color?: string
+function Toggle({ on, onChange, label, count, color, noBorder }: {
+  on: boolean; onChange: () => void; label: string; count?: number; color?: string; noBorder?: boolean
 }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 0', borderBottom: '1px solid var(--border)' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 0', borderBottom: noBorder ? 'none' : '1px solid var(--border)' }}>
       <button
         onClick={onChange}
         style={{ width: 36, height: 20, borderRadius: 10, border: 'none', cursor: 'pointer', background: on ? (color || '#3b82f6') : 'var(--bg-input)', position: 'relative', transition: 'background 0.2s', flexShrink: 0 }}
@@ -271,7 +271,7 @@ export default function TopologyPage({ highlightedPath = [] }: Props) {
                     <Toggle
                       on={showVRF}    onChange={() => setShowVRF(v => !v)}
                       label="VRF"     count={overlayVRF.length || undefined}
-                      color="#a855f7"
+                      color="#a855f7" noBorder
                     />
                     {loadingOverlay && (
                       <div style={{ marginTop: 8, fontSize: 11, color: 'var(--text-3)', display: 'flex', alignItems: 'center', gap: 6 }}>
