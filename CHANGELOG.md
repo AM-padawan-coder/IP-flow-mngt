@@ -1,11 +1,25 @@
 # Changelog — IP Flow Manager
 
-## v2.9.1 — Topologie apps / environnements dynamiques (2026-06-28)
+## [2.9.2] — 2026-06-28
+
+### Corrections et données de démo routes
+
+- **Overlay Routes** : résolution `gateway_equipment` étendue aux IPs d'interfaces (EquipmentInterface) en plus du `management_ip` — les routes avec gateways transit (10.0.0.x, 192.168.x.x) s'affichent maintenant sur le graphe
+- **Données de démo** : 20 routes injectées au démarrage si la table est vide (static / ospf / bgp entre tous les équipements via les IPs d'interfaces TRANSIT-A/B)
+- **Environnements par défaut** : 4 environnements de référence (INT, PPROD1, PPROD2, PROD) injectés au démarrage si absents ; les environnements "Intégration, Préproduction, Production" sont remplacés par les codes courts
+- **CHANGELOG** : format des entrées normalisé en `[x.y.z] — YYYY-MM-DD`
+- **Roadmap** : sous-versions v2.9.1 et v2.9.2 ajoutées sous v2.9
+
+---
+
+## [2.9.1] — 2026-06-28
+
+### Topologie apps / environnements dynamiques
 
 - **TopologyPage — Applications** : vue liste verticale (tableau) remplace les cards CSS grid ; colonnes Nom/Code, Type, Criticité, Environnement, Domaine, Équipe, IPs
 - **TopologyPage — Filtres pills** : les `<select>` de l'onglet Applications sont remplacés par des pill-buttons toggleables (type, criticité, environnement dynamique)
 - **Graphe réseau — Overlay Applications** : nouveau toggle "Applications" dans le panneau Overlays ; badges colorés (10×10 px, lettre du code) affichés au-dessus des nœuds selon la criticité ; endpoint backend `GET /topology/apps-overlay` ; filtre multi-select et compteurs dans les panneaux latéraux
-- **AdminPage — Onglet Environnements** : modèle `Environment` (id, name, description, color), CRUD backend `/environments`, seed 3 envs (Intégration, Préproduction, Production) ; formulaire admin avec color picker + badge aperçu ; dropdown Environnement dans ApplicationAdmin chargé depuis l'API
+- **AdminPage — Onglet Environnements** : modèle `Environment` (id, name, description, color), CRUD backend `/environments` ; formulaire admin avec color picker + badge aperçu ; dropdown Environnement dans ApplicationAdmin chargé depuis l'API
 - **AdminPage — Dropdowns modernisés** : `ModernSelect` pill-group pour les champs à peu d'options (criticité, type), couleurs dynamiques depuis les environnements configurés
 
 ## [2.9.0] — 2026-06-28

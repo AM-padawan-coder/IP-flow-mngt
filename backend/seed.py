@@ -217,18 +217,43 @@ def seed_database(db):
 
     db.commit()
 
-    # ─── Environnements (v2.9.1) ──────────────────────────────────────────────
-    if db.query(Environment).count() == 0:
-        envs = [
-            Environment(name='Intégration',  description="Environnement de tests d'intégration", color='#64748b'),
-            Environment(name='Préproduction', description='Environnement de recette / validation', color='#eab308'),
-            Environment(name='Production',    description='Environnement de production',           color='#22c55e'),
-        ]
-        for env in envs:
-            db.add(env)
-        db.commit()
+    # Environnements : délégué à seed_default_environments() (indépendant)
 
     print("[seed] Base initialisée avec données de démo v2.9.1 (overlays: flux, routes, VRF; applications; environnements)")
+
+
+DEFAULT_ENVIRONMENTS = [
+    dict(name='INT',   description="Environnement d'intégration / tests",   color='#64748b'),
+    dict(name='PPROD1', description='Préproduction — recette fonctionnelle', color='#f97316'),
+    dict(name='PPROD2', description='Préproduction — validation technique',  color='#eab308'),
+    dict(name='PROD',  description='Environnement de production',            color='#22c55e'),
+]
+OLD_ENV_NAMES = {'Intégration', 'Préproduction', 'Production'}
+
+
+def seed_default_environments(db):
+    """
+    Injecte les 4 environnements de référence (INT, PPROD1, PPROD2, PROD).
+    - Supprime les anciens noms courts (Intégration, Préproduction, Production) s'ils existent
+      et qu'aucun environnement INT/PPROD1/PPROD2/PROD n'existe encore.
+    - Idempotent : ne fait rien si INT est déjà présent.
+    """
+    existing_names = {e.name for e in db.query(Environment).all()}
+    if 'INT' in existing_names:
+        return  # déjà initialisés
+
+    # Supprimer les anciens envs de seed si présents (pas de FK sur Application.environment)
+    for old_name in OLD_ENV_NAMES:
+        if old_name in existing_names:
+            old_env = db.query(Environment).filter(Environment.name == old_name).first()
+            if old_env:
+                db.delete(old_env)
+
+    for env_data in DEFAULT_ENVIRONMENTS:
+        if env_data['name'] not in existing_names:
+            db.add(Environment(**env_data))
+    db.commit()
+    print("[seed] Environnements de référence injectés (INT, PPROD1, PPROD2, PROD)")
 
 
 def seed_demo_routes(db):

@@ -68,11 +68,12 @@ def _run_migrations():
 @app.on_event("startup")
 async def startup_event():
     _run_migrations()
-    from seed import seed_database, seed_demo_routes
+    from seed import seed_database, seed_demo_routes, seed_default_environments
     db = SessionLocal()
     try:
         seed_database(db)
         seed_demo_routes(db)
+        seed_default_environments(db)
     finally:
         db.close()
     # Start backup scheduler as background asyncio task
