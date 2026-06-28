@@ -125,6 +125,13 @@ const PHASES: Phase[] = [
       'Dropdown Environnement dans Applications alimenté par l\'API Environnements',
       'Dropdowns modernisés (ModernSelect pill-group) dans Configuration',
     ] },
+  { v: 'v2.9.7', title: 'Vue Applications — corrections drag, clipping & mode empilé', status: 'done', label: '✓ Livré', eta: '', subOf: 'v2.9',
+    items: [
+      'Lignes SVG suivent la carte glissée en temps réel',
+      'Première carte plus jamais clippée par le bord gauche du conteneur',
+      'Labels "Applications", "Réseaux", "Équipements" repositionnés au-dessus des éléments',
+      'Mode empilé : réseaux et équipements affichés avec lignes de connexion stack→réseaux→équipements',
+    ] },
   { v: 'v2.9.6', title: 'Vue Applications — glow, filtres, drag & stacked', status: 'done', label: '✓ Livré', eta: '', subOf: 'v2.9',
     items: [
       'Helper pl() singulier/pluriel sur tous les labels compteurs',

@@ -1,5 +1,16 @@
 # Changelog — IP Flow Manager
 
+## [2.9.7] — 2026-06-28
+
+### Vue Applications — corrections drag, clipping, labels, mode empilé
+
+- **AppGraphView — liens SVG suivent le drag** : le centre effectif de la carte glissée (`dragMouseX + APP_W/2`) est utilisé comme point d'ancrage des lignes SVG pendant le déplacement, au lieu de la position statique initiale
+- **AppGraphView — première carte non clippée** : `distribute()` garantit un `startX` minimum de `itemW/2 + MARGIN` ; le calcul de `cardLeft` corrigé (`dragMouseX` = position `left`, plus de soustraction parasite de `APP_W/2`)
+- **AppGraphView — labels de rangée repositionnés** : "Applications", "Réseaux", "Équipements" décalés à `top: ROW_Y[x] - 16` pour apparaître clairement au-dessus des éléments (anciennement alignés avec le haut des cartes)
+- **AppGraphView — mode empilé complet** : les rangées Réseaux et Équipements ainsi que les lignes SVG de connexion (stack → réseaux → équipements) sont désormais affichées en mode empilé ; label "Applications (empilées)" adapté
+
+---
+
 ## [2.9.6] — 2026-06-28
 
 ### UX Vue Applications — glow, filtres, drag & stacked mode
