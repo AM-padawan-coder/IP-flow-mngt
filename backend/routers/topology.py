@@ -393,6 +393,7 @@ def app_graph(db: Session = Depends(get_db)):
             "name": app.name,
             "code": app.code or "",
             "app_type": app.app_type or "",
+            "domain": app.domain or "Production",
             "criticality": app.criticality or "Moyenne",
             "environment": app.environment or "PROD",
             "team_name": team.name if team else None,

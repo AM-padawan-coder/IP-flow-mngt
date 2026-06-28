@@ -125,6 +125,13 @@ const PHASES: Phase[] = [
       'Dropdown Environnement dans Applications alimenté par l\'API Environnements',
       'Dropdowns modernisés (ModernSelect pill-group) dans Configuration',
     ] },
+  { v: 'v2.9.9', title: 'Filtre apps par dimension & corrections SVG HelpModal', status: 'done', label: '✓ Livré', eta: '', subOf: 'v2.9',
+    items: [
+      'Filtre apps : Types / Domaines / Environnements (plus par nom)',
+      '"Tout décocher / Tout cocher" corrigé et fonctionnel',
+      'Backend app-graph : champ domain ajouté',
+      'HelpModal SVG Vue Fonctionnalités : viewBox 760×470, boîtes externes centrées et élargies',
+    ] },
   { v: 'v2.9.8', title: 'Icône thème Tabler + motif de refus flux', status: 'done', label: '✓ Livré', eta: '', subOf: 'v2.9',
     items: [
       'Icône thème remplacée par ti-moon / ti-sun (Tabler outline)',

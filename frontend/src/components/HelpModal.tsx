@@ -1034,7 +1034,7 @@ function SchemasSection() {
       {/* Schema 3 — Vue Fonctionnalités */}
       {schemaTab === 2 && (
         <div style={{ overflowX: 'auto' }}>
-          <svg viewBox="0 0 700 430" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', maxWidth: 700, display: 'block' }}>
+          <svg viewBox="0 0 760 470" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', maxWidth: 760, display: 'block' }}>
             <defs>
               <marker id="s3-arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#64748b"/></marker>
             </defs>
@@ -1042,8 +1042,8 @@ function SchemasSection() {
             {/* Acteurs (gauche) */}
             {([
               { y: 65,  label: 'Admin réseau',    color: '#3b82f6' },
-              { y: 190, label: 'Équipe sécurité', color: '#f97316' },
-              { y: 330, label: 'Auditeur',         color: '#64748b' },
+              { y: 200, label: 'Équipe sécurité', color: '#f97316' },
+              { y: 350, label: 'Auditeur',         color: '#64748b' },
             ] as { y: number; label: string; color: string }[]).map(({ y, label, color }) => (
               <g key={label}>
                 <rect x="10" y={y} width="115" height="40" rx="8" fill={`${color}18`} stroke={color} strokeWidth="1.5"/>
@@ -1052,12 +1052,12 @@ function SchemasSection() {
               </g>
             ))}
 
-            {/* IP Flow Manager box */}
-            <rect x="205" y="20" width="295" height="390" rx="12" fill="rgba(59,130,246,0.06)" stroke="#3b82f6" strokeWidth="2"/>
+            {/* IP Flow Manager box — height 420 to give bottom padding */}
+            <rect x="205" y="20" width="295" height="420" rx="12" fill="rgba(59,130,246,0.06)" stroke="#3b82f6" strokeWidth="2"/>
             <text x="352" y="46" textAnchor="middle" fill="#3b82f6" fontSize="13" fontWeight="700">IP Flow Manager</text>
             <text x="352" y="62" textAnchor="middle" fill="#475569" fontSize="9">Fonctionnalités</text>
 
-            {/* Services list */}
+            {/* Services list — 7 bricks, evenly spaced, last has bottom breathing room */}
             {([
               { y: 72,  label: 'Gestion des flux',      color: '#a855f7', roadmap: false },
               { y: 122, label: 'Topologie réseau',       color: '#3b82f6', roadmap: false },
@@ -1081,31 +1081,34 @@ function SchemasSection() {
               </g>
             ))}
 
-            {/* Systèmes externes (droite) */}
+            {/* Systèmes externes (droite) — boxes widened to 155px, text centered */}
             {([
-              { y: 55,  label: 'Git',              sublabel: 'Config équipements', color: '#f97316', roadmap: true  },
-              { y: 155, label: 'IPAM (Infoblox)',   sublabel: 'Sync réseaux',       color: '#3b82f6', roadmap: true  },
-              { y: 250, label: 'CMDB (ServiceNow)', sublabel: 'Sync équipements',   color: '#64748b', roadmap: true  },
-              { y: 345, label: 'SIEM / Syslog',     sublabel: 'Événements sécurité',color: '#a855f7', roadmap: true  },
-            ] as { y: number; label: string; sublabel: string; color: string; roadmap: boolean }[]).map(({ y, label, sublabel, color, roadmap }) => (
-              <g key={label}>
-                <line x1="500" y1={y + 22} x2="555" y2={y + 22} stroke={color} strokeWidth="1.2" markerEnd="url(#s3-arr)"/>
-                <rect x="555" y={y} width="135" height="48" rx="8" fill={`${color}12`} stroke={color} strokeWidth="1.5"/>
-                <text x="600" y={y + 19} fill={color} fontSize="10" fontWeight="700">{label}</text>
-                <text x="600" y={y + 33} fill="#64748b" fontSize="9">{sublabel}</text>
-                {roadmap && (
-                  <g transform={`translate(666, ${y + 8})`}>
+              { y: 55,  label: 'Git',              sublabel: 'Config équipements', color: '#f97316' },
+              { y: 165, label: 'IPAM (Infoblox)',   sublabel: 'Sync réseaux',       color: '#3b82f6' },
+              { y: 265, label: 'CMDB (ServiceNow)', sublabel: 'Sync équipements',   color: '#64748b' },
+              { y: 365, label: 'SIEM / Syslog',     sublabel: 'Événements sécurité',color: '#a855f7' },
+            ] as { y: number; label: string; sublabel: string; color: string }[]).map(({ y, label, sublabel, color }) => {
+              // box: x=555, w=155 → right edge 710, center 632
+              const BX = 555, BW = 155, BCX = BX + BW / 2
+              return (
+                <g key={label}>
+                  <line x1="500" y1={y + 24} x2={BX - 2} y2={y + 24} stroke={color} strokeWidth="1.2" markerEnd="url(#s3-arr)"/>
+                  <rect x={BX} y={y} width={BW} height="48" rx="8" fill={`${color}12`} stroke={color} strokeWidth="1.5"/>
+                  {/* calendar icon at top-right, clear of text */}
+                  <g transform={`translate(${BX + BW - 19}, ${y + 7})`}>
                     <rect x="0" y="2" width="13" height="10" rx="2" fill="none" stroke={color} strokeWidth="1" opacity="0.7"/>
                     <line x1="3" y1="0" x2="3" y2="4" stroke={color} strokeWidth="1" opacity="0.7"/>
                     <line x1="9" y1="0" x2="9" y2="4" stroke={color} strokeWidth="1" opacity="0.7"/>
                     <line x1="2" y1="7" x2="11" y2="7" stroke={color} strokeWidth="0.75" opacity="0.7"/>
                   </g>
-                )}
-              </g>
-            ))}
+                  <text x={BCX - 8} y={y + 20} textAnchor="middle" fill={color} fontSize="10" fontWeight="700">{label}</text>
+                  <text x={BCX - 8} y={y + 35} textAnchor="middle" fill="#64748b" fontSize="9">{sublabel}</text>
+                </g>
+              )
+            })}
 
             {/* Légende roadmap */}
-            <g transform="translate(205, 418)">
+            <g transform="translate(205, 452)">
               <rect x="0" y="2" width="11" height="9" rx="1.5" fill="none" stroke="#94a3b8" strokeWidth="0.9"/>
               <line x1="3" y1="0" x2="3" y2="4" stroke="#94a3b8" strokeWidth="0.9"/>
               <line x1="8" y1="0" x2="8" y2="4" stroke="#94a3b8" strokeWidth="0.9"/>

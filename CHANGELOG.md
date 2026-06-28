@@ -1,5 +1,16 @@
 # Changelog — IP Flow Manager
 
+## [2.9.9] — 2026-06-28
+
+### Vue Applications — filtre par type/domaine/environnement & corrections HelpModal
+
+- **TopologyPage — filtre apps refactorisé** : le filtre liste désormais les **Types**, **Domaines** et **Environnements** (3 sections avec checkboxes) au lieu des apps par nom ; état 3 dimensions (`filterTypes`, `filterDomains`, `filterEnvs`) avec `null` = tout sélectionné
+- **TopologyPage — "Tout décocher" corrigé** : cliquer "Tout décocher" déselectionne effectivement tout (toutes dimensions → `Set()` vide) ; "Tout cocher" restaure `null` sur les 3 dimensions ; le label bascule correctement
+- **Backend — champ `domain`** : ajout du champ `domain` dans la réponse `/topology/app-graph` pour alimenter le filtre Domaines côté frontend
+- **HelpModal — SVG Vue Fonctionnalités** : viewBox étendu à `760×470`, espace sous "Hypervision services" corrigé (box conteneur hauteur 420), textes des boîtes externes (Git, IPAM, CMDB, SIEM) centrés via `textAnchor="middle"` dans des boîtes élargies à 155px, icône calendrier déplacée hors du texte
+
+---
+
 ## [2.9.8] — 2026-06-28
 
 ### Icône thème + motif de refus flux

@@ -158,8 +158,10 @@ export default function TopologyPage({ highlightedPath = [] }: Props) {
   const [appContext,       setAppContext]       = useState<any>(null)
   const [loadingAppGraph,  setLoadingAppGraph]  = useState(false)
   const [loadingAppContext, setLoadingAppContext] = useState(false)
-  // App view filter (v2.9.6)
-  const [appViewFilter,    setAppViewFilter]    = useState<Set<number>>(new Set())
+  // App view filters by dimension (null = all selected)
+  const [filterTypes,   setFilterTypes]   = useState<Set<string> | null>(null)
+  const [filterDomains, setFilterDomains] = useState<Set<string> | null>(null)
+  const [filterEnvs,    setFilterEnvs]    = useState<Set<string> | null>(null)
   const [appStackedMode,   setAppStackedMode]   = useState(false)
 
   // Environments (for dynamic badge colors)
@@ -236,7 +238,34 @@ export default function TopologyPage({ highlightedPath = [] }: Props) {
       setLoadingAppGraph(true)
       api.getAppGraph().then((d: any) => setAppGraphData(d)).catch(() => {}).finally(() => setLoadingAppGraph(false))
     }
+    if (!appViewMode) { setFilterTypes(null); setFilterDomains(null); setFilterEnvs(null) }
   }, [appViewMode])
+
+  // Computed filteredAppIds from dimension filters
+  const filteredAppIds = useMemo<Set<number> | undefined>(() => {
+    const apps = appGraphData?.applications
+    if (!apps || (filterTypes === null && filterDomains === null && filterEnvs === null)) return undefined
+    const ids = new Set<number>()
+    for (const app of apps) {
+      const ok = (filterTypes === null || filterTypes.has(app.app_type || ''))
+               && (filterDomains === null || filterDomains.has(app.domain || ''))
+               && (filterEnvs === null || filterEnvs.has(app.environment || ''))
+      if (ok) ids.add(app.id)
+    }
+    return ids
+  }, [appGraphData, filterTypes, filterDomains, filterEnvs])
+
+  // Toggle helpers for dimension filters
+  const makeToggle = (
+    setter: React.Dispatch<React.SetStateAction<Set<string> | null>>,
+    allValues: string[]
+  ) => (value: string) => {
+    setter(prev => {
+      const current = prev === null ? new Set(allValues) : new Set(prev)
+      if (current.has(value)) current.delete(value); else current.add(value)
+      return current.size === allValues.length ? null : current
+    })
+  }
 
   useEffect(() => {
     if (selectedAppId) {
@@ -570,39 +599,57 @@ export default function TopologyPage({ highlightedPath = [] }: Props) {
                     </div>
                   )}
 
-                  {/* App view filter (visible when appViewMode is on) */}
-                  {appViewMode && appGraphData && appGraphData.applications && appGraphData.applications.length > 0 && (
-                    <div className="card" style={{ padding: '10px 12px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                        <div style={{ fontSize: 10, fontWeight: 700, color: '#22c55e', letterSpacing: '0.8px', textTransform: 'uppercase' }}>Filtrer les apps</div>
-                        <button
-                          style={{ fontSize: 9, padding: '1px 5px', borderRadius: 4, border: '1px solid var(--border)', background: 'var(--bg-input)', color: 'var(--text-3)', cursor: 'pointer', fontFamily: 'inherit' }}
-                          onClick={() => setAppViewFilter(appViewFilter.size === 0 ? new Set() : new Set())}
-                        >
-                          {appViewFilter.size === 0 ? 'Tout décocher' : 'Tout cocher'}
-                        </button>
+                  {/* App view filter — by type / domain / environment */}
+                  {appViewMode && appGraphData?.applications?.length > 0 && (() => {
+                    const apps: any[] = appGraphData.applications
+                    const allTypes   = [...new Set<string>(apps.map((a: any) => a.app_type   || ''))].filter(Boolean).sort()
+                    const allDomains = [...new Set<string>(apps.map((a: any) => a.domain      || ''))].filter(Boolean).sort()
+                    const allEnvs    = [...new Set<string>(apps.map((a: any) => a.environment || ''))].filter(Boolean).sort()
+                    const allNull = filterTypes === null && filterDomains === null && filterEnvs === null
+                    const toggleType   = makeToggle(setFilterTypes,   allTypes)
+                    const toggleDomain = makeToggle(setFilterDomains,  allDomains)
+                    const toggleEnv    = makeToggle(setFilterEnvs,     allEnvs)
+                    const CHIP_COLOR = '#22c55e'
+
+                    const DimSection = ({ label, values, filter, toggle }: {
+                      label: string; values: string[];
+                      filter: Set<string> | null; toggle: (v: string) => void
+                    }) => values.length === 0 ? null : (
+                      <div style={{ marginBottom: 6 }}>
+                        <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 4 }}>{label}</div>
+                        {values.map(v => {
+                          const checked = filter === null || filter.has(v)
+                          return (
+                            <div key={v} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '3px 0', cursor: 'pointer' }} onClick={() => toggle(v)}>
+                              <div style={{ width: 11, height: 11, borderRadius: 2, border: `1.5px solid ${CHIP_COLOR}`, background: checked ? CHIP_COLOR : 'transparent', flexShrink: 0, transition: 'background 0.12s' }} />
+                              <span style={{ fontSize: 10, color: checked ? 'var(--text-1)' : 'var(--text-3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v}</span>
+                            </div>
+                          )
+                        })}
                       </div>
-                      {appGraphData.applications.map((app: any, idx: number) => {
-                        const checked = appViewFilter.size === 0 || appViewFilter.has(app.id)
-                        return (
-                          <div key={app.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', borderBottom: idx < appGraphData.applications.length - 1 ? '1px solid var(--border)' : 'none', cursor: 'pointer' }}
+                    )
+
+                    return (
+                      <div className="card" style={{ padding: '10px 12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                          <div style={{ fontSize: 10, fontWeight: 700, color: CHIP_COLOR, letterSpacing: '0.8px', textTransform: 'uppercase' }}>Filtrer les apps</div>
+                          <button
+                            style={{ fontSize: 9, padding: '1px 5px', borderRadius: 4, border: '1px solid var(--border)', background: 'var(--bg-input)', color: 'var(--text-3)', cursor: 'pointer', fontFamily: 'inherit' }}
                             onClick={() => {
-                              const next: Set<number> = new Set(appViewFilter.size === 0
-                                ? (appGraphData.applications.map((a: any) => a.id as number) as number[])
-                                : appViewFilter)
-                              if (checked) next.delete(app.id); else next.add(app.id)
-                              const allIds = new Set<number>(appGraphData.applications.map((a: any) => a.id as number))
-                              if (next.size === allIds.size) setAppViewFilter(new Set<number>())
-                              else setAppViewFilter(next)
+                              if (allNull) {
+                                setFilterTypes(new Set()); setFilterDomains(new Set()); setFilterEnvs(new Set())
+                              } else {
+                                setFilterTypes(null); setFilterDomains(null); setFilterEnvs(null)
+                              }
                             }}
-                          >
-                            <div style={{ width: 12, height: 12, borderRadius: 3, border: '1.5px solid #22c55e', background: checked ? '#22c55e' : 'transparent', flexShrink: 0, transition: 'background 0.15s' }} />
-                            <span style={{ fontSize: 10, color: checked ? 'var(--text-1)' : 'var(--text-3)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{app.name}</span>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )}
+                          >{allNull ? 'Tout décocher' : 'Tout cocher'}</button>
+                        </div>
+                        <DimSection label="Types"        values={allTypes}   filter={filterTypes}   toggle={toggleType} />
+                        <DimSection label="Domaines"     values={allDomains} filter={filterDomains} toggle={toggleDomain} />
+                        <DimSection label="Environnements" values={allEnvs}  filter={filterEnvs}   toggle={toggleEnv} />
+                      </div>
+                    )
+                  })()}
 
                   {/* App stacked mode button */}
                   {appViewMode && (
@@ -672,7 +719,7 @@ export default function TopologyPage({ highlightedPath = [] }: Props) {
                         selectedAppId={selectedAppId}
                         onSelectApp={setSelectedAppId}
                         loading={loadingAppGraph}
-                        filteredAppIds={appViewFilter.size > 0 ? appViewFilter : undefined}
+                        filteredAppIds={filteredAppIds}
                         stackedMode={appStackedMode}
                         onToggleStack={() => setAppStackedMode(v => !v)}
                       />
