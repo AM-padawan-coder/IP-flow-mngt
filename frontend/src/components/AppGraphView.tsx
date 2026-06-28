@@ -56,7 +56,7 @@ const AppGraphView = forwardRef<AppGraphViewHandle, AppGraphViewProps>(function 
       if (!data || !containerRef.current) return null
       const containerW = containerRef.current.offsetWidth || width
       const { applications: allApps, networks, equipment } = data
-      const applications = filteredAppIds && filteredAppIds.size > 0
+      const applications = filteredAppIds !== undefined
         ? allApps.filter((a: any) => filteredAppIds.has(a.id))
         : allApps
       const appXs = distribute(applications.length, containerW, APP_W)
@@ -210,7 +210,7 @@ const AppGraphView = forwardRef<AppGraphViewHandle, AppGraphViewProps>(function 
 
   const { applications: allApplications, networks, equipment } = data
 
-  const applications = filteredAppIds && filteredAppIds.size > 0
+  const applications = filteredAppIds !== undefined
     ? allApplications.filter((a: any) => filteredAppIds.has(a.id))
     : allApplications
 
