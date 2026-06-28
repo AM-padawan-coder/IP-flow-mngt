@@ -185,7 +185,7 @@ const PHASES: Phase[] = [
       '4 environnements de référence par défaut : INT, PPROD1, PPROD2, PROD',
       'Format CHANGELOG normalisé [x.y.z] — YYYY-MM-DD',
     ] },
-  { v: 'v2.10', title: 'Logs & Traçabilité', status: 'planned', label: '🗓 Planifié', eta: '',
+  { v: 'v2.10', title: 'Logs & Traçabilité', status: 'soon', label: '🔜 Prochain', eta: '',
     items: ['Journal d\'actions utilisateurs : création, validation, suppression, import/export', 'Export des logs en CSV / JSON horodaté'] },
   { v: 'v2.11', title: 'Tests de non régression', status: 'planned', label: '🗓 Planifié', eta: '',
     items: ['Suite pytest (backend) : endpoints API, validation flux, calcul de chemin, règles ACL', 'Suite Playwright (frontend) : parcours utilisateur clés', 'Rapport de couverture avant/après chaque release', 'CI/CD : GitHub Actions sur chaque push', 'Données de test dédiées : fixtures isolées sans impact sur la base de démo'] },
@@ -209,7 +209,7 @@ const PHASES: Phase[] = [
       'Amélioration des messages de violation : contexte réseau et recommandation de remédiation inclus',
     ] },
 
-  { v: 'v4.0', title: 'Connecteur IPAM Infoblox', status: 'soon', label: '🔜 Prochain', eta: '',
+  { v: 'v4.0', title: 'Connecteur IPAM Infoblox', status: 'planned', label: '🗓 Planifié', eta: '',
     items: ['Pull CIDR / allocation IPs via REST Infoblox', 'Mock IPAM service Render (démo sans licence)', 'Sync bidirectionnelle réseaux validés → IPAM'] },
   { v: 'v4.1', title: 'VRF · ACL · Services + Snapshots', status: 'planned', label: '🗓 Planifié', eta: '',
     items: ['Gestion avancée des VRF (routage multi-instances, détection fuites)', 'Visualisation ACL par interface + détection shadowing', 'Objets de service réutilisables (groupes ports/protos)', 'Snapshots topologie + comparaison entre états', 'Simulation NAT dans le calcul de chemin'] },

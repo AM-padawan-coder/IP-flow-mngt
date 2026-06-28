@@ -1,5 +1,15 @@
 # Changelog — IP Flow Manager
 
+## [2.9.10] — 2026-06-28
+
+### Schéma Modèle de données & Roadmap
+
+- **HelpModal — Schema 1 — ACL** : boîte ACL déplacée sous Interface (x=165, y=445) ; la flèche "appliquée sur" est désormais quasi-verticale depuis Interface, éliminant la diagonale croisée
+- **HelpModal — Schema 1 — Politique réseau** : connexion depuis Zone logique rendue visible (chemin via bord gauche, trait 1.5px, labels "réf. zones" lisibles) ; source de la flèche clairement identifiable
+- **HelpModal — Schema 1 — RÈGLES & ROUTAGE** : libellé déplacé à gauche (x=15, textAnchor=start) pour ne plus empiéter sur les flèches
+- **HelpModal — Schema 1 — Table de routage** : déplacée à droite (x=378) ; flèche VRF → Table de routage via coude propre ; "owns" traduit en "possède"
+- **RoadmapModal** : v2.10 "Logs & Traçabilité" passe en `🔜 Prochain` ; v4.0 "Connecteur IPAM Infoblox" repasse en `🗓 Planifié`
+
 ## [2.9.9] — 2026-06-28
 
 ### Vue Applications — filtre par type/domaine/environnement & corrections HelpModal

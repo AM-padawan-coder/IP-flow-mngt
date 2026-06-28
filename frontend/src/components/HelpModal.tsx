@@ -917,37 +917,37 @@ function SchemasSection() {
 
             {/* ── Séparateur section règles ── */}
             <line x1="10" y1="420" x2="690" y2="420" stroke="#334155" strokeWidth="1" strokeDasharray="3,6"/>
-            <text x="350" y="436" textAnchor="middle" fill="#475569" fontSize="9" fontWeight="600">RÈGLES &amp; ROUTAGE</text>
+            <text x="15" y="436" textAnchor="start" fill="#475569" fontSize="9" fontWeight="600">RÈGLES &amp; ROUTAGE</text>
 
             {/* ── Politique réseau ── */}
             <rect x="10" y="445" width="145" height="50" rx="8" fill="rgba(239,68,68,0.10)" stroke="#ef4444" strokeWidth="1.5"/>
             <text x="82" y="467" textAnchor="middle" fill="#ef4444" fontSize="11" fontWeight="700">Politique réseau</text>
             <text x="82" y="484" textAnchor="middle" fill="#64748b" fontSize="9">src_zone → dst_zone · ALLOW/DENY</text>
-            {/* Connection from Zone logique via left edge */}
-            <line x1="5" y1="150" x2="5" y2="462" stroke="#ef4444" strokeWidth="1" strokeDasharray="4,3"/>
-            <line x1="5" y1="462" x2="10" y2="462" stroke="#ef4444" strokeWidth="1" markerEnd="url(#s1-arr-r)"/>
-            <text x="8" y="147" fill="#ef4444" fontSize="8" transform="rotate(-90,8,300)" textAnchor="middle">ref zones</text>
+            {/* Connection from Zone logique left edge → down left margin → into Politique réseau */}
+            <polyline points="10,125 2,125 2,462 10,462" fill="none" stroke="#ef4444" strokeWidth="1.5" strokeDasharray="4,3" markerEnd="url(#s1-arr-r)"/>
+            <text x="13" y="296" fill="#ef4444" fontSize="8">réf.</text>
+            <text x="13" y="307" fill="#ef4444" fontSize="8">zones</text>
+
+            {/* ── ACL — repositionné sous Interface ── */}
+            <rect x="165" y="445" width="130" height="50" rx="8" fill="rgba(239,68,68,0.08)" stroke="#f87171" strokeWidth="1.5"/>
+            <text x="230" y="467" textAnchor="middle" fill="#f87171" fontSize="11" fontWeight="700">ACL</text>
+            <text x="230" y="484" textAnchor="middle" fill="#64748b" fontSize="9">Interface · sens (in/out) · règle</text>
+            {/* From Interface bottom → ACL top (court, quasi-vertical) */}
+            <line x1="200" y1="305" x2="230" y2="445" stroke="#f87171" strokeWidth="1.2" strokeDasharray="4,3" markerEnd="url(#s1-arr-r)"/>
+            <text x="174" y="378" fill="#f87171" fontSize="8">appliquée sur</text>
 
             {/* ── Table de routage ── */}
-            <rect x="255" y="445" width="155" height="50" rx="8" fill="rgba(192,132,252,0.10)" stroke="#c084fc" strokeWidth="1.5"/>
-            <text x="332" y="467" textAnchor="middle" fill="#c084fc" fontSize="11" fontWeight="700">Table de routage</text>
-            <text x="332" y="484" textAnchor="middle" fill="#64748b" fontSize="9">dst / gateway / VRF / protocole</text>
-            {/* From VRF bottom */}
-            <line x1="335" y1="380" x2="335" y2="445" stroke="#c084fc" strokeWidth="1.5" markerEnd="url(#s1-arr-p)"/>
-            <text x="340" y="416" fill="#64748b" fontSize="9">associée</text>
-            {/* From Équipement right side, routing around VRF */}
-            <line x1="400" y1="210" x2="425" y2="210" stroke="#c084fc" strokeWidth="1" strokeDasharray="4,3"/>
-            <line x1="425" y1="210" x2="425" y2="462" stroke="#c084fc" strokeWidth="1" strokeDasharray="4,3"/>
-            <line x1="425" y1="462" x2="410" y2="462" stroke="#c084fc" strokeWidth="1" strokeDasharray="4,3" markerEnd="url(#s1-arr-p)"/>
-            <text x="430" y="340" fill="#64748b" fontSize="8">owns</text>
-
-            {/* ── ACL ── */}
-            <rect x="490" y="445" width="130" height="50" rx="8" fill="rgba(239,68,68,0.08)" stroke="#f87171" strokeWidth="1.5"/>
-            <text x="555" y="467" textAnchor="middle" fill="#f87171" fontSize="11" fontWeight="700">ACL</text>
-            <text x="555" y="484" textAnchor="middle" fill="#64748b" fontSize="9">Interface · sens (in/out) · règle</text>
-            {/* From Interface diagonal */}
-            <line x1="255" y1="290" x2="490" y2="462" stroke="#f87171" strokeWidth="1" strokeDasharray="4,3" markerEnd="url(#s1-arr-r)"/>
-            <text x="380" y="355" fill="#f87171" fontSize="8" transform="rotate(-22,380,355)">appliquée sur</text>
+            <rect x="378" y="445" width="155" height="50" rx="8" fill="rgba(192,132,252,0.10)" stroke="#c084fc" strokeWidth="1.5"/>
+            <text x="455" y="467" textAnchor="middle" fill="#c084fc" fontSize="11" fontWeight="700">Table de routage</text>
+            <text x="455" y="484" textAnchor="middle" fill="#64748b" fontSize="9">dst / gateway / VRF / protocole</text>
+            {/* From VRF bottom → elbow → Table de routage top */}
+            <polyline points="335,380 335,430 455,430 455,445" fill="none" stroke="#c084fc" strokeWidth="1.5" markerEnd="url(#s1-arr-p)"/>
+            <text x="360" y="425" fill="#64748b" fontSize="9">associée</text>
+            {/* From Équipement right side → possède → Table de routage right */}
+            <line x1="400" y1="210" x2="548" y2="210" stroke="#c084fc" strokeWidth="1" strokeDasharray="4,3"/>
+            <line x1="548" y1="210" x2="548" y2="462" stroke="#c084fc" strokeWidth="1" strokeDasharray="4,3"/>
+            <line x1="548" y1="462" x2="533" y2="462" stroke="#c084fc" strokeWidth="1" strokeDasharray="4,3" markerEnd="url(#s1-arr-p)"/>
+            <text x="552" y="340" fill="#64748b" fontSize="8">possède</text>
           </svg>
           <p style={{ ...P, marginTop: 12, fontSize: 11 }}>
             <strong style={{ color: 'var(--text-1)' }}>Modèle complet :</strong> Zone physique → Zone logique → Réseau ← Interface → Équipement ↔ VRF · Table de routage (destination/gateway/VRF/protocole) · Politique réseau (src_zone/dst_zone/action) · ACL (Interface/sens/règle) · Application → IPs (CIDR) → Réseau · Flux IP (src/dst/proto/port/chemin).
