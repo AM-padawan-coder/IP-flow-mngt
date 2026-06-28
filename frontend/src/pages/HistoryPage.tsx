@@ -134,12 +134,12 @@ export default function HistoryPage({ onSelect }: { onSelect: (id: number) => vo
             <div style={{ flex: 1 }} />
             <input
               className="form-input"
-              style={{ width: 220 }}
+              style={{ width: 280 }}
               placeholder="Rechercher IP, appli, analyste…"
               value={search}
               onChange={e => setSearch(e.target.value)}
             />
-            <span style={{ fontSize: 12, color: 'var(--text-3)', whiteSpace: 'nowrap' }}>{filtered.length} résultat{filtered.length !== 1 ? 's' : ''}</span>
+            <span style={{ fontSize: 12, color: 'var(--text-3)', whiteSpace: 'nowrap' }}>{filtered.length} résultat{filtered.length > 1 ? 's' : ''}</span>
           </div>
 
           {loading ? (
