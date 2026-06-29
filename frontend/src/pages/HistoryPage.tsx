@@ -146,7 +146,7 @@ export default function HistoryPage({ onSelect }: { onSelect: (id: number) => vo
             <div className="empty-state"><div className="spinner" /></div>
           ) : filtered.length === 0 ? (
             <div className="empty-state">
-              <div className="empty-state-icon">📭</div>
+              <div className="empty-state-icon"><i className="ti ti-file-search" style={{ fontSize: 28 }} aria-hidden="true" /></div>
               <div>Aucun flux trouvé</div>
             </div>
           ) : (
