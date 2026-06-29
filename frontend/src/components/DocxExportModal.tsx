@@ -1,38 +1,63 @@
 import { useState } from 'react'
 import { api } from '../api/client'
 
+type ExportFormat = 'csv' | 'docx'
+
 interface Props {
   onClose: () => void
-  search: string
-  statusFilters: string[]
+  format: ExportFormat
+  // CSV: use pre-filtered flows already in memory
+  flows?: any[]
+  // DOCX: delegate filtering to the backend
+  search?: string
+  statusFilters?: string[]
 }
-
-const ALL_COLUMNS = [
-  { key: 'id',            label: 'ID' },
-  { key: 'date',          label: 'Date' },
-  { key: 'src_ip',        label: 'IP Source' },
-  { key: 'dst_ip',        label: 'IP Destination' },
-  { key: 'port',          label: 'Port' },
-  { key: 'protocol',      label: 'Protocole' },
-  { key: 'application',   label: 'Application' },
-  { key: 'analyst',       label: 'Analyste' },
-  { key: 'status',        label: 'Statut' },
-  { key: 'justification', label: 'Justification' },
-]
-
-const DEFAULT_ENABLED = new Set([
-  'id','date','src_ip','dst_ip','port','protocol','application','analyst','status',
-])
 
 const STATUS_LABELS: Record<string, string> = {
   validated: 'Validé', deployed: 'Déployé', rejected: 'Refusé', pending: 'En attente',
 }
 
-export default function DocxExportModal({ onClose, search, statusFilters }: Props) {
+const ALL_COLUMNS = [
+  { key: 'id',            label: 'ID',             get: (f: any) => String(f.id) },
+  { key: 'date',          label: 'Date',            get: (f: any) => new Date(f.created_at).toLocaleDateString('fr-FR') },
+  { key: 'src_ip',        label: 'IP Source',       get: (f: any) => f.src_ip || '' },
+  { key: 'dst_ip',        label: 'IP Destination',  get: (f: any) => f.dst_ip || '' },
+  { key: 'port',          label: 'Port',            get: (f: any) => String(f.port || '') },
+  { key: 'protocol',      label: 'Protocole',       get: (f: any) => (f.protocol || '').toUpperCase() },
+  { key: 'application',   label: 'Application',     get: (f: any) => f.application || '' },
+  { key: 'analyst',       label: 'Analyste',        get: (f: any) => f.analyst || '' },
+  { key: 'status',        label: 'Statut',          get: (f: any) => STATUS_LABELS[f.status] ?? f.status },
+  { key: 'justification', label: 'Justification',   get: (f: any) => f.justification || '' },
+]
+
+const DEFAULT_ENABLED = new Set([
+  'id', 'date', 'src_ip', 'dst_ip', 'port', 'protocol', 'application', 'analyst', 'status',
+])
+
+function downloadCsv(flows: any[], orderedCols: string[]) {
+  const cols = orderedCols.map(k => ALL_COLUMNS.find(c => c.key === k)!)
+  const BOM = '﻿'
+  const headers = cols.map(c => c.label)
+  const rows = flows.map(f => cols.map(c => c.get(f)))
+  const csv = BOM + [headers, ...rows]
+    .map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(';'))
+    .join('\n')
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `flux_${new Date().toISOString().slice(0, 19).replace('T', '_').replace(/:/g, '')}.csv`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+export default function DocxExportModal({
+  onClose, format, flows = [], search = '', statusFilters = [],
+}: Props) {
   const [enabled, setEnabled] = useState<Set<string>>(new Set(DEFAULT_ENABLED))
-  const [order, setOrder]   = useState<string[]>(ALL_COLUMNS.map(c => c.key))
+  const [order, setOrder]     = useState<string[]>(ALL_COLUMNS.map(c => c.key))
   const [loading, setLoading] = useState(false)
-  const [error, setError]   = useState('')
+  const [error, setError]     = useState('')
 
   const toggle = (key: string) =>
     setEnabled(prev => {
@@ -54,8 +79,15 @@ export default function DocxExportModal({ onClose, search, statusFilters }: Prop
   const download = async () => {
     const orderedCols = order.filter(k => enabled.has(k))
     if (orderedCols.length === 0) { setError('Sélectionnez au moins une colonne.'); return }
-    setLoading(true)
     setError('')
+
+    if (format === 'csv') {
+      downloadCsv(flows, orderedCols)
+      onClose()
+      return
+    }
+
+    setLoading(true)
     try {
       const blob = await api.exportFlowsDocx({
         columns:  orderedCols.join(','),
@@ -76,6 +108,12 @@ export default function DocxExportModal({ onClose, search, statusFilters }: Prop
     setLoading(false)
   }
 
+  const isCsv   = format === 'csv'
+  const icon    = isCsv ? 'ti-file-spreadsheet' : 'ti-file-word'
+  const color   = isCsv ? '#16a34a' : '#2563eb'
+  const title   = isCsv ? 'Export Excel (.csv)' : 'Export Word (.docx)'
+  const btnLabel = isCsv ? 'Télécharger .csv' : (loading ? 'Génération…' : 'Télécharger .docx')
+
   const filterSummary = [
     statusFilters.length > 0 && `Statut : ${statusFilters.map(s => STATUS_LABELS[s] ?? s).join(', ')}`,
     search && `Recherche : "${search}"`,
@@ -90,8 +128,8 @@ export default function DocxExportModal({ onClose, search, statusFilters }: Prop
 
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 20px', borderBottom: '1px solid var(--border)', background: 'var(--bg-card)', flexShrink: 0 }}>
-          <i className="ti ti-file-word" style={{ fontSize: 20, color: '#2563eb' }} />
-          <span style={{ fontWeight: 700, fontSize: 15, flex: 1 }}>Export Word (.docx)</span>
+          <i className={`ti ${icon}`} style={{ fontSize: 20, color }} />
+          <span style={{ fontWeight: 700, fontSize: 15, flex: 1 }}>{title}</span>
           <button
             onClick={onClose}
             style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', fontSize: 18, padding: '0 4px', lineHeight: 1, fontFamily: 'inherit' }}
@@ -101,7 +139,7 @@ export default function DocxExportModal({ onClose, search, statusFilters }: Prop
         {/* Body */}
         <div style={{ padding: '16px 20px', overflowY: 'auto' }}>
           <div style={{ fontSize: 12, color: 'var(--text-3)', marginBottom: 14 }}>
-            Sélectionnez et ordonnez les colonnes à inclure dans le document.
+            Sélectionnez et ordonnez les colonnes à inclure dans le fichier.
             {filterSummary && (
               <div style={{ marginTop: 4, color: 'var(--text-2)' }}>
                 <i className="ti ti-filter" style={{ marginRight: 4, fontSize: 11 }} />{filterSummary}
@@ -121,8 +159,8 @@ export default function DocxExportModal({ onClose, search, statusFilters }: Prop
                   style={{
                     display: 'flex', alignItems: 'center', gap: 10,
                     padding: '8px 12px', borderRadius: 6, cursor: 'pointer',
-                    background: checked ? 'rgba(37,99,235,0.07)' : 'var(--bg-input)',
-                    border: `1px solid ${checked ? 'rgba(37,99,235,0.3)' : 'var(--border)'}`,
+                    background: checked ? `${color}12` : 'var(--bg-input)',
+                    border: `1px solid ${checked ? `${color}44` : 'var(--border)'}`,
                     transition: 'background 0.12s, border-color 0.12s',
                   }}
                 >
@@ -131,12 +169,11 @@ export default function DocxExportModal({ onClose, search, statusFilters }: Prop
                     checked={checked}
                     onChange={() => toggle(key)}
                     onClick={e => e.stopPropagation()}
-                    style={{ accentColor: '#2563eb', cursor: 'pointer' }}
+                    style={{ accentColor: color, cursor: 'pointer' }}
                   />
                   <span style={{ flex: 1, fontSize: 13, color: checked ? 'var(--text-1)' : 'var(--text-3)' }}>
                     {col.label}
                   </span>
-                  {/* Reorder arrows */}
                   <div style={{ display: 'flex', gap: 3, flexShrink: 0 }}>
                     {(['up', 'down'] as const).map(d => {
                       const disabled = d === 'up' ? idx === 0 : idx === order.length - 1
@@ -151,7 +188,7 @@ export default function DocxExportModal({ onClose, search, statusFilters }: Prop
                             background: disabled ? 'transparent' : 'var(--bg-card)',
                             color: disabled ? 'var(--border)' : 'var(--text-2)',
                             cursor: disabled ? 'default' : 'pointer',
-                            fontFamily: 'inherit', fontSize: 12,
+                            fontFamily: 'inherit',
                           }}
                         >
                           <i className={`ti ti-chevron-${d}`} style={{ fontSize: 12 }} />
@@ -164,9 +201,7 @@ export default function DocxExportModal({ onClose, search, statusFilters }: Prop
             })}
           </div>
 
-          {error && (
-            <div style={{ marginTop: 10, color: '#ef4444', fontSize: 12 }}>{error}</div>
-          )}
+          {error && <div style={{ marginTop: 10, color: '#ef4444', fontSize: 12 }}>{error}</div>}
 
           {/* Actions */}
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 18 }}>
@@ -179,10 +214,10 @@ export default function DocxExportModal({ onClose, search, statusFilters }: Prop
             <button
               onClick={download}
               disabled={loading}
-              style={{ padding: '7px 18px', borderRadius: 6, border: 'none', background: loading ? '#1d4ed8' : '#2563eb', color: '#fff', cursor: loading ? 'wait' : 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}
+              style={{ padding: '7px 18px', borderRadius: 6, border: 'none', background: loading ? '#1d4ed8' : color, color: '#fff', cursor: loading ? 'wait' : 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}
             >
               <i className="ti ti-download" />
-              {loading ? 'Génération…' : 'Télécharger .docx'}
+              {btnLabel}
             </button>
           </div>
         </div>

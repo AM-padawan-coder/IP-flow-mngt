@@ -6,27 +6,6 @@ import DocxExportModal from '../components/DocxExportModal'
 const STATUS_LABEL: Record<string, string> = { validated: 'Validé', deployed: 'Déployé', rejected: 'Refusé', pending: 'En attente' }
 const STATUS_COLOR: Record<string, string> = { validated: '#22c55e', deployed: '#3b82f6', rejected: '#ef4444', pending: '#eab308' }
 
-function exportToCsv(flows: any[]) {
-  const BOM = '﻿'
-  const headers = ['ID', 'Date', 'IP Source', 'IP Destination', 'Port', 'Protocole', 'Application', 'Analyste', 'Statut', 'Justification']
-  const rows = flows.map(f => [
-    f.id,
-    new Date(f.created_at).toLocaleDateString('fr-FR'),
-    f.src_ip,
-    f.dst_ip,
-    f.port,
-    f.protocol?.toUpperCase(),
-    f.application || '',
-    f.analyst,
-    STATUS_LABEL[f.status] || f.status,
-    '', // justification not in summary — would need full flow fetch
-  ])
-  const csv = BOM + [headers, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(';')).join('\n')
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a'); a.href = url; a.download = 'matrice-flux.csv'; a.click()
-  URL.revokeObjectURL(url)
-}
 
 const STATUS_FILTERS = [
   { key: 'validated', label: 'Validé' },
@@ -41,7 +20,7 @@ export default function FlowsTopologyPage() {
   const [search, setSearch] = useState('')
   const [statusFilters, setStatusFilters] = useState<string[]>([])
   const [selectedId, setSelectedId] = useState<number | null>(null)
-  const [showDocx, setShowDocx] = useState(false)
+  const [exportFormat, setExportFormat] = useState<'csv' | 'docx' | null>(null)
 
   const load = () => {
     setLoading(true)
@@ -113,13 +92,13 @@ export default function FlowsTopologyPage() {
           <div style={{ flex: 1 }} />
           <span style={{ fontSize: 12, color: 'var(--text-3)' }}>{filtered.length} flux</span>
           <button
-            onClick={() => exportToCsv(filtered)}
-            style={{ padding: '6px 14px', background: '#22c55e', border: 'none', borderRadius: 6, color: '#fff', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit', fontWeight: 600 }}
+            onClick={() => setExportFormat('csv')}
+            style={{ padding: '6px 14px', background: '#16a34a', border: 'none', borderRadius: 6, color: '#fff', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5 }}
           >
-            ⬇ Exporter Excel (CSV)
+            <i className="ti ti-file-spreadsheet" /> Export Excel (CSV)
           </button>
           <button
-            onClick={() => setShowDocx(true)}
+            onClick={() => setExportFormat('docx')}
             style={{ padding: '6px 14px', background: '#2563eb', border: 'none', borderRadius: 6, color: '#fff', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5 }}
           >
             <i className="ti ti-file-word" /> Export Word
@@ -176,9 +155,11 @@ export default function FlowsTopologyPage() {
         />
       )}
 
-      {showDocx && (
+      {exportFormat !== null && (
         <DocxExportModal
-          onClose={() => setShowDocx(false)}
+          format={exportFormat}
+          onClose={() => setExportFormat(null)}
+          flows={filtered}
           search={search}
           statusFilters={statusFilters}
         />
