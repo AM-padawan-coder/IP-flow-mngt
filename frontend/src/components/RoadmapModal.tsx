@@ -259,6 +259,14 @@ const PHASES: Phase[] = [
       'Intégration Elastic (indexation des événements de traçabilité)',
       'Signature cryptographique des journaux (scellement de l\'empreinte d\'intégrité chaînée)',
     ] },
+  { v: 'v3.7', title: 'Versioning', status: 'planned', label: '🗓 Planifié', eta: '',
+    items: [
+      'Snapshots : capture horodatée de l\'état complet de la topologie (zones, équipements, flux, politiques)',
+      'Diff de versions : comparaison visuelle entre deux snapshots (ajouts / modifications / suppressions colorés)',
+      'Timeline : vue chronologique des snapshots avec navigation point-à-point',
+      'Historique : journal des modifications par objet avec auteur, date et delta',
+      'Branches de simulation : fork d\'un snapshot pour tester des changements sans impacter la production',
+    ] },
 
   { v: 'v4.0', title: 'Connecteur IPAM Infoblox', status: 'planned', label: '🗓 Planifié', eta: '',
     items: ['Pull CIDR / allocation IPs via REST Infoblox', 'Mock IPAM service Render (démo sans licence)', 'Sync bidirectionnelle réseaux validés → IPAM'] },
@@ -289,6 +297,12 @@ const PHASES: Phase[] = [
       'Détection de vulnérabilités et anti-patterns dans les routers FastAPI exposés',
       'Rapport structuré : findings par sévérité, suggestions de refactoring, risques identifiés',
       'Intégration CI : exécution à chaque merge sur main pour les fichiers critiques',
+    ] },
+  { v: 'v4.9', title: 'Audit', status: 'planned', label: '🗓 Planifié', eta: '',
+    items: [
+      'Validation après changement : vérification automatique de la conformité de la topologie après chaque modification (flux, politiques, équipements)',
+      'Détection de dérive : comparaison de l\'état courant avec l\'état de référence pour identifier les écarts non planifiés',
+      'Réconciliation IPAM : rapprochement entre les allocations IP enregistrées dans l\'outil et celles déclarées dans l\'IPAM externe (Infoblox)',
     ] },
 
   { v: 'v5.0', title: 'Services & Dépendances', status: 'planned', label: '🗓 Planifié', eta: '',
