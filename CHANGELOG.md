@@ -1,5 +1,15 @@
 # Changelog — IP Flow Manager
 
+## [2.11.0] — 2026-06-29
+
+### Export DOCX des flux
+
+- **Backend — endpoint `GET /flows/export/docx`** : génère un fichier Word (.docx) via `python-docx` ; colonnes sélectionnables (ID, Date, IP Source, IP Destination, Port, Protocole, Application, Analyste, Statut, Justification), ordonnables ; filtres actifs transmis (statuts CSV + recherche texte) ; page de garde horodatée (titre, date de génération, nombre de flux, filtres appliqués) ; tableau A4 paysage avec en-têtes fond bleu foncé / texte blanc et lignes alternées (blanc / bleu très clair)
+- **Backend — `requirements.txt`** : ajout de `python-docx>=1.1.2`
+- **Frontend — `DocxExportModal`** : modal de sélection et réordonnancement des colonnes (10 colonnes, cases à cocher, flèches ↑/↓) ; résumé des filtres actifs affiché ; bouton « Télécharger .docx » avec indicateur de chargement
+- **Frontend — page Flux IP** : bouton « Export Word » (bleu, icône `ti-file-word`) ajouté à côté de l'export CSV ; respecte les filtres statut et la recherche courante
+- **Frontend — `api.exportFlowsDocx()`** : helper `reqBlob()` pour téléchargement binaire ; nom de fichier horodaté `flux_AAAAMMJJ_HHMMSS.docx`
+
 ## [2.10.0] — 2026-06-28
 
 ### Logs & Traçabilité

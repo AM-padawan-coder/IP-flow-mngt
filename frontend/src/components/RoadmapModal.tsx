@@ -209,7 +209,7 @@ const PHASES: Phase[] = [
       'Architecture de sinks extensible : Signature crypto / Syslog / SIEM Elastic (v3.6), détection d\'anomalies (à planifier)',
       'Barre de navigation : scroll vertical pour accéder au menu sur petits écrans',
     ] },
-  { v: 'v2.11', title: 'Export DOCX des flux', status: 'planned', label: '🗓 Planifié', eta: '',
+  { v: 'v2.11', title: 'Export DOCX des flux', status: 'done', label: '✓ Livré', eta: '',
     items: [
       'Export Word (.docx) depuis le menu Flux : tableau stylisé — en-têtes colorés selon le thème, lignes alternées, bordures fines, badges de statut colorés (OK / Refusé / En attente / Déployé)',
       'Sélecteur de colonnes : cases à cocher pour inclure / exclure chaque champ (IP source, IP destination, port, protocole, application, statut, criticité, analyste, date, motif de refus…)',
