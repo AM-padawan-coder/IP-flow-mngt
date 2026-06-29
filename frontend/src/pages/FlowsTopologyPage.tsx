@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api/client'
 import FlowDetailModal from '../components/FlowDetailModal'
+import DocxExportModal from '../components/DocxExportModal'
 
 const STATUS_LABEL: Record<string, string> = { validated: 'Validé', deployed: 'Déployé', rejected: 'Refusé', pending: 'En attente' }
 const STATUS_COLOR: Record<string, string> = { validated: '#22c55e', deployed: '#3b82f6', rejected: '#ef4444', pending: '#eab308' }
@@ -40,6 +41,7 @@ export default function FlowsTopologyPage() {
   const [search, setSearch] = useState('')
   const [statusFilters, setStatusFilters] = useState<string[]>([])
   const [selectedId, setSelectedId] = useState<number | null>(null)
+  const [showDocx, setShowDocx] = useState(false)
 
   const load = () => {
     setLoading(true)
@@ -116,6 +118,12 @@ export default function FlowsTopologyPage() {
           >
             ⬇ Exporter Excel (CSV)
           </button>
+          <button
+            onClick={() => setShowDocx(true)}
+            style={{ padding: '6px 14px', background: '#2563eb', border: 'none', borderRadius: 6, color: '#fff', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5 }}
+          >
+            <i className="ti ti-file-word" /> Export Word
+          </button>
         </div>
 
         <div className="card">
@@ -165,6 +173,14 @@ export default function FlowsTopologyPage() {
           onClose={() => setSelectedId(null)}
           onDeleted={() => { setSelectedId(null); load() }}
           onStatusChanged={load}
+        />
+      )}
+
+      {showDocx && (
+        <DocxExportModal
+          onClose={() => setShowDocx(false)}
+          search={search}
+          statusFilters={statusFilters}
         />
       )}
     </>

@@ -9,6 +9,15 @@ async function req<T>(path: string, opts?: RequestInit): Promise<T> {
   return res.json()
 }
 
+async function reqBlob(path: string, opts?: RequestInit): Promise<Blob> {
+  const res = await fetch(`${BASE}${path}`, {
+    headers: { 'Content-Type': 'application/json' },
+    ...opts,
+  })
+  if (!res.ok) throw new Error(`API ${res.status}: ${await res.text()}`)
+  return res.blob()
+}
+
 export const api = {
   // Flows
   analyzeFlow: (data: object) => req('/flows/analyze', { method: 'POST', body: JSON.stringify(data) }),
@@ -149,6 +158,10 @@ export const api = {
     req('/audit-logs/retention', { method: 'PUT', body: JSON.stringify({ days }) }),
   exportAuditLogs: (format: 'csv' | 'json', params: Record<string, string | number | undefined> = {}): Promise<any> =>
     req(`/audit-logs/export${qs({ ...params, format })}`),
+
+  // Export DOCX flux (v2.11)
+  exportFlowsDocx: (params: { columns?: string; statuses?: string; search?: string } = {}): Promise<Blob> =>
+    reqBlob(`/flows/export/docx${qs(params)}`),
 }
 
 function qs(params: Record<string, string | number | undefined>): string {

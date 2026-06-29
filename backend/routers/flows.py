@@ -156,6 +156,147 @@ def list_flows(db: Session = Depends(get_db)):
     return result
 
 
+@router.get("/export/docx")
+def export_flows_docx(
+    columns: str = "id,date,src_ip,dst_ip,port,protocol,application,analyst,status",
+    statuses: Optional[str] = None,
+    search: Optional[str] = None,
+    db: Session = Depends(get_db),
+):
+    """Génère un fichier Word (.docx) avec la liste des flux filtrés."""
+    import io
+    from docx import Document
+    from docx.shared import Pt, RGBColor, Cm
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.oxml.ns import qn
+    from docx.oxml import OxmlElement
+    from fastapi.responses import Response
+
+    STATUS_LABELS = {
+        "validated": "Validé", "deployed": "Déployé",
+        "rejected": "Refusé", "pending": "En attente",
+    }
+    COLUMN_DEFS = {
+        "id":            ("ID",             lambda f: str(f.id)),
+        "date":          ("Date",           lambda f: f.created_at.strftime("%d/%m/%Y")),
+        "src_ip":        ("IP Source",      lambda f: f.src_ip or ""),
+        "dst_ip":        ("IP Destination", lambda f: f.dst_ip or ""),
+        "port":          ("Port",           lambda f: str(f.port or "")),
+        "protocol":      ("Protocole",      lambda f: (f.protocol or "").upper()),
+        "application":   ("Application",    lambda f: f.application or "—"),
+        "analyst":       ("Analyste",       lambda f: f.analyst or "—"),
+        "status":        ("Statut",         lambda f: STATUS_LABELS.get(f.status, f.status)),
+        "justification": ("Justification",  lambda f: f.justification or "—"),
+    }
+
+    flows_q = db.query(FlowRequest).order_by(FlowRequest.created_at.desc()).all()
+    status_list = [s.strip() for s in statuses.split(",")] if statuses else []
+    if status_list:
+        flows_q = [f for f in flows_q if f.status in status_list]
+    if search:
+        s = search.lower()
+        flows_q = [
+            f for f in flows_q
+            if s in (f.src_ip or "") or s in (f.dst_ip or "")
+            or s in (f.application or "").lower()
+            or s in (f.analyst or "").lower()
+        ]
+
+    col_keys = [c.strip() for c in columns.split(",")]
+    active_cols = [(k, COLUMN_DEFS[k]) for k in col_keys if k in COLUMN_DEFS]
+
+    doc = Document()
+    for section in doc.sections:
+        section.page_width  = Cm(29.7)
+        section.page_height = Cm(21.0)
+        section.left_margin   = Cm(1.5)
+        section.right_margin  = Cm(1.5)
+        section.top_margin    = Cm(1.5)
+        section.bottom_margin = Cm(1.5)
+
+    # ── Page de garde ──────────────────────────────────────────────────────────
+    p = doc.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    run = p.add_run("Rapport — Matrice des flux IP")
+    run.bold = True
+    run.font.size = Pt(24)
+    run.font.color.rgb = RGBColor(0x1E, 0x3A, 0x8A)
+
+    doc.add_paragraph()
+    p2 = doc.add_paragraph()
+    p2.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p2.add_run(f"Généré le {datetime.now().strftime('%d/%m/%Y à %Hh%M')}")
+
+    p3 = doc.add_paragraph()
+    p3.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p3.add_run(f"{len(flows_q)} flux exportés")
+
+    if status_list:
+        p4 = doc.add_paragraph()
+        p4.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        labels = ", ".join(STATUS_LABELS.get(s, s) for s in status_list)
+        p4.add_run(f"Filtre statut : {labels}")
+    if search:
+        p5 = doc.add_paragraph()
+        p5.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        p5.add_run(f'Recherche : "{search}"')
+
+    doc.add_page_break()
+
+    # ── Tableau ─────────────────────────────────────────────────────────────
+    def set_cell_bg(cell, hex_color: str):
+        tc = cell._tc
+        tcPr = tc.get_or_add_tcPr()
+        shd = OxmlElement("w:shd")
+        shd.set(qn("w:val"),   "clear")
+        shd.set(qn("w:color"), "auto")
+        shd.set(qn("w:fill"),  hex_color)
+        tcPr.append(shd)
+
+    if not active_cols:
+        doc.add_paragraph("Aucune colonne sélectionnée.")
+    else:
+        table = doc.add_table(rows=1, cols=len(active_cols))
+        table.style = "Table Grid"
+
+        # En-têtes
+        hdr = table.rows[0].cells
+        for i, (_, (label, _)) in enumerate(active_cols):
+            cell = hdr[i]
+            cell.text = ""
+            set_cell_bg(cell, "1E3A8A")
+            para = cell.paragraphs[0]
+            para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            run = para.add_run(label)
+            run.bold = True
+            run.font.size = Pt(9)
+            run.font.color.rgb = RGBColor(0xFF, 0xFF, 0xFF)
+
+        # Données
+        for row_idx, flow in enumerate(flows_q):
+            row = table.add_row()
+            if row_idx % 2 == 1:
+                for cell in row.cells:
+                    set_cell_bg(cell, "EFF6FF")
+            for j, (_, (_, getter)) in enumerate(active_cols):
+                cell = row.cells[j]
+                cell.text = getter(flow)
+                if cell.paragraphs[0].runs:
+                    cell.paragraphs[0].runs[0].font.size = Pt(8)
+
+    buf = io.BytesIO()
+    doc.save(buf)
+    buf.seek(0)
+
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"flux_{ts}.docx"
+    return Response(
+        content=buf.read(),
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
 @router.get("/{flow_id}")
 def get_flow(flow_id: int, db: Session = Depends(get_db)):
     flow = db.query(FlowRequest).filter(FlowRequest.id == flow_id).first()
