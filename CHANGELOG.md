@@ -1,5 +1,18 @@
 # Changelog — IP Flow Manager
 
+## [2.12.0] — 2026-06-30
+
+### Versioning — Timeline & Snapshots
+
+- **Backend — modèle `Snapshot`** : capture horodatée de l'état complet (zones, équipements, réseaux, liens, flux, VRF, applications, règles ACL, routes) ; support des branches via self-FK `branch_from` ; compteurs par entité + `featured_flow_ids` (flux associés à la version)
+- **Backend — router `/snapshots`** : liste avec deltas entre versions, création (avec `_enforce_max` automatique), suppression, settings `max_count`, live-counts, diff avec l'état actuel ou entre deux snapshots, création de branches, mise à jour du statut de branche (actif / pause / fusionné)
+- **Backend — seed** : 6 snapshots de démo (v1.0 Baseline → v2.0 Prépa Migration ERP) + 4 branches (Migration-ERP, PRA-2025, Refonte-DMZ, ZeroTrust-Pilot)
+- **Frontend — page Versioning** (section Référentiel) : timeline horizontale scrollable, cartes colorées par série (v1.x indigo, v2.x violet, branches ambre), connecteurs visuels branche ↓
+- **Frontend — panneau de détail** : méta, compteurs avec deltas ↑/↓, statut de branche, flux associés, diff par entité (ajoutés / modifiés / supprimés), actions (branche, suppression)
+- **Frontend — modal Créer un snapshot** : label, description, tag de version, environnement, sélection multi-flux à associer (featured_flow_ids)
+- **Frontend — paramètres** : limite configurable du nombre de snapshots dans l'historique (1–200) avec purge automatique des plus anciens
+- **Roadmap** : v2.12 livrée ; v2.12 Import avancé décalé en v2.13 ; v2.13 Tests décalé en v2.14 ; v3.7 renommé "Versioning amélioré"
+
 ## [2.11.0] — 2026-06-29
 
 ### Export DOCX des flux

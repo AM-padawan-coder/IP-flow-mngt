@@ -162,6 +162,19 @@ export const api = {
   // Export DOCX flux (v2.11)
   exportFlowsDocx: (params: { columns?: string; statuses?: string; search?: string } = {}): Promise<Blob> =>
     reqBlob(`/flows/export/docx${qs(params)}`),
+
+  // Versioning — Snapshots (v3.7)
+  getSnapshots:              ():                              Promise<any[]>  => req('/snapshots'),
+  getSnapshot:               (id: number):                   Promise<any>    => req(`/snapshots/${id}`),
+  createSnapshot:            (data: object):                 Promise<any>    => req('/snapshots', { method: 'POST', body: JSON.stringify(data) }),
+  deleteSnapshot:            (id: number):                   Promise<any>    => req(`/snapshots/${id}`, { method: 'DELETE' }),
+  getSnapshotSettings:       ():                              Promise<any>    => req('/snapshots/settings'),
+  setSnapshotSettings:       (data: object):                 Promise<any>    => req('/snapshots/settings', { method: 'PUT', body: JSON.stringify(data) }),
+  getSnapshotLiveCounts:     ():                              Promise<any>    => req('/snapshots/live-counts'),
+  diffSnapshotWithCurrent:   (id: number):                   Promise<any>    => req(`/snapshots/${id}/diff/current`),
+  diffSnapshots:             (id1: number, id2: number):     Promise<any>    => req(`/snapshots/${id1}/diff/${id2}`),
+  createSnapshotBranch:      (id: number, data: object):     Promise<any>    => req(`/snapshots/${id}/branch`, { method: 'POST', body: JSON.stringify(data) }),
+  updateSnapshotBranchStatus:(id: number, status: string):   Promise<any>    => req(`/snapshots/${id}/branch-status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
 }
 
 function qs(params: Record<string, string | number | undefined>): string {

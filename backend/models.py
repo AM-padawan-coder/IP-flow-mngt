@@ -251,3 +251,22 @@ class AppSetting(Base):
     id = Column(Integer, primary_key=True, index=True)
     key = Column(String, unique=True, nullable=False)
     value = Column(String, nullable=True)
+
+
+class Snapshot(Base):
+    """Capture horodatée de l'état complet de la topologie (versioning v3.7)."""
+    __tablename__ = "snapshots"
+    id              = Column(Integer, primary_key=True, index=True)
+    label           = Column(String, nullable=False)       # ex: "Ajout flux SAP"
+    description     = Column(String, default="")
+    created_by      = Column(String, default="admin")
+    created_at      = Column(DateTime, default=datetime.utcnow)
+    environment     = Column(String, default="Production")
+    version_tag     = Column(String, default="")           # ex: "v1.0", "v2.0"
+    branch_from     = Column(Integer, ForeignKey("snapshots.id"), nullable=True)
+    branch_name     = Column(String, nullable=True)
+    branch_status   = Column(String, default="active")     # active | paused | merged
+    snapshot_type   = Column(String, default="manual")     # manual | auto | branch
+    data            = Column(Text, default="{}")            # JSON: état complet sérialisé
+    counts          = Column(Text, default="{}")            # JSON: compteurs par entité
+    featured_flow_ids = Column(Text, default="[]")          # JSON: flux mis en avant

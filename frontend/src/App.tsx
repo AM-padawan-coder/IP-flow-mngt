@@ -12,10 +12,11 @@ import AuditPage from './pages/AuditPage'
 import SimulationPage from './pages/SimulationPage'
 import PolicyPage from './pages/PolicyPage'
 import FlowsTopologyPage from './pages/FlowsTopologyPage'
+import VersioningPage from './pages/VersioningPage'
 import HelpModal from './components/HelpModal'
 import RoadmapModal from './components/RoadmapModal'
 
-type Page = 'new' | 'history' | 'simulation' | 'topology' | 'admin' | 'import' | 'teams' | 'audit' | 'policies' | 'flows-topology' | 'backups' | 'logs' | 'compliance'
+type Page = 'new' | 'history' | 'simulation' | 'topology' | 'admin' | 'import' | 'teams' | 'audit' | 'policies' | 'flows-topology' | 'backups' | 'logs' | 'compliance' | 'versioning'
 
 const NAV = [
   { id: 'new',        label: 'Nouveau flux',       icon: '＋', section: 'Flux IP' },
@@ -31,6 +32,7 @@ const NAV = [
   { id: 'teams',      label: 'Équipes',             icon: 'ti ti-users', section: 'Organisation' },
   { id: 'audit',      label: 'Audit',               icon: '◎', section: 'Référentiel' },
   { id: 'compliance', label: 'Conformité',          icon: 'ti ti-checkbox', section: 'Référentiel' },
+  { id: 'versioning', label: 'Versioning',          icon: 'ti ti-git-branch', section: 'Référentiel' },
 ] as const
 
 function getInitialTheme(): 'dark' | 'light' {
@@ -108,7 +110,7 @@ export default function App() {
 
         {/* Footer — version + actions */}
         <div style={{ padding: '10px 14px', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 6 }}>
-          <div className="text-xs text-dimmed" style={{ flex: 1 }}>demo · v2.11</div>
+          <div className="text-xs text-dimmed" style={{ flex: 1 }}>demo · v2.12</div>
 
           {/* Dark/Light toggle */}
           <button
@@ -162,6 +164,7 @@ export default function App() {
         {page === 'import'     && <ImportPage onNavigate={(p) => setPage(p as Page)} />}
         {page === 'teams'      && <TeamsPage />}
         {page === 'audit'      && <AuditPage />}
+        {page === 'versioning' && <VersioningPage />}
       </main>
     </div>
   )

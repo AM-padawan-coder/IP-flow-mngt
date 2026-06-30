@@ -399,3 +399,110 @@ def seed_demo_audit_logs(db):
     db.commit()
     print(f"[seed] {len(entries)} entrées d'audit de démonstration injectées")
 
+
+def seed_demo_snapshots(db):
+    from models import Snapshot
+    if db.query(Snapshot).count() > 0:
+        return
+
+    import json
+    from datetime import datetime
+
+    main_data = [
+        {
+            "label": "Baseline Initiale", "description": "Snapshot initial après mise en production",
+            "created_by": "n.charles", "version_tag": "v1.0", "environment": "Production",
+            "created_at": datetime(2025, 2, 12, 9, 0),
+            "counts": {"applications": 32, "flows": 264, "equipment": 48, "policies": 1245, "routes": 152},
+        },
+        {
+            "label": "Ajout flux SAP", "description": "Intégration des flux SAP ERP vers la zone serveurs",
+            "created_by": "n.charles", "version_tag": "v1.1", "environment": "Production",
+            "created_at": datetime(2025, 3, 18, 14, 30),
+            "counts": {"applications": 33, "flows": 278, "equipment": 48, "policies": 1267, "routes": 152},
+        },
+        {
+            "label": "Migration DMZ", "description": "Refactoring complet de la DMZ — ajout de 2 équipements",
+            "created_by": "c.dumont", "version_tag": "v1.2", "environment": "Production",
+            "created_at": datetime(2025, 4, 7, 11, 15),
+            "counts": {"applications": 33, "flows": 301, "equipment": 50, "policies": 1312, "routes": 159},
+        },
+        {
+            "label": "Optimisation FW", "description": "Nettoyage des règles firewall redondantes",
+            "created_by": "t.lambert", "version_tag": "v1.3", "environment": "Production",
+            "created_at": datetime(2025, 5, 22, 16, 45),
+            "counts": {"applications": 33, "flows": 301, "equipment": 50, "policies": 1276, "routes": 159},
+        },
+        {
+            "label": "Ajout VRF Finance", "description": "Isolation VRF pour le département Finance",
+            "created_by": "n.charles", "version_tag": "v1.4", "environment": "Production",
+            "created_at": datetime(2025, 6, 10, 10, 0),
+            "counts": {"applications": 34, "flows": 320, "equipment": 51, "policies": 1325, "routes": 163},
+        },
+        {
+            "label": "Prépa Migration ERP", "description": "Baseline avant migration ERP — état figé pour référence",
+            "created_by": "n.charles", "version_tag": "v2.0", "environment": "Production",
+            "created_at": datetime(2025, 7, 1, 8, 0),
+            "counts": {"applications": 36, "flows": 342, "equipment": 53, "policies": 1402, "routes": 170},
+        },
+    ]
+
+    saved: dict = {}
+    for item in main_data:
+        counts = item.pop("counts")
+        snap = Snapshot(
+            snapshot_type="manual",
+            branch_from=None, branch_name=None, branch_status="active",
+            data="{}", counts=json.dumps(counts), featured_flow_ids="[]",
+            **item,
+        )
+        db.add(snap)
+        db.flush()
+        saved[snap.version_tag] = snap
+
+    branch_data = [
+        {
+            "label": "Migration-ERP", "branch_name": "Migration-ERP",
+            "description": "Simulation de la migration ERP en isolation",
+            "created_by": "n.charles", "parent_tag": "v2.0", "branch_status": "active",
+            "created_at": datetime(2025, 7, 8, 9, 0),
+            "counts": {"applications": 38, "flows": 358, "equipment": 53, "policies": 1445, "routes": 175},
+        },
+        {
+            "label": "PRA-2025", "branch_name": "PRA-2025",
+            "description": "Plan de reprise d'activité — test du basculement DR",
+            "created_by": "c.dumont", "parent_tag": "v1.4", "branch_status": "active",
+            "created_at": datetime(2025, 6, 20, 14, 0),
+            "counts": {"applications": 34, "flows": 320, "equipment": 51, "policies": 1325, "routes": 163},
+        },
+        {
+            "label": "Refonte-DMZ", "branch_name": "Refonte-DMZ",
+            "description": "Proposition de refonte architecture DMZ",
+            "created_by": "t.lambert", "parent_tag": "v1.3", "branch_status": "active",
+            "created_at": datetime(2025, 6, 1, 11, 0),
+            "counts": {"applications": 33, "flows": 315, "equipment": 52, "policies": 1290, "routes": 162},
+        },
+        {
+            "label": "ZeroTrust-Pilot", "branch_name": "ZeroTrust-Pilot",
+            "description": "Pilote Zero Trust sur périmètre restreint",
+            "created_by": "n.charles", "parent_tag": "v1.2", "branch_status": "paused",
+            "created_at": datetime(2025, 5, 5, 9, 30),
+            "counts": {"applications": 33, "flows": 295, "equipment": 50, "policies": 1350, "routes": 159},
+        },
+    ]
+
+    for item in branch_data:
+        counts  = item.pop("counts")
+        parent_tag = item.pop("parent_tag")
+        branch = Snapshot(
+            snapshot_type="branch",
+            branch_from=saved[parent_tag].id,
+            version_tag="", environment="Production",
+            data="{}", counts=json.dumps(counts), featured_flow_ids="[]",
+            **item,
+        )
+        db.add(branch)
+
+    db.commit()
+    print("[seed] Snapshots de démonstration injectés (6 versions + 4 branches)")
+
